@@ -4,7 +4,3 @@ cliente_oauth.json
 
 # Caché de Python
 __pycache__/
-
-# Herramientas de Spec Kit
-.claude/
-.specify/
