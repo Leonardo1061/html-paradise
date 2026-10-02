@@ -816,10 +816,10 @@ async function recargarCatalogo() {
 // =======================================================================
 // ARRANQUE
 // =======================================================================
-$('btn-turnos').onclick = () => { window.location.href = 'turnos.html'; };
+$('btn-turnos').onclick = () => { window.location.href = 'panel.html'; };
 $('btn-salir').onclick = () => {
-    localStorage.removeItem('token_sesion');
-    localStorage.removeItem('modelo_actual');
+    ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto']
+        .forEach((clave) => localStorage.removeItem(clave));
     window.location.href = PARADISE.URL_LOGIN;
 };
 $('semana-atras').onclick = () => cambiarSemana(estado.semana + 1);

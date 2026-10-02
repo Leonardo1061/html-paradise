@@ -1,279 +1,200 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso - Estudio</title>
-    <style>
-        :root {
-            --amarillo: #FFD500;
-            --amarillo-oscuro: #E6A700;
-            --negro: #101010;
-            --negro-suave: #1C1C1C;
-            --verde: #4CAF50;
-            --rojo: #F44336;
-            --bg-color: #F5F5F5;
-            --card-bg: #FFFFFF;
-            --texto: #222222;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Acceso · PARADISE</title>
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+<!--
+  ACCESO DE LAS MODELOS · POR CÉDULA
+  ==================================
+  Antes había que elegir jornada, buscarse en una lista de cien nombres y
+  escribir la contraseña. Ahora es cédula + contraseña, igual que el programa
+  de escritorio desde la 2.2.0:
 
-        body {
-            background-color: var(--negro);
-            background-image: radial-gradient(circle at 20% 15%, #2A2A2A 0%, var(--negro) 55%);
-            display: flex; justify-content: center; align-items: center;
-            min-height: 100vh; padding: 20px;
-        }
+    · La cédula es el ID del documento en `Modelos`: el login es UNA lectura
+      directa, y dos modelos con nombres parecidos dejan de ser un problema.
+    · [CONTRATO] La contraseña inicial son los ÚLTIMOS 4 DÍGITOS de la cédula.
+      Se puede cambiar desde PERFIL, y vale para las dos aplicaciones.
+    · Esta página ya NO pide la lista de modelos: el sitio es público y no
+      tiene por qué publicar quién trabaja en el estudio.
+-->
 
-        .login-container {
-            background-color: var(--card-bg);
-            width: 100%; max-width: 390px;
-            padding: 34px 28px 30px;
-            border-radius: 14px;
-            box-shadow: 0 14px 40px rgba(0,0,0,0.45);
-            border-top: 7px solid var(--amarillo);
-            text-align: center;
-        }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-        .login-container h2 { color: var(--texto); margin-bottom: 4px; font-size: 1.5rem; }
-        .login-container .sub { color: #888; font-size: 0.8rem; margin-bottom: 26px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+<style>
+:root {
+    --fondo: #0a0a0b;
+    --panel: #141318;
+    --panel-alto: #1b1a22;
+    --borde: #2a2932;
+    --texto: #f4f4f5;
+    --tenue: #9b9ba3;
+    --apagado: #6b6b73;
+    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0; min-height: 100vh; background: var(--fondo); color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex; align-items: center; justify-content: center; padding: 22px;
+    background-image: radial-gradient(circle at 20% 0%, rgba(139, 92, 246, .18) 0%, rgba(10,10,11,0) 55%);
+}
+button { font-family: inherit; cursor: pointer; }
 
-        .input-group { margin-bottom: 18px; text-align: left; }
-        .input-group label { display: block; margin-bottom: 7px; font-size: 0.85rem; font-weight: bold; color: #555; }
+.caja {
+    width: 100%; max-width: 380px; background: var(--panel);
+    border: 1px solid var(--borde); border-radius: 22px; padding: 30px 24px 26px;
+    box-shadow: 0 26px 60px rgba(0, 0, 0, .55);
+}
+.marca {
+    width: 54px; height: 54px; border-radius: 17px; margin: 0 auto 16px;
+    display: grid; place-items: center; background: var(--degradado);
+    font-size: 25px; font-weight: 700; color: #fff;
+    box-shadow: 0 12px 26px rgba(168, 85, 247, .4);
+}
+h1 { margin: 0; font-size: 21px; font-weight: 700; text-align: center; }
+.sub { margin: 5px 0 24px; font-size: 12px; color: var(--tenue); text-align: center;
+       letter-spacing: 1.6px; text-transform: uppercase; }
 
-        .input-group select, .input-group input {
-            width: 100%; padding: 13px;
-            border: 2px solid #E3E3E3; border-radius: 8px;
-            font-size: 1rem; outline: none; background-color: #FAFAFA;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-        .input-group select:focus, .input-group input:focus { border-color: var(--amarillo); background-color: #fff; }
-        .input-group select:disabled { background-color: #EDEDED; color: #9E9E9E; cursor: not-allowed; }
+.campo { margin-bottom: 15px; }
+.campo label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 7px; }
+.campo input {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 13px; padding: 14px; color: var(--texto); font-size: 16px;
+    font-family: inherit; outline: none; transition: border-color .15s;
+}
+.campo input:focus { border-color: #8b5cf6; }
+.campo .ayuda { font-size: 11.5px; color: var(--apagado); margin-top: 7px; line-height: 1.45; }
 
-        .btn-submit {
-            width: 100%; padding: 15px;
-            background-color: var(--amarillo); color: #000;
-            border: 2px solid var(--amarillo-oscuro); border-radius: 8px;
-            font-size: 1.05rem; font-weight: bold; cursor: pointer;
-            transition: transform 0.1s; margin-top: 8px;
-        }
-        .btn-submit:active { transform: scale(0.98); }
-        .btn-submit:disabled { background-color: #C9C9C9; border-color: #B0B0B0; color: #6F6F6F; cursor: not-allowed; }
+.entrar {
+    width: 100%; background: var(--degradado); border: 0; color: #fff; font-weight: 600;
+    border-radius: 13px; padding: 15px; font-size: 15px; margin-top: 8px;
+    box-shadow: 0 10px 26px rgba(168, 85, 247, .32);
+}
+.entrar:active { transform: scale(.985); }
+.entrar:disabled { opacity: .6; cursor: default; box-shadow: none; }
 
-        .error-message {
-            color: #B71C1C; background-color: #FFEBEE;
-            border-left: 5px solid var(--rojo);
-            padding: 11px; border-radius: 6px;
-            font-size: 0.88rem; margin-top: 18px; display: none; text-align: left;
-        }
+.error {
+    display: none; margin-top: 16px; font-size: 13.5px; line-height: 1.45;
+    background: rgba(239, 68, 68, .1); border: 1px solid rgba(239, 68, 68, .45);
+    border-radius: 12px; padding: 12px 13px; color: #fecaca;
+}
 
-        .info-loader { font-size: 0.82rem; color: #8A6D00; margin-bottom: 14px; font-style: italic; }
-
-        /* ============ AVISO DE JORNADA LLENA ============ */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.78); display: none;
-            justify-content: center; align-items: center; z-index: 1000; padding: 20px;
-        }
-        .modal-content {
-            background: #fff; padding: 26px 22px; border-radius: 14px;
-            width: 100%; max-width: 380px; text-align: center;
-            border-top: 7px solid var(--amarillo);
-        }
-        .modal-content .icono { font-size: 2.6rem; margin-bottom: 10px; }
-        .modal-content h3 { margin-bottom: 12px; color: var(--texto); }
-        .modal-content p { font-size: 0.93rem; color: #555; line-height: 1.55; margin-bottom: 20px; }
-        .btn-modal {
-            width: 100%; padding: 13px; background: var(--negro); color: var(--amarillo);
-            border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer;
-        }
-    </style>
+.velo {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, .78); display: none;
+    align-items: center; justify-content: center; padding: 22px; z-index: 60;
+}
+.modal {
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 20px;
+    padding: 24px 22px; width: 100%; max-width: 360px; text-align: center;
+}
+.modal .icono { font-size: 34px; }
+.modal h3 { margin: 10px 0 10px; font-size: 18px; }
+.modal p { font-size: 14px; color: var(--tenue); line-height: 1.55; margin: 0 0 18px; }
+</style>
 </head>
+
 <body>
 
-    <div class="login-container">
-        <h2>Acceso Modelos</h2>
-        <p class="sub">Paradise</p>
+<div class="caja">
+    <div class="marca">P</div>
+    <h1>Acceso modelos</h1>
+    <p class="sub">Paradise</p>
 
-        <p class="info-loader" id="status-text">Cargando base de datos...</p>
-
-        <form id="login-form">
-            <div class="input-group">
-                <label for="jornada-select">1. Selecciona tu jornada</label>
-                <select id="jornada-select" required disabled>
-                    <option value="" disabled selected>Cargando jornadas...</option>
-                    <option value="Todas">Todas (ver lista completa)</option>
-                    <option value="Mañana">Mañana</option>
-                    <option value="Tarde">Tarde</option>
-                    <option value="Noche">Noche</option>
-                    <option value="Satelites">Satélites</option>
-                    <option value="Supernumerario">Supernumerarias</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="nombre">2. Tu nombre</label>
-                <select id="nombre" required disabled>
-                    <option value="" disabled selected>Primero selecciona una jornada...</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="password">3. Contraseña</label>
-                <input type="password" id="password" placeholder="Ingresa tu clave" required disabled>
-            </div>
-
-            <button type="submit" class="btn-submit" id="btn-login" disabled>Ingresar</button>
-
-            <div class="error-message" id="error-msg"></div>
-        </form>
-    </div>
-
-    <!-- AVISO: la jornada a la que aplicó se llenó -->
-    <div class="modal-overlay" id="modal-aviso">
-        <div class="modal-content">
-            <div class="icono">🔔</div>
-            <h3>Aviso importante</h3>
-            <p id="texto-aviso"></p>
-            <button class="btn-modal" onclick="continuarAlPanel()">Entendido, continuar</button>
+    <form id="formulario">
+        <div class="campo">
+            <label for="cedula">Tu número de cédula</label>
+            <input id="cedula" inputmode="numeric" autocomplete="username"
+                   placeholder="Sin puntos ni espacios" required>
         </div>
+
+        <div class="campo">
+            <label for="password">Contraseña</label>
+            <input id="password" type="password" autocomplete="current-password"
+                   placeholder="••••" required>
+            <div class="ayuda">Si es tu primera vez, son los <b>últimos 4 dígitos
+                de tu cédula</b>. Luego puedes cambiarla desde Perfil.</div>
+        </div>
+
+        <button type="submit" class="entrar" id="btn-entrar">Ingresar</button>
+        <div class="error" id="error"></div>
+    </form>
+</div>
+
+<!-- La jornada que pidió se llenó: se le dice antes de entrar. -->
+<div class="velo" id="velo-aviso">
+    <div class="modal">
+        <div class="icono">🔔</div>
+        <h3>Aviso importante</h3>
+        <p id="texto-aviso"></p>
+        <button class="entrar" onclick="continuar()">Entendido, continuar</button>
     </div>
+</div>
 
 <script src="js/config.js"></script>
 <script>
-/* =========================================================================
-   LOGIN DE LAS MODELOS
-
-   NOVEDAD: si la modelo quedó en lista de espera en una jornada que ya no
-   tiene ni un cupo libre, se le dice NADA MÁS ENTRAR, en vez de dejar que
-   lo descubra sola mirando la grilla. El aviso lo calcula la API dentro de
-   la propia respuesta del login: no hay ninguna petición extra.
-   ========================================================================= */
-
-// Las direcciones viven en js/config.js: un solo sitio para las dos apps.
 const API_URL = PARADISE.API_URL;
-let listaModelosGlobal = [];
 
-async function cargarModelos() {
-    const statusText = document.getElementById('status-text');
-    const selectJornada = document.getElementById('jornada-select');
-
-    try {
-        const respuesta = await fetch(`${API_URL}/api/modelos?t=${Date.now()}`, { cache: 'no-store' });
-        if (!respuesta.ok) throw new Error("No se pudo cargar la lista");
-
-        const datos = await respuesta.json();
-        listaModelosGlobal = datos.modelos;
-
-        selectJornada.disabled = false;
-        selectJornada.options[0].textContent = "Elige una opción...";
-        statusText.style.display = 'none';
-    } catch (error) {
-        console.error("Error:", error);
-        statusText.textContent = "Error al conectar con la base de datos.";
-        statusText.style.color = "#B71C1C";
-    }
+function continuar() {
+    window.location.href = "panel.html";
 }
 
-document.getElementById('jornada-select').addEventListener('change', function () {
-    const jornadaElegida = this.value;
-    const selectNombre = document.getElementById('nombre');
-    const inputPassword = document.getElementById('password');
-    const btnLogin = document.getElementById('btn-login');
+document.getElementById('formulario').addEventListener('submit', async function (evento) {
+    evento.preventDefault();
 
-    selectNombre.innerHTML = '<option value="" disabled selected>Selecciona tu nombre...</option>';
-
-    let modelosFiltradas = (jornadaElegida === 'Todas')
-        ? listaModelosGlobal
-        : listaModelosGlobal.filter(m => m.jornada === jornadaElegida);
-
-    modelosFiltradas.sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-    if (modelosFiltradas.length > 0) {
-        modelosFiltradas.forEach(mod => {
-            const option = document.createElement('option');
-            option.value = mod.nombre;
-            option.textContent = mod.nombre;
-            selectNombre.appendChild(option);
-        });
-        selectNombre.disabled = false;
-        inputPassword.disabled = false;
-        btnLogin.disabled = false;
-    } else {
-        const option = document.createElement('option');
-        option.value = "";
-        option.textContent = "No hay modelos en esta jornada";
-        selectNombre.appendChild(option);
-        selectNombre.disabled = true;
-        inputPassword.disabled = true;
-        btnLogin.disabled = true;
-    }
-});
-
-function continuarAlPanel() {
-    window.location.href = "turnos.html";
-}
-
-document.getElementById('login-form').addEventListener('submit', async function (event) {
-    event.preventDefault();
-
-    const nombre = document.getElementById('nombre').value;
+    const cedula = document.getElementById('cedula').value.trim();
     const password = document.getElementById('password').value.trim();
-    const btnLogin = document.getElementById('btn-login');
-    const errorMsg = document.getElementById('error-msg');
+    const boton = document.getElementById('btn-entrar');
+    const error = document.getElementById('error');
 
-    errorMsg.style.display = 'none';
-    btnLogin.disabled = true;
-    btnLogin.textContent = "Verificando...";
+    error.style.display = 'none';
+    boton.disabled = true;
+    boton.textContent = "Verificando…";
 
     try {
-        const respuesta = await fetch(`${API_URL}/api/modelos/login`, {
+        const respuesta = await fetch(`${API_URL}/api/acceso/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre: nombre, password: password })
+            body: JSON.stringify({ cedula: cedula, password: password })
         });
-
         const datos = await respuesta.json();
 
         if (respuesta.ok) {
+            // `modelo_actual` lo siguen usando turnos.html y reuniones.html,
+            // que trabajan por NOMBRE. El token es lo que exige la API para el
+            // plan de trabajo y el panel; la cédula no se guarda aquí.
             localStorage.setItem('modelo_actual', datos.nombre);
             localStorage.setItem('jornada_actual', datos.jornada);
-
-            // Token de sesión: es lo que la API exige para abrir el PLAN DE
-            // TRABAJO (plan.html). La cédula no viaja al navegador; la API la
-            // saca de la sesión. Si la API todavía no lo manda, el plan pedirá
-            // volver a entrar y el resto de la página funciona igual.
             localStorage.setItem('token_sesion', datos.token || '');
+            if (datos.password_por_defecto) localStorage.setItem('password_por_defecto', '1');
+            else localStorage.removeItem('password_por_defecto');
 
-            btnLogin.style.backgroundColor = '#4CAF50';
-            btnLogin.style.color = '#fff';
-            btnLogin.textContent = "¡Bienvenida!";
+            boton.textContent = "¡Bienvenida!";
 
-            // Si la API mandó un aviso, se enseña ANTES de entrar al panel.
             if (datos.aviso) {
                 document.getElementById('texto-aviso').textContent = datos.aviso;
-                document.getElementById('modal-aviso').style.display = 'flex';
+                document.getElementById('velo-aviso').style.display = 'flex';
                 return;
             }
-
-            setTimeout(continuarAlPanel, 800);
+            setTimeout(continuar, 600);
         } else {
-            errorMsg.textContent = datos.detail || "Error al iniciar sesión.";
-            errorMsg.style.display = 'block';
-            btnLogin.disabled = false;
-            btnLogin.textContent = "Ingresar";
+            error.textContent = datos.detail || "No se pudo iniciar sesión.";
+            error.style.display = 'block';
+            boton.disabled = false;
+            boton.textContent = "Ingresar";
         }
-    } catch (error) {
-        console.error("Error:", error);
-        errorMsg.textContent = "No hay conexión con el servidor.";
-        errorMsg.style.display = 'block';
-        btnLogin.disabled = false;
-        btnLogin.textContent = "Ingresar";
+    } catch (fallo) {
+        error.textContent = "No hay conexión con el servidor. Revisa tus datos y vuelve a intentarlo.";
+        error.style.display = 'block';
+        boton.disabled = false;
+        boton.textContent = "Ingresar";
     }
 });
-
-cargarModelos();
 </script>
 </body>
 </html>

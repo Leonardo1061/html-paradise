@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Mi panel · PARADISE</title>
+
+<!--
+  PANEL DE INICIO DE LA MODELO
+  ============================
+  Lo primero que ve al entrar. Resume su semana y la lleva a las dos cosas que
+  usa: el PROGRAMADOR (plan.html) y el STATUS de turnos (turnos.html).
+
+  Los números NO son de adorno ni de ejemplo: salen de `/api/acceso/panel`,
+  que los calcula con las mismas funciones que usa el planificador. Así el
+  panel no puede decir una cosa y el plan otra.
+
+  La gráfica es de barras, una por día de la semana, con los minutos que tiene
+  programados. Una sola serie, así que no lleva leyenda: el título dice qué es
+  y cada barra lleva su número encima.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141318;
+    --panel-alto: #1b1a22;
+    --borde:      #2a2932;
+    --texto:      #f4f4f5;
+    --tenue:      #9b9ba3;
+    --apagado:    #6b6b73;
+
+    --violeta:    #8b5cf6;
+    --magenta:    #d946ef;
+    --soft:       #22d3ee;
+    --mid:        #a855f7;
+    --high:       #ef4444;
+    --verde:      #34d399;
+
+    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --radio: 18px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 110px;
+}
+button { font-family: inherit; cursor: pointer; }
+.oculto { display: none !important; }
+
+/* ------------------------------------------------------------------ barra */
+.barra {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 18px 10px;
+}
+.marca {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--degradado); font-size: 19px; font-weight: 700; color: #fff;
+    box-shadow: 0 8px 20px rgba(168, 85, 247, .35);
+}
+.barra .derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.redondo {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    font-size: 16px; position: relative;
+}
+.redondo.activo { background: var(--degradado); border-color: transparent; }
+.globo {
+    position: absolute; top: -5px; right: -5px; min-width: 19px; height: 19px;
+    border-radius: 999px; background: var(--high); color: #fff; font-size: 11px;
+    font-weight: 700; display: grid; place-items: center; padding: 0 5px;
+    border: 2px solid var(--fondo);
+}
+
+.contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+
+.saludo h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+.saludo p { margin: 3px 0 0; font-size: 13px; color: var(--tenue); }
+
+/* ------------------------------------------------------------- tarjetas */
+.tarjeta {
+    background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 16px;
+}
+
+.rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.dato .rotulo { font-size: 13px; color: var(--tenue); }
+.dato .cifra { font-size: 26px; font-weight: 700; margin-top: 6px; line-height: 1.1; }
+.dato .cifra small { font-size: 15px; font-weight: 600; color: var(--tenue); }
+.dato .pie { font-size: 12px; margin-top: 8px; color: var(--tenue); }
+.dato .pie.bien { color: var(--verde); }
+.dato .pie.ojo { color: #fbbf24; }
+
+/* ------------------------------------------------------------- gráfica */
+.grafica { margin-top: 16px; }
+.grafica .encabezado { display: flex; align-items: flex-start; gap: 10px; }
+.grafica h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.grafica .sub { font-size: 12px; color: var(--tenue); margin-top: 2px; }
+/* Sin alto fijo: el viewBox manda y el texto no se deforma al escalar. */
+.grafica svg { width: 100%; height: auto; display: block; margin-top: 14px; overflow: visible; }
+
+.pie-grafica {
+    display: flex; gap: 10px; margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--borde);
+}
+.pie-grafica .celda { flex: 1; display: flex; align-items: center; gap: 10px; }
+.pie-grafica .cuadro {
+    width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+    background: rgba(168, 85, 247, .14); font-size: 17px;
+}
+.pie-grafica .rotulo { font-size: 12px; color: var(--tenue); }
+.pie-grafica .cifra { font-size: 17px; font-weight: 700; }
+
+/* ------------------------------------------------------- lo que sigue */
+.siguiente {
+    margin-top: 16px; display: flex; align-items: center; gap: 12px;
+    border-left: 4px solid var(--mid);
+}
+.siguiente.soft { border-left-color: var(--soft); }
+.siguiente.high { border-left-color: var(--high); }
+.siguiente .icono {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: rgba(168, 85, 247, .14); font-size: 22px;
+}
+.siguiente .rotulo { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--tenue); }
+.siguiente .nombre { font-size: 16px; font-weight: 600; margin-top: 2px; }
+.siguiente .ir {
+    margin-left: auto; background: var(--degradado); border: 0; color: #fff;
+    border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 600;
+}
+
+/* --------------------------------------------------------- barra inferior */
+.navegacion {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 30; background: var(--degradado); border-radius: 20px;
+    display: flex; padding: 10px 6px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
+}
+@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 420px; } }
+.navegacion button {
+    flex: 1; background: none; border: 0; color: rgba(255, 255, 255, .78);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .4px; padding: 4px 0;
+}
+.navegacion button .simbolo { font-size: 19px; line-height: 1; }
+.navegacion button.activo { color: #fff; }
+.navegacion button.activo .simbolo {
+    background: rgba(255, 255, 255, .2); border-radius: 10px; padding: 4px 10px;
+}
+
+/* ------------------------------------------------------------------ hoja */
+.velo { position: fixed; inset: 0; background: rgba(0, 0, 0, .66); backdrop-filter: blur(3px); z-index: 40; }
+.hoja {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--panel);
+    border-top: 1px solid var(--borde); border-radius: 22px 22px 0 0; max-height: 92vh;
+    display: flex; flex-direction: column;
+}
+@media (min-width: 760px) { .hoja { left: 50%; transform: translateX(-50%); width: 480px; } }
+.hoja-cabecera { padding: 16px; border-bottom: 1px solid var(--borde); display: flex; gap: 10px; align-items: center; }
+.hoja-cabecera h3 { margin: 0; font-size: 17px; flex: 1; }
+.hoja-cuerpo { padding: 16px; overflow-y: auto; }
+.cerrar { background: none; border: 0; color: var(--tenue); font-size: 22px; padding: 4px 6px; }
+
+.campo { margin-bottom: 14px; }
+.campo label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 6px; }
+.campo input {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 12px 13px; color: var(--texto); font-size: 15px;
+    font-family: inherit;
+}
+.boton-principal {
+    width: 100%; background: var(--degradado); border: 0; color: #fff; font-weight: 600;
+    border-radius: 12px; padding: 14px; font-size: 15px;
+}
+.boton-secundario {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    color: var(--tenue); border-radius: 12px; padding: 13px; font-size: 14px; margin-top: 10px;
+}
+
+.aviso {
+    position: fixed; left: 16px; right: 16px; bottom: 100px; z-index: 70;
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 13px 15px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+}
+.aviso.malo { border-color: rgba(239, 68, 68, .55); }
+.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+@media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
+
+.cargando { text-align: center; color: var(--apagado); padding: 50px 0; font-size: 14px; }
+.girando { display: inline-block; animation: giro 1s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+
+.sugerencia-clave {
+    margin-top: 16px; background: rgba(251, 191, 36, .1);
+    border: 1px solid rgba(251, 191, 36, .35); border-radius: 14px; padding: 13px 15px;
+    font-size: 13px; line-height: 1.45; color: #fde68a;
+}
+.sugerencia-clave button {
+    background: none; border: 0; color: #fff; text-decoration: underline;
+    font-size: 13px; padding: 0; margin-top: 6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="barra">
+    <div class="marca">P</div>
+    <div>
+        <div style="font-size:15px;font-weight:600" id="nombre-barra">—</div>
+        <div style="font-size:11px;color:var(--tenue)" id="jornada-barra">PARADISE</div>
+    </div>
+    <div class="derecha">
+        <button class="redondo" id="btn-avisos" title="Turnos en lista de espera">
+            🔔<span class="globo oculto" id="globo-avisos">0</span>
+        </button>
+        <button class="redondo" id="btn-salir" title="Cerrar sesión">⏻</button>
+    </div>
+</div>
+
+<main class="contenido">
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando tu semana…</div>
+    <div id="tablero" class="oculto"></div>
+</main>
+
+<nav class="navegacion">
+    <button class="activo" id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
+    <button id="nav-programador"><span class="simbolo">🗓️</span>PROGRAMADOR</button>
+    <button id="nav-status"><span class="simbolo">📋</span>STATUS</button>
+    <button id="nav-perfil"><span class="simbolo">👤</span>PERFIL</button>
+</nav>
+
+<div id="capas"></div>
+
+<script src="js/config.js"></script>
+<script src="js/panel.js"></script>
+</body>
+</html>

@@ -188,9 +188,9 @@
         <div class="header-actions">
             <!-- Plan de trabajo (plan.html). Es el MISMO plan que ve el
                  programa de escritorio: los dos escriben el mismo documento. -->
-            <button class="btn-entregar" id="btn-plan" onclick="window.location.href='plan.html'"
+            <button class="btn-entregar" id="btn-inicio" onclick="window.location.href='panel.html'"
                     style="background:linear-gradient(90deg,#d946ef,#8b5cf6); color:#fff; border:0;">
-                🗓️ Mi plan
+                ◀ Inicio
             </button>
             <button class="btn-entregar" id="btn-entregar" onclick="marcarEntregaCuarto()">Entregar Cuarto</button>
             <button class="btn-campana" id="btn-campana" onclick="abrirAvisos()">
@@ -378,7 +378,7 @@ document.getElementById('sel-jornada-actual').value = jornadaDetectada;
 const faseAbierta = (diaIso === 4) || (diaIso === 5) || (diaIso === 6 && horaH < 12);
 if (faseAbierta) document.getElementById('btn-toggle-semana').style.display = 'block';
 
-function cerrarSesion() { localStorage.removeItem('modelo_actual'); localStorage.removeItem('jornada_actual'); localStorage.removeItem('token_sesion'); window.location.href = URL_LOGIN; }
+function cerrarSesion() { ['modelo_actual','jornada_actual','token_sesion','password_por_defecto'].forEach(c => localStorage.removeItem(c)); window.location.href = URL_LOGIN; }
 function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
 
 function mostrarToast(mensaje, tipo) {

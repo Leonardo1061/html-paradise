@@ -20,11 +20,20 @@ Las cuatro piezas hablan con la MISMA base de Firestore.
 
 | Archivo | Qué es |
 |---|---|
-| `index.html` | Login de las modelos. Es la portada del sitio |
+| `index.html` | Login por **cédula + contraseña**. Es la portada del sitio |
+| `panel.html` | **Panel de inicio**: resumen de su semana y la barra de navegación |
 | `turnos.html` | Pre-agendamiento y toma de cupos de la semana |
 | `reuniones.html` | Reuniones de Meet (uso de los monitores) |
 | `plan.html` | **Plan de trabajo**: la misma pantalla del programa de escritorio |
 | `dashboard.html` | Tablero de métricas. Hoy con datos de ejemplo |
+
+`panel.html` usa `js/panel.js`: los números los calcula la API (`/api/acceso/panel`)
+con las mismas funciones del planificador, así que el panel y el plan no pueden
+decir cosas distintas. La barra de abajo lleva a PROGRAMADOR (`plan.html`) y a
+STATUS (`turnos.html`).
+
+La contraseña inicial de una modelo son los últimos 4 dígitos de su cédula, igual
+que en el programa de escritorio; la cambia desde PERFIL y vale para los dos.
 
 `plan.html` usa `js/plan.js`. Pinta y pregunta: las reglas del plan (qué se
 puede quitar, cuántos minutos hay que reponer) viven en la API, en una copia
