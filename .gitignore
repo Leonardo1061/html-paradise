@@ -1,6 +1,20 @@
-# Credenciales y accesos (CRÍTICO)
+# Este repositorio es PÚBLICO. Nada que sea una llave entra aquí.
 firebase_credenciales.json
 cliente_oauth.json
+token.json
+token_para_render.txt
+*.pem
+.env
 
-# Caché de Python
+# Python (no debería haber código Python en este repositorio: el backend
+# vive en el repositorio `api`, que es privado)
 __pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor y sistema
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -287,6 +287,7 @@
         </div>
     </div>
 
+<script src="js/config.js"></script>
 <script>
 /* =========================================================================
    PARADISE — Gestión de turnos de las modelos
@@ -310,8 +311,11 @@
       programarse y la hora exacta de confirmación.
    ========================================================================= */
 
-const API_URL = "https://api-v03l.onrender.com";
-const URL_LOGIN = "https://paradise-go1a.onrender.com";
+// Las direcciones viven en js/config.js: un solo sitio para las dos apps.
+// URL_LOGIN se calcula sola, así que probar en local ya no te echa al
+// servidor de producción a mitad de prueba.
+const API_URL = PARADISE.API_URL;
+const URL_LOGIN = PARADISE.URL_LOGIN;
 
 const modeloActual = localStorage.getItem('modelo_actual') || "";
 const jornadaBase = localStorage.getItem('jornada_actual') || "Mañana";

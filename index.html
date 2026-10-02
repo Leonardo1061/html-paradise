@@ -140,6 +140,7 @@
         </div>
     </div>
 
+<script src="js/config.js"></script>
 <script>
 /* =========================================================================
    LOGIN DE LAS MODELOS
@@ -150,7 +151,8 @@
    la propia respuesta del login: no hay ninguna petición extra.
    ========================================================================= */
 
-const API_URL = "https://api-v03l.onrender.com";
+// Las direcciones viven en js/config.js: un solo sitio para las dos apps.
+const API_URL = PARADISE.API_URL;
 let listaModelosGlobal = [];
 
 async function cargarModelos() {

@@ -146,11 +146,13 @@
     </main>
 </div>
 
+<script src="js/config.js"></script>
 <script>
 // ===========================================================================
 // CONFIGURACIÓN
 // ===========================================================================
-const API_URL = "https://api-v03l.onrender.com";
+// Las direcciones viven en js/config.js: un solo sitio para las dos apps.
+const API_URL = PARADISE.API_URL;
 
 // La clave del estudio solo se pide si la API la exige (CLAVE_ESTUDIO en Render).
 let CLAVE = localStorage.getItem('clave_estudio') || '';
