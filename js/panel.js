@@ -293,4 +293,11 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarHoja
 
 cargar();
 
+// turnos.html y plan.html mandan aquí con #perfil para abrir la contraseña
+// sin tener que duplicar el formulario en cada página.
+if (window.location.hash === '#perfil') {
+    history.replaceState(null, '', window.location.pathname);
+    abrirPerfil();
+}
+
 })();

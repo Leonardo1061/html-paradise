@@ -39,6 +39,7 @@ const estado = {
     duraciones: [15, 30, 45, 60],
     reemplazando: null,     // el bloque del monitor que se está sustituyendo
     elegidos: [],           // shows elegidos para ese reemplazo
+    vigilando: null,        // temporizador que mira si el monitor cambió algo
 };
 
 const $ = (id) => document.getElementById(id);
@@ -128,10 +129,141 @@ async function cargar() {
         $('cargando').classList.add('oculto');
         $('dia').classList.remove('oculto');
         pintar();
+        bienvenida(revisarAlMonitor(true));
+        vigilar();
     } catch (error) {
         $('cargando').innerHTML = 'No se pudo cargar tu plan.<br><small>' +
             escapar(error.message) + '</small>';
     }
+}
+
+// =======================================================================
+// LO QUE HIZO EL MONITOR
+// =======================================================================
+/* El plan lo escriben dos personas desde dos equipos. Esto compara lo que
+ * puso el monitor con lo que había la última vez que ella entró, y se lo
+ * dice: en el escritorio lo ve al momento porque hay un listener abierto;
+ * aquí se mira al entrar y cada dos minutos, que para un turno sobra y no
+ * convierte la página en una lectura constante de la base. */
+function firmaDelMonitor() {
+    const trozos = [];
+    (estado.datos.dias || []).forEach((dia) => {
+        (dia.bloques || []).forEach((bloque) => {
+            if (bloque.es_del_monitor) {
+                trozos.push(dia.dia + '|' + bloque.id + '|' + bloque.duracion + '|' + bloque.estado);
+            }
+        });
+    });
+    return trozos.join('~');
+}
+
+function revisarAlMonitor(guardarSiempre) {
+    const clave = 'plan_monitor_' + (estado.datos.semana_inicio || '');
+    const ahora = firmaDelMonitor();
+    let anterior = null;
+    try { anterior = localStorage.getItem(clave); } catch (e) { anterior = null; }
+
+    const cambio = anterior !== null && anterior !== ahora;
+    if (guardarSiempre || cambio) {
+        try { localStorage.setItem(clave, ahora); } catch (e) { /* sin storage, no pasa nada */ }
+    }
+    return cambio;
+}
+
+function vigilar() {
+    if (estado.vigilando) return;
+    estado.vigilando = setInterval(async () => {
+        // Ni con la pestaña en segundo plano ni con una hoja abierta: no se
+        // le repinta el plan por debajo mientras está eligiendo un show.
+        if (document.visibilityState !== 'visible') return;
+        if (capas.innerHTML) return;
+        try {
+            const fresca = await pedir('/api/plan/semana?indice=' + estado.semana);
+            const antes = JSON.stringify(estado.datos.dias);
+            estado.datos = fresca;
+            if (JSON.stringify(fresca.dias) !== antes) pintar();
+            if (revisarAlMonitor(false)) {
+                avisar('Tu monitor acaba de cambiar tu plan. Ya lo tienes actualizado.', 'malo');
+            }
+        } catch (error) { /* un fallo de red no tiene que molestarla */ }
+    }, 120000);
+}
+
+// =======================================================================
+// BIENVENIDA AL ABRIR EL PROGRAMADOR
+// =======================================================================
+/* Lo que el escritorio enseña en su barra de avisos, aquí en una tarjeta al
+ * entrar: qué le programó el monitor, qué le falta y por dónde sigue. Sale
+ * una vez al día por dispositivo; si vuelve a abrir el programador a media
+ * tarde no le estorba. */
+function bienvenida(huboCambios) {
+    const dia = (estado.datos.dias || []).find((d) => d.es_hoy);
+    if (!dia || estado.semana !== 0) return;
+
+    const marca = 'plan_bienvenida';
+    let visto = null;
+    try { visto = localStorage.getItem(marca); } catch (e) { visto = null; }
+    if (visto === dia.fecha && !huboCambios) return;
+    try { localStorage.setItem(marca, dia.fecha); } catch (e) { /* da igual */ }
+
+    const bloques = dia.bloques || [];
+    const delMonitor = bloques.filter((b) => b.es_del_monitor && b.efectivo);
+    const resumen = dia.resumen;
+    const actual = bloques.find((b) => b.id === dia.id_actual);
+
+    const lineas = [];
+
+    if (huboCambios) {
+        lineas.push(linea('🔔', 'Tu monitor <b>cambió tu plan</b> desde la última vez que entraste.', 'ojo'));
+    }
+    if (delMonitor.length) {
+        const minutos = delMonitor.reduce((t, b) => t + b.duracion, 0);
+        lineas.push(linea('📋', 'Tu monitor te programó <b>' + delMonitor.length + ' show' +
+            (delMonitor.length > 1 ? 's' : '') + '</b> (' + textoMinutos(minutos) + ').'));
+    }
+    if (!bloques.length) {
+        lineas.push(linea('🗓️', 'Hoy todavía <b>no tienes nada programado</b>. Arma tu turno ahora y ' +
+            'llega con el plan hecho.', 'ojo'));
+    } else if (resumen.pendientes) {
+        lineas.push(linea('⏳', 'Te faltan <b>' + resumen.pendientes + ' show' +
+            (resumen.pendientes > 1 ? 's' : '') + '</b> · ' + resumen.texto_pendientes + '.'));
+    } else {
+        lineas.push(linea('✅', '<b>Ya hiciste todo lo de hoy</b> (' + resumen.texto_minutos + ').', 'bien'));
+    }
+    if (actual) {
+        lineas.push(linea(actual.icono, (actual.en_curso ? 'En vivo ahora: ' : 'Lo siguiente: ') +
+            '<b>' + escapar(actual.nombre_show) + '</b> · ' + actual.duracion + ' min.'));
+    }
+
+    const principal = actual
+        ? '<button class="boton-principal ancho" id="b-empezar">' +
+          (actual.en_curso ? 'Seguir con mi turno' : '▶ Empezar ' + escapar(actual.nombre_show)) + '</button>'
+        : '<button class="boton-principal ancho" id="b-armar">+ Armar mi turno de hoy</button>';
+
+    capas.innerHTML = '<div class="centrado" id="velo-bienvenida"><div class="bienvenida">' +
+        '<h3>Hola' + (estado.nombre ? ', ' + escapar(estado.nombre.split(' ')[0]) : '') + '</h3>' +
+        '<div class="fecha">' + escapar(dia.dia) + ' ' + dia.dia_mes + ' · tu turno de hoy</div>' +
+        lineas.join('') +
+        '<div style="margin-top:18px">' + principal +
+        '<button class="boton-saltar" style="width:100%;margin-top:8px" id="b-cerrar">Ver mi plan</button>' +
+        '</div></div></div>';
+
+    $('b-cerrar').onclick = cerrarHoja;
+    $('velo-bienvenida').onclick = (evento) => {
+        if (evento.target.id === 'velo-bienvenida') cerrarHoja();
+    };
+    const armar = $('b-armar');
+    if (armar) armar.onclick = () => { cerrarHoja(); abrirCatalogo(); };
+    const empezar = $('b-empezar');
+    if (empezar) empezar.onclick = () => {
+        cerrarHoja();
+        if (!actual.en_curso) accion('/api/plan/empezar', { dia: dia.dia, id: actual.id });
+    };
+}
+
+function linea(simbolo, texto, tono) {
+    return '<div class="linea ' + (tono || '') + '"><span class="simbolo">' + simbolo +
+           '</span><span>' + texto + '</span></div>';
 }
 
 async function cambiarSemana(indice) {
@@ -817,6 +949,10 @@ async function recargarCatalogo() {
 // ARRANQUE
 // =======================================================================
 $('btn-turnos').onclick = () => { window.location.href = 'panel.html'; };
+$('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
+$('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
+$('nav-perfil').onclick = () => { window.location.href = 'panel.html#perfil'; };
+$('nav-programador').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 $('btn-salir').onclick = () => {
     ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto']
         .forEach((clave) => localStorage.removeItem(clave));
