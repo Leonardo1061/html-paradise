@@ -60,6 +60,30 @@ Queda guardado para esa pestaña y no afecta a nadie más.
 **No escribas direcciones dentro de los .html.** El día que cambie el servicio
 tocaría editar cuatro archivos y se te olvidaría uno.
 
+## Se instala en el teléfono (PWA)
+
+| Archivo | Qué es |
+|---|---|
+| `manifest.webmanifest` | Nombre, iconos y colores de la aplicación instalada |
+| `sw.js` | Service worker: enseña las notificaciones con la app cerrada |
+| `js/push.js` | Registra el service worker y suscribe el teléfono a los avisos |
+| `iconos/` | Los iconos de la aplicación |
+| `probar_sw.js` | Prueba del service worker sin navegador: `node probar_sw.js` |
+
+**Para instalarla**, la modelo abre el sitio en Chrome y elige «Instalar
+aplicación» / «Añadir a la pantalla de inicio». Queda como un icono más, sin
+barra del navegador.
+
+**Los avisos con la aplicación cerrada** los manda la API (ver su README:
+llaves VAPID y cron). El permiso se pide cuando pulsa «Empezar» un show, que
+es cuando se entiende para qué sirve; también puede activarlos o probarlos
+desde PERFIL. Si los rechaza, todo lo demás sigue funcionando: solo pierde el
+aviso cuando la página no está delante.
+
+`sw.js` **no cachea nada** a propósito. Un service worker que sirve archivos
+viejos es la forma más rápida de que una modelo siga viendo la versión de la
+semana pasada después de un despliegue.
+
 ## Este repositorio es PÚBLICO
 
 Nada de credenciales aquí dentro: ni llaves de Firebase, ni tokens, ni

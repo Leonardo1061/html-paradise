@@ -1,0 +1,21 @@
+{
+  "name": "PARADISE · Modelos",
+  "short_name": "PARADISE",
+  "description": "Plan de trabajo, turnos y panel de las modelos del estudio.",
+  "start_url": "panel.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
+  "lang": "es",
+  "icons": [
+    { "src": "iconos/icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "iconos/icono-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "iconos/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Programador", "url": "plan.html", "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }] },
+    { "name": "Status de turnos", "url": "turnos.html", "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }] }
+  ]
+}

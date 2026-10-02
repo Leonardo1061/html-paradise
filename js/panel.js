@@ -243,7 +243,16 @@ function abrirPerfil() {
             '<div class="campo"><label>Repite la nueva</label>' +
                 '<input type="password" id="p-repetida" autocomplete="new-password"></div>' +
             '<button class="boton-principal" id="btn-guardar-clave">Guardar</button>' +
-            '<button class="boton-secundario" id="btn-cerrar-sesion">Cerrar sesión</button>' +
+            '<div style="border-top:1px solid var(--borde);margin:18px 0 14px"></div>' +
+            '<div style="font-size:13px;color:var(--tenue);line-height:1.5;margin-bottom:10px">' +
+                '<b style="color:var(--texto)">Avisos del teléfono</b><br>' +
+                'Para que te avise cuando se acabe un show aunque tengas la ' +
+                'aplicación cerrada. <span id="estado-avisos"></span></div>' +
+            '<button class="boton-secundario" id="btn-avisos-on" style="margin-top:0">' +
+                'Activar avisos en este teléfono</button>' +
+            '<button class="boton-secundario" id="btn-avisos-probar">Mandarme uno de prueba</button>' +
+            '<div style="border-top:1px solid var(--borde);margin:18px 0 14px"></div>' +
+            '<button class="boton-secundario" id="btn-cerrar-sesion" style="margin-top:0">Cerrar sesión</button>' +
             '<p style="font-size:12px;color:var(--apagado);line-height:1.5;margin-top:14px">' +
             'Si la olvidas, tu monitor puede devolvértela a los últimos 4 dígitos de tu cédula. ' +
             'Es la misma contraseña del programa de escritorio.</p>' +
@@ -252,6 +261,7 @@ function abrirPerfil() {
     $('velo').onclick = cerrarHoja;
     $('cerrar-hoja').onclick = cerrarHoja;
     $('btn-cerrar-sesion').onclick = salir;
+    conectarAvisos();
 
     $('btn-guardar-clave').onclick = async () => {
         try {
@@ -264,6 +274,63 @@ function abrirPerfil() {
             cerrarHoja();
             avisar('Contraseña actualizada. Úsala también en el programa de escritorio.', 'bueno');
             pintar();
+        } catch (error) {
+            avisar(error.message, 'malo');
+        }
+    };
+}
+
+/* --- avisos del teléfono (ver js/push.js) ---------------------------- */
+async function conectarAvisos() {
+    const rotulo = $('estado-avisos');
+    const encender = $('btn-avisos-on');
+    const probar = $('btn-avisos-probar');
+    if (!rotulo || !window.PARADISE_PUSH) {
+        if (rotulo) rotulo.textContent = 'Tu navegador no admite estos avisos.';
+        return;
+    }
+    if (!PARADISE_PUSH.soportado()) {
+        rotulo.textContent = 'Tu navegador no admite estos avisos.';
+        encender.disabled = probar.disabled = true;
+        return;
+    }
+
+    const pintarEstado = async () => {
+        const activo = await PARADISE_PUSH.estaActivo();
+        rotulo.innerHTML = activo
+            ? '<span style="color:#6ee7b7">Activados en este teléfono.</span>'
+            : '<span style="color:#fbbf24">Todavía no están activados aquí.</span>';
+        encender.textContent = activo ? 'Desactivarlos en este teléfono'
+                                      : 'Activar avisos en este teléfono';
+        return activo;
+    };
+
+    let activo = await pintarEstado();
+
+    encender.onclick = async () => {
+        encender.disabled = true;
+        try {
+            if (activo) {
+                await PARADISE_PUSH.desactivar(estado.token);
+                avisar('Listo: ya no te avisaré en este teléfono.', 'bueno');
+            } else {
+                const listo = await PARADISE_PUSH.activar(estado.token);
+                avisar(listo ? 'Listo: te avisaré aunque cierres la aplicación.'
+                             : 'No se pudieron activar. Revisa que el navegador ' +
+                               'tenga permiso para enviarte notificaciones.',
+                       listo ? 'bueno' : 'malo');
+            }
+        } catch (error) {
+            avisar('No se pudo cambiar el ajuste de avisos.', 'malo');
+        }
+        activo = await pintarEstado();
+        encender.disabled = false;
+    };
+
+    probar.onclick = async () => {
+        try {
+            await pedir('/api/push/prueba', 'POST', {});
+            avisar('Te lo acabo de mandar. Debería llegarte en unos segundos.', 'bueno');
         } catch (error) {
             avisar(error.message, 'malo');
         }

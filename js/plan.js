@@ -261,6 +261,7 @@ function bienvenida(huboCambios) {
     const empezar = $('b-empezar');
     if (empezar) empezar.onclick = () => {
         prepararSonido();
+        activarAvisos();
         cerrarHoja();
         if (!actual.en_curso) {
             accion('/api/plan/empezar', { dia: dia.dia, id: actual.id },
@@ -485,6 +486,7 @@ function conectarDia(dia) {
         boton.onclick = () => {
             // Este toque es el que le da permiso al navegador para sonar luego.
             prepararSonido();
+            activarAvisos();
             accion('/api/plan/empezar', { dia: dia.dia, id: boton.dataset.empezar },
                    'Empieza la cuenta atrás. Te aviso cuando se acabe.');
         };
@@ -605,6 +607,27 @@ function prepararSonido() {
             Notification.requestPermission();
         }
     } catch (error) { /* da igual */ }
+}
+
+/* El aviso que llega CON LA APLICACIÓN CERRADA. La alarma de arriba solo
+ * suena con la página delante; en cuanto bloquea el teléfono, el navegador
+ * congela la página. Esto lo manda el servidor al teléfono (ver js/push.js y
+ * push.py), así que suena igual aunque haya cerrado todo.
+ *
+ * Se pide al empezar un show, que es cuando se entiende para qué sirve, y
+ * solo una vez: si ya está suscrita, no se le vuelve a preguntar nada. */
+async function activarAvisos() {
+    if (!window.PARADISE_PUSH) return;
+    try {
+        const ya = await PARADISE_PUSH.estaActivo();
+        const listo = await PARADISE_PUSH.activar(estado.token);
+        if (listo && !ya) {
+            avisar('Listo: te avisaré aunque cierres la aplicación.', 'bueno');
+        } else if (!listo && Notification.permission === 'denied') {
+            avisar('Tienes bloqueadas las notificaciones: solo te avisaré con ' +
+                   'la página abierta. Puedes permitirlas desde los ajustes del navegador.', 'malo');
+        }
+    } catch (error) { /* los avisos son un extra: nunca cortan el turno */ }
 }
 
 function pitar(veces) {
