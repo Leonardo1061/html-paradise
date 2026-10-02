@@ -339,6 +339,51 @@ button { font-family: inherit; cursor: pointer; }
 .aviso-minutos b { color: var(--texto); }
 
 /* ===================================================================== */
+/* CUENTA ATRÁS DEL SHOW EN CURSO                                        */
+/* ===================================================================== */
+.cuenta { margin-top: 14px; }
+.cuenta .reloj {
+    display: flex; align-items: baseline; gap: 8px;
+    font-variant-numeric: tabular-nums;
+}
+.cuenta .tiempo { font-size: 34px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+.cuenta .de { font-size: 12px; color: var(--tenue); }
+.cuenta .riel {
+    height: 7px; border-radius: 999px; background: rgba(255, 255, 255, .08);
+    margin-top: 10px; overflow: hidden;
+}
+.cuenta .avance {
+    height: 100%; border-radius: 999px; background: var(--degradado);
+    width: 0%; transition: width 1s linear;
+}
+/* Último minuto: el número se pone rojo y late, para que se vea de reojo
+   desde un metro, que es como se lee esta tarjeta mientras transmite. */
+.cuenta.ultimo .tiempo { color: var(--high); animation: latir 1s ease-in-out infinite; }
+.cuenta.ultimo .avance { background: linear-gradient(90deg, #f97316, #ef4444); }
+@keyframes latir { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+/* ===================================================================== */
+/* ALARMA: SE ACABÓ EL TIEMPO                                            */
+/* ===================================================================== */
+.alarma {
+    width: 100%; max-width: 380px; background: var(--panel);
+    border: 1.5px solid var(--high); border-radius: 22px; padding: 24px 22px;
+    text-align: center; box-shadow: 0 0 60px rgba(239, 68, 68, .35);
+    animation: subir .22s ease-out;
+}
+.alarma .campana { font-size: 42px; animation: tocar .7s ease-in-out infinite; }
+@keyframes tocar { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+.alarma h3 { margin: 10px 0 4px; font-size: 20px; font-weight: 700; }
+.alarma p { margin: 0 0 18px; font-size: 14px; color: var(--tenue); line-height: 1.5; }
+.alarma .proximo {
+    display: flex; align-items: center; gap: 11px; text-align: left;
+    background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 12px; margin-bottom: 18px;
+}
+.alarma .proximo .rotulo { font-size: 11px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--tenue); }
+.alarma .proximo .nombre { font-size: 15px; font-weight: 600; margin-top: 2px; }
+
+/* ===================================================================== */
 /* BARRA DE NAVEGACIÓN (la misma de panel.html y turnos.html)            */
 /* ===================================================================== */
 .navegacion {

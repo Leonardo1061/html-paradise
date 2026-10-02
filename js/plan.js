@@ -40,6 +40,10 @@ const estado = {
     reemplazando: null,     // el bloque del monitor que se está sustituyendo
     elegidos: [],           // shows elegidos para ese reemplazo
     vigilando: null,        // temporizador que mira si el monitor cambió algo
+    cuenta: null,           // {id, fin, timer} de la cuenta atrás en curso
+    sonando: null,          // la alarma que está sonando ahora mismo
+    audio: null,            // AudioContext, creado al primer toque de la modelo
+    desfase: 0,             // segundos de diferencia entre su reloj y el servidor
 };
 
 const $ = (id) => document.getElementById(id);
@@ -176,7 +180,7 @@ function vigilar() {
         // Ni con la pestaña en segundo plano ni con una hoja abierta: no se
         // le repinta el plan por debajo mientras está eligiendo un show.
         if (document.visibilityState !== 'visible') return;
-        if (capas.innerHTML) return;
+        if (capas.innerHTML || estado.sonando) return;
         try {
             const fresca = await pedir('/api/plan/semana?indice=' + estado.semana);
             const antes = JSON.stringify(estado.datos.dias);
@@ -256,8 +260,12 @@ function bienvenida(huboCambios) {
     if (armar) armar.onclick = () => { cerrarHoja(); abrirCatalogo(); };
     const empezar = $('b-empezar');
     if (empezar) empezar.onclick = () => {
+        prepararSonido();
         cerrarHoja();
-        if (!actual.en_curso) accion('/api/plan/empezar', { dia: dia.dia, id: actual.id });
+        if (!actual.en_curso) {
+            accion('/api/plan/empezar', { dia: dia.dia, id: actual.id },
+                   'Empieza la cuenta atrás. Te aviso cuando se acabe.');
+        }
     };
 }
 
@@ -421,6 +429,14 @@ function tarjetaEnVivo(bloque) {
         cuerpo.push('<div class="mindset">🎵 ' + escapar(show.playlist) + '</div>');
     }
 
+    // La cuenta atrás solo tiene sentido con el show corriendo.
+    if (bloque.en_curso && bloque.fin_previsto) {
+        cuerpo.push('<div class="cuenta" id="cuenta">' +
+            '<div class="reloj"><div class="tiempo" id="tiempo">--:--</div>' +
+            '<div class="de">de ' + bloque.duracion + ' min</div></div>' +
+            '<div class="riel"><div class="avance" id="avance"></div></div></div>');
+    }
+
     const botones = bloque.en_curso
         ? '<button class="boton-saltar" data-detener="' + bloque.id + '" title="Volver a pendiente">⏸</button>' +
           '<button class="boton-saltar" data-estado="saltado" data-id="' + bloque.id + '">⏭ Saltar</button>' +
@@ -466,7 +482,12 @@ function conectarDia(dia) {
     });
 
     caja.querySelectorAll('[data-empezar]').forEach((boton) => {
-        boton.onclick = () => accion('/api/plan/empezar', { dia: dia.dia, id: boton.dataset.empezar });
+        boton.onclick = () => {
+            // Este toque es el que le da permiso al navegador para sonar luego.
+            prepararSonido();
+            accion('/api/plan/empezar', { dia: dia.dia, id: boton.dataset.empezar },
+                   'Empieza la cuenta atrás. Te aviso cuando se acabe.');
+        };
     });
     caja.querySelectorAll('[data-detener]').forEach((boton) => {
         boton.onclick = () => accion('/api/plan/detener', { dia: dia.dia, id: boton.dataset.detener });
@@ -491,6 +512,195 @@ function conectarDia(dia) {
     });
 
     if (!(dia.bloques || []).length) sugerir(dia);
+
+    const corriendo = (dia.bloques || []).find((b) => b.en_curso && b.fin_previsto);
+    if (corriendo) arrancarCuenta(corriendo);
+    else pararCuenta();
+}
+
+// =======================================================================
+// LA CUENTA ATRÁS
+// =======================================================================
+/* El final del show lo manda la API (`fin_previsto`, en segundos UTC), no el
+ * reloj del teléfono: así la cuenta sobrevive a que se bloquee la pantalla,
+ * se recargue la página o entre desde otro aparato. Lo único que se calcula
+ * aquí es cuánto falta, corrigiendo la diferencia entre su reloj y el del
+ * servidor. */
+function ahoraServidor() {
+    return Math.floor(Date.now() / 1000) + estado.desfase;
+}
+
+function arrancarCuenta(bloque) {
+    // Ya está corriendo la de este mismo bloque: no se reinicia.
+    if (estado.cuenta && estado.cuenta.id === bloque.id &&
+        estado.cuenta.fin === bloque.fin_previsto) { latido(); return; }
+
+    pararCuenta();
+    if (bloque.ahora) estado.desfase = bloque.ahora - Math.floor(Date.now() / 1000);
+    estado.cuenta = {
+        id: bloque.id,
+        fin: bloque.fin_previsto,
+        total: Math.max(1, bloque.duracion * 60),
+        nombre: bloque.nombre_show,
+        dia: diaActual().dia,
+        timer: setInterval(latido, 1000),
+    };
+    latido();
+}
+
+function pararCuenta() {
+    if (estado.cuenta) clearInterval(estado.cuenta.timer);
+    estado.cuenta = null;
+}
+
+function latido() {
+    const cuenta = estado.cuenta;
+    const caja = $('cuenta');
+    if (!cuenta || !caja) return;
+
+    const restante = cuenta.fin - ahoraServidor();
+    const pasado = Math.min(1, Math.max(0, (cuenta.total - restante) / cuenta.total));
+
+    if (restante <= 0) {
+        $('tiempo').textContent = '00:00';
+        $('avance').style.width = '100%';
+        caja.classList.add('ultimo');
+        pararCuenta();
+        sonarAlarma(cuenta);
+        return;
+    }
+
+    const minutos = Math.floor(restante / 60), segundos = restante % 60;
+    $('tiempo').textContent = minutos + ':' + (segundos < 10 ? '0' : '') + segundos;
+    $('avance').style.width = (pasado * 100).toFixed(1) + '%';
+    caja.classList.toggle('ultimo', restante <= 60);
+
+    // Un aviso suave un minuto antes, para que vaya cerrando el show.
+    if (restante === 60) {
+        pitar(1);
+        avisar('Te queda 1 minuto de «' + cuenta.nombre + '». Ve cerrando.', 'malo');
+    }
+}
+
+// =======================================================================
+// LA ALARMA
+// =======================================================================
+/* Suena, vibra y, si dio permiso, manda una notificación del teléfono. El
+ * sonido se genera con el propio navegador (un par de pitidos), así que no
+ * hay ningún archivo que cargar ni que se pueda quedar a medias con mala
+ * señal. Eso sí: el navegador solo deja sonar si antes hubo un toque de la
+ * persona, y por eso el AudioContext se crea cuando ella pulsa «Empezar». */
+function prepararSonido() {
+    try {
+        const Motor = window.AudioContext || window.webkitAudioContext;
+        if (!Motor) return;
+        if (!estado.audio) estado.audio = new Motor();
+        if (estado.audio.state === 'suspended') estado.audio.resume();
+    } catch (error) { /* sin audio, quedan la vibración y el aviso en pantalla */ }
+
+    // El permiso de notificaciones se pide aquí, con el gesto de empezar, que
+    // es cuando se entiende para qué sirve.
+    try {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    } catch (error) { /* da igual */ }
+}
+
+function pitar(veces) {
+    const audio = estado.audio;
+    if (!audio) return;
+    for (let i = 0; i < (veces || 1); i++) {
+        const cuando = audio.currentTime + i * 0.42;
+        const onda = audio.createOscillator();
+        const volumen = audio.createGain();
+        onda.type = 'sine';
+        onda.frequency.setValueAtTime(880, cuando);
+        onda.frequency.setValueAtTime(660, cuando + 0.16);
+        volumen.gain.setValueAtTime(0.0001, cuando);
+        volumen.gain.exponentialRampToValueAtTime(0.35, cuando + 0.03);
+        volumen.gain.exponentialRampToValueAtTime(0.0001, cuando + 0.33);
+        onda.connect(volumen).connect(audio.destination);
+        onda.start(cuando);
+        onda.stop(cuando + 0.35);
+    }
+}
+
+function vibrar() {
+    try { if (navigator.vibrate) navigator.vibrate([400, 180, 400, 180, 600]); }
+    catch (error) { /* en un ordenador no vibra nada */ }
+}
+
+function sonarAlarma(cuenta) {
+    if (estado.sonando) return;
+
+    const dia = diaActual();
+    const bloques = dia.bloques || [];
+    const posicion = bloques.findIndex((b) => b.id === cuenta.id);
+    const siguiente = bloques.slice(posicion + 1).find((b) => b.abierto);
+
+    // Suena hasta que ella lo toque, con un tope: si dejó el teléfono lejos,
+    // no se queda pitando el resto del turno.
+    pitar(3); vibrar();
+    let vueltas = 0;
+    estado.sonando = setInterval(() => {
+        vueltas += 1;
+        if (vueltas > 9) { callarAlarma(); return; }
+        pitar(3); vibrar();
+    }, 4000);
+
+    try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Se acabó «' + cuenta.nombre + '»', {
+                body: siguiente ? 'Sigue: ' + siguiente.nombre_show + ' · ' +
+                                  siguiente.duracion + ' min'
+                                : 'Era tu último show programado.',
+                tag: 'paradise-plan',
+            });
+        }
+    } catch (error) { /* sin notificación, queda la pantalla */ }
+
+    capas.innerHTML = '<div class="centrado" id="velo-alarma"><div class="alarma">' +
+        '<div class="campana">🔔</div>' +
+        '<h3>Se acabó el tiempo</h3>' +
+        '<p>Terminaron los ' + Math.round(cuenta.total / 60) + ' min de <b>' +
+            escapar(cuenta.nombre) + '</b>.</p>' +
+        (siguiente
+            ? '<div class="proximo"><div class="icono-tile">' + escapar(siguiente.icono) + '</div>' +
+              '<div><div class="rotulo">Ahora sigue</div><div class="nombre">' +
+              escapar(siguiente.nombre_show) + ' · ' + siguiente.duracion + ' min</div></div></div>' +
+              '<button class="boton-principal ancho" id="a-siguiente">Listo · empezar el siguiente</button>'
+            : '<div class="proximo"><div class="icono-tile">🏁</div><div>' +
+              '<div class="rotulo">No queda nada pendiente</div>' +
+              '<div class="nombre">Era tu último show de hoy</div></div></div>') +
+        '<button class="boton-saltar" style="width:100%;margin-top:8px" id="a-completar">' +
+            'Marcar como completado</button>' +
+        '<button class="boton-saltar" style="width:100%;margin-top:8px;border:0" id="a-cerrar">' +
+            'Todavía no he terminado</button>' +
+        '</div></div>';
+
+    const completar = async (encadenar) => {
+        callarAlarma();
+        cerrarHoja();
+        await accion('/api/plan/estado',
+                     { dia: cuenta.dia, id: cuenta.id, estado: 'completado' });
+        if (encadenar && siguiente) {
+            prepararSonido();
+            await accion('/api/plan/empezar', { dia: cuenta.dia, id: siguiente.id },
+                         'Empieza ' + siguiente.nombre_show + '.');
+        }
+    };
+
+    const btnSiguiente = $('a-siguiente');
+    if (btnSiguiente) btnSiguiente.onclick = () => completar(true);
+    $('a-completar').onclick = () => completar(false);
+    $('a-cerrar').onclick = () => { callarAlarma(); cerrarHoja(); };
+}
+
+function callarAlarma() {
+    if (estado.sonando) clearInterval(estado.sonando);
+    estado.sonando = null;
+    try { if (navigator.vibrate) navigator.vibrate(0); } catch (error) { /* nada */ }
 }
 
 /* Cuando el día está vacío, la API propone el siguiente show (misma regla
@@ -534,6 +744,7 @@ function quitar(dia, idBloque) {
 // HOJAS
 // =======================================================================
 function cerrarHoja() {
+    callarAlarma();
     capas.innerHTML = '';
     estado.reemplazando = null;
     estado.elegidos = [];
