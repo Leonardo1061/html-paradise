@@ -240,6 +240,12 @@ document.getElementById('login-form').addEventListener('submit', async function 
             localStorage.setItem('modelo_actual', datos.nombre);
             localStorage.setItem('jornada_actual', datos.jornada);
 
+            // Token de sesión: es lo que la API exige para abrir el PLAN DE
+            // TRABAJO (plan.html). La cédula no viaja al navegador; la API la
+            // saca de la sesión. Si la API todavía no lo manda, el plan pedirá
+            // volver a entrar y el resto de la página funciona igual.
+            localStorage.setItem('token_sesion', datos.token || '');
+
             btnLogin.style.backgroundColor = '#4CAF50';
             btnLogin.style.color = '#fff';
             btnLogin.textContent = "¡Bienvenida!";

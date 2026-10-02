@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Mi plan de trabajo · PARADISE</title>
+
+<!--
+  PLAN DE TRABAJO · versión web
+  =============================
+  La misma pantalla que el programa de escritorio de las modelos, en el
+  navegador. Lee y escribe el MISMO documento de Firestore, a través de la API
+  (repositorio `api`, módulo plan.py).
+
+  AQUÍ NO HAY REGLAS DE NEGOCIO
+  -----------------------------
+  Quién puede quitar qué, cuántos minutos hay que reponer, qué duraciones
+  valen… todo eso lo decide la API, que usa una copia exacta del archivo de
+  reglas del escritorio. Esta página pinta y pregunta. Si alguna regla se
+  escribiera aquí, en un mes el plan dependería de por dónde se abrió, y
+  además cualquiera podría saltársela desde la consola del navegador.
+
+  El diseño sigue los PDF de referencia: colores por vibra (azul Soft, morado
+  Mid, rojo High), píldoras de día, tarjetas con icono y la tarjeta grande
+  «En vivo» con su checklist.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===================================================================== */
+/* PALETA                                                                */
+/* ===================================================================== */
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #121214;
+    --panel-alto: #17171a;
+    --borde:      #26262b;
+    --texto:      #f4f4f5;
+    --tenue:      #9b9ba3;
+    --apagado:    #6b6b73;
+
+    --soft:  #22d3ee;   /* Soft Vibe  · fidelización */
+    --mid:   #a855f7;   /* Mid Vibe   · transición   */
+    --high:  #ef4444;   /* High Vibe  · clímax       */
+
+    --soft-fondo: rgba(34, 211, 238, .12);
+    --mid-fondo:  rgba(168, 85, 247, .14);
+    --high-fondo: rgba(239, 68, 68, .12);
+
+    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --radio: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 90px;
+}
+
+button { font-family: inherit; cursor: pointer; }
+.oculto { display: none !important; }
+
+/* ===================================================================== */
+/* CABECERA                                                              */
+/* ===================================================================== */
+.cabecera {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(10, 10, 11, .92);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--borde);
+    padding: 14px 16px 10px;
+}
+.cabecera-fila { display: flex; align-items: center; gap: 12px; }
+.cabecera h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.2px; }
+.cabecera .quien { font-size: 12px; color: var(--tenue); margin-top: 2px; }
+.cabecera .derecha { margin-left: auto; display: flex; gap: 8px; }
+
+.boton-icono {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 12px; padding: 8px 12px; font-size: 13px; font-weight: 500;
+}
+.boton-icono:active { transform: scale(.97); }
+
+/* --- selector de semana --- */
+.semana {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 12px; gap: 8px;
+}
+.semana .etiqueta { font-size: 12px; color: var(--tenue); text-align: center; flex: 1; }
+.semana .etiqueta b { display: block; color: var(--texto); font-size: 13px; font-weight: 600; }
+.flecha {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    width: 34px; height: 34px; border-radius: 10px; font-size: 16px; line-height: 1;
+}
+.flecha:disabled { opacity: .3; cursor: default; }
+
+/* --- píldoras de día --- */
+.dias { display: flex; gap: 6px; margin-top: 12px; }
+.dia {
+    flex: 1; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 8px 2px 7px; text-align: center; color: var(--texto);
+    transition: transform .12s ease;
+}
+.dia .letra { font-size: 13px; font-weight: 600; line-height: 1.1; }
+.dia .numero { font-size: 11px; color: var(--tenue); margin-top: 2px; }
+.dia .punto {
+    width: 4px; height: 4px; border-radius: 50%; background: var(--mid);
+    margin: 3px auto 0;
+}
+.dia.hoy { border-color: rgba(168, 85, 247, .5); }
+.dia.activo {
+    background: var(--degradado); border-color: transparent;
+    box-shadow: 0 6px 18px rgba(168, 85, 247, .35);
+}
+.dia.activo .numero, .dia.activo .punto { color: #fff; background: #fff; }
+.dia.activo .numero { background: none; }
+.dia.lleno::after {
+    content: ''; display: block; height: 3px; width: 16px; margin: 4px auto 0;
+    border-radius: 3px; background: var(--mid); opacity: .7;
+}
+.dia.activo.lleno::after { background: #fff; }
+
+/* ===================================================================== */
+/* EL DÍA                                                                */
+/* ===================================================================== */
+.contenido { padding: 16px; max-width: 760px; margin: 0 auto; }
+
+.titulo-dia { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.titulo-dia h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.titulo-dia .resumen { font-size: 12px; color: var(--tenue); margin-top: 3px; }
+.titulo-dia .derecha { margin-left: auto; }
+
+.boton-principal {
+    background: var(--degradado); border: 0; color: #fff; font-weight: 600;
+    border-radius: 12px; padding: 10px 16px; font-size: 14px;
+    box-shadow: 0 8px 22px rgba(168, 85, 247, .3);
+}
+.boton-principal:active { transform: scale(.97); }
+.boton-principal.ancho { width: 100%; padding: 14px; font-size: 15px; }
+
+/* --- tarjeta de bloque (modo planeación) --- */
+.bloque {
+    position: relative; display: flex; align-items: center; gap: 12px;
+    background: var(--panel); border: 1px solid var(--borde);
+    border-left: 4px solid var(--mid);
+    border-radius: 14px; padding: 12px; margin-bottom: 10px;
+}
+.bloque.soft { border-left-color: var(--soft); }
+.bloque.mid  { border-left-color: var(--mid); }
+.bloque.high { border-left-color: var(--high); }
+
+.icono-tile {
+    width: 46px; height: 46px; flex: 0 0 46px; border-radius: 12px;
+    display: grid; place-items: center; font-size: 22px;
+    background: var(--mid-fondo);
+}
+.soft .icono-tile { background: var(--soft-fondo); }
+.high .icono-tile { background: var(--high-fondo); }
+
+.bloque .texto { flex: 1; min-width: 0; }
+.bloque .nombre { font-weight: 600; font-size: 15px; line-height: 1.25; }
+.bloque .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+.chip {
+    font-size: 11px; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--borde); color: var(--tenue); background: var(--panel-alto);
+    white-space: nowrap;
+}
+.chip.soft { color: var(--soft); border-color: rgba(34, 211, 238, .45); background: var(--soft-fondo); }
+.chip.mid  { color: var(--mid);  border-color: rgba(168, 85, 247, .45); background: var(--mid-fondo); }
+.chip.high { color: var(--high); border-color: rgba(239, 68, 68, .45);  background: var(--high-fondo); }
+.chip.monitor { color: #fbbf24; border-color: rgba(251, 191, 36, .4); background: rgba(251, 191, 36, .1); }
+.chip.mia { color: #f0abfc; border-color: rgba(240, 171, 252, .4); background: rgba(240, 171, 252, .1); }
+
+.bloque.hecho { opacity: .55; }
+.bloque.hecho .nombre { text-decoration: line-through; }
+.bloque.reemplazado { opacity: .42; border-left-style: dashed; }
+
+.acciones { display: flex; flex-direction: column; gap: 4px; }
+.mini {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--tenue);
+    width: 30px; height: 26px; border-radius: 8px; font-size: 12px; line-height: 1; padding: 0;
+}
+.mini:active { color: var(--texto); }
+
+/* --- hueco libre --- */
+.hueco {
+    border: 1.5px dashed var(--borde); border-radius: 14px; padding: 18px;
+    text-align: center; color: var(--apagado); font-size: 14px; width: 100%;
+    background: transparent; margin-bottom: 10px;
+}
+.hueco:active { border-color: var(--mid); color: var(--texto); }
+
+/* --- tarjeta EN VIVO --- */
+.envivo {
+    border: 1.5px solid var(--mid); border-radius: 18px; padding: 16px;
+    background: linear-gradient(180deg, rgba(168, 85, 247, .09), rgba(10, 10, 11, 0));
+    box-shadow: 0 0 34px rgba(168, 85, 247, .18); margin-bottom: 16px;
+}
+.envivo.soft { border-color: var(--soft); box-shadow: 0 0 34px rgba(34, 211, 238, .16);
+    background: linear-gradient(180deg, rgba(34, 211, 238, .09), rgba(10, 10, 11, 0)); }
+.envivo.high { border-color: var(--high); box-shadow: 0 0 34px rgba(239, 68, 68, .16);
+    background: linear-gradient(180deg, rgba(239, 68, 68, .09), rgba(10, 10, 11, 0)); }
+
+.envivo .encabezado { display: flex; align-items: flex-start; gap: 10px; }
+.envivo h3 { margin: 0; font-size: 21px; font-weight: 700; line-height: 1.2; }
+.envivo .frase { color: #e879f9; font-style: italic; font-size: 14px; margin-top: 4px; }
+.envivo .ahora { font-size: 11px; letter-spacing: 1.5px; color: var(--tenue);
+    text-transform: uppercase; margin-bottom: 8px; }
+
+.pasos { list-style: none; padding: 0; margin: 16px 0 0; }
+.paso { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; font-size: 15px; line-height: 1.35; }
+.marca {
+    width: 22px; height: 22px; flex: 0 0 22px; margin-top: 1px; border-radius: 6px;
+    border: 2px solid var(--mid); background: transparent; display: grid; place-items: center;
+    color: #fff; font-size: 13px; line-height: 1; padding: 0;
+}
+.paso.hecho .marca { background: var(--mid); }
+.paso.hecho span { color: var(--tenue); text-decoration: line-through; }
+
+.mindset { margin-top: 14px; font-size: 14px; line-height: 1.5; color: var(--tenue); }
+.mindset b { color: var(--texto); }
+
+.goals { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.goal {
+    display: flex; align-items: center; gap: 10px; background: var(--panel-alto);
+    border: 1px solid var(--borde); border-radius: 12px; padding: 11px 12px; font-size: 14px;
+}
+.goal .accion { flex: 1; }
+.precio {
+    background: var(--high-fondo); color: var(--high); border: 1px solid rgba(239, 68, 68, .4);
+    border-radius: 9px; padding: 4px 10px; font-weight: 700; font-size: 13px; white-space: nowrap;
+}
+
+.envivo .botones { display: flex; gap: 10px; margin-top: 18px; }
+.boton-saltar {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--tenue);
+    border-radius: 12px; padding: 13px 18px; font-size: 14px; font-weight: 500;
+}
+
+/* --- vacío --- */
+.vacio { text-align: center; color: var(--apagado); padding: 30px 10px; }
+.vacio .emoji { font-size: 34px; }
+.vacio p { font-size: 14px; margin: 10px 0 16px; }
+
+/* ===================================================================== */
+/* HOJA INFERIOR (catálogo, ficha, editor)                               */
+/* ===================================================================== */
+.velo {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, .66);
+    backdrop-filter: blur(3px); z-index: 40;
+}
+.hoja {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: var(--panel); border-top: 1px solid var(--borde);
+    border-radius: 22px 22px 0 0; max-height: 92vh; display: flex; flex-direction: column;
+    animation: subir .22s ease-out;
+}
+@keyframes subir { from { transform: translateY(26px); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (min-width: 760px) {
+    .hoja { left: 50%; transform: translateX(-50%); width: 720px; border-radius: 22px 22px 0 0; }
+}
+.hoja-cabecera {
+    padding: 16px 16px 10px; border-bottom: 1px solid var(--borde);
+    display: flex; align-items: center; gap: 10px;
+}
+.hoja-cabecera h3 { margin: 0; font-size: 17px; font-weight: 700; flex: 1; }
+.hoja-cuerpo { padding: 14px 16px 20px; overflow-y: auto; }
+.hoja-pie {
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--borde); background: var(--panel);
+}
+.cerrar {
+    background: none; border: 0; color: var(--tenue); font-size: 22px; line-height: 1; padding: 4px 6px;
+}
+
+/* --- buscador y filtros --- */
+.buscador {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 999px; padding: 11px 16px; color: var(--texto); font-size: 14px;
+}
+.buscador::placeholder { color: var(--apagado); }
+.filtros { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 4px; }
+.filtro {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--tenue);
+    border-radius: 999px; padding: 7px 14px; font-size: 13px; white-space: nowrap;
+}
+.filtro.activo { color: #fff; border-color: transparent; background: var(--degradado); }
+
+/* --- carriles del catálogo --- */
+.carril-titulo { font-size: 13px; font-weight: 600; margin: 18px 0 10px; display: flex; gap: 7px; align-items: center; }
+.carril-titulo.soft { color: var(--soft); }
+.carril-titulo.mid  { color: var(--mid); }
+.carril-titulo.high { color: var(--high); }
+
+.fila-show {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 10px 12px; margin-bottom: 8px; color: var(--texto);
+}
+.fila-show .descripcion { font-size: 12px; color: var(--tenue); margin-top: 3px; line-height: 1.3; }
+.fila-show .nombre { font-weight: 600; font-size: 15px; line-height: 1.25; }
+.fila-show .mas {
+    background: var(--panel); border: 1px solid var(--borde); color: var(--texto);
+    width: 34px; height: 34px; border-radius: 10px; font-size: 18px; flex: 0 0 34px;
+    display: grid; place-items: center;
+}
+.fila-show.elegido { border-color: var(--mid); background: var(--mid-fondo); }
+
+/* --- formulario del editor --- */
+.campo { margin-bottom: 14px; }
+.campo label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 6px; }
+.campo input, .campo textarea, .campo select {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 11px 13px; color: var(--texto); font-size: 14px;
+    font-family: inherit; resize: vertical;
+}
+.campo .ayuda { font-size: 11px; color: var(--apagado); margin-top: 5px; line-height: 1.4; }
+.opciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.opcion {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--tenue);
+    border-radius: 999px; padding: 8px 14px; font-size: 13px;
+}
+.opcion.activo { color: #fff; border-color: transparent; background: var(--degradado); }
+
+.aviso-minutos {
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 12px;
+    padding: 11px 13px; font-size: 13px; color: var(--tenue); margin-bottom: 12px; line-height: 1.4;
+}
+.aviso-minutos b { color: var(--texto); }
+
+/* ===================================================================== */
+/* AVISOS                                                                */
+/* ===================================================================== */
+.aviso {
+    position: fixed; left: 16px; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 70; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 13px 15px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+}
+.aviso.malo { border-color: rgba(239, 68, 68, .55); }
+.aviso.bueno { border-color: rgba(34, 211, 238, .5); }
+@media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 480px; } }
+
+.cargando { text-align: center; color: var(--apagado); padding: 40px 0; font-size: 14px; }
+.girando { display: inline-block; animation: giro 1s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+</style>
+</head>
+
+<body>
+
+<header class="cabecera">
+    <div class="cabecera-fila">
+        <div>
+            <h1>Mi plan de trabajo</h1>
+            <div class="quien" id="quien">—</div>
+        </div>
+        <div class="derecha">
+            <button class="boton-icono" id="btn-turnos" title="Volver a turnos">← Turnos</button>
+            <button class="boton-icono" id="btn-salir" title="Cerrar sesión">Salir</button>
+        </div>
+    </div>
+
+    <div class="semana">
+        <button class="flecha" id="semana-atras" title="Semana anterior">‹</button>
+        <div class="etiqueta"><b id="semana-titulo">Esta semana</b><span id="semana-rango">—</span></div>
+        <button class="flecha" id="semana-adelante" title="Semana siguiente">›</button>
+    </div>
+
+    <div class="dias" id="dias"></div>
+</header>
+
+<main class="contenido">
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando tu plan…</div>
+    <div id="dia" class="oculto"></div>
+</main>
+
+<!-- Las hojas (catálogo, ficha, editor) se construyen desde js/plan.js -->
+<div id="capas"></div>
+
+<script src="js/config.js"></script>
+<script src="js/plan.js"></script>
+</body>
+</html>

@@ -23,7 +23,17 @@ Las cuatro piezas hablan con la MISMA base de Firestore.
 | `index.html` | Login de las modelos. Es la portada del sitio |
 | `turnos.html` | Pre-agendamiento y toma de cupos de la semana |
 | `reuniones.html` | Reuniones de Meet (uso de los monitores) |
+| `plan.html` | **Plan de trabajo**: la misma pantalla del programa de escritorio |
 | `dashboard.html` | Tablero de métricas. Hoy con datos de ejemplo |
+
+`plan.html` usa `js/plan.js`. Pinta y pregunta: las reglas del plan (qué se
+puede quitar, cuántos minutos hay que reponer) viven en la API, en una copia
+exacta del archivo de reglas del escritorio. Si se reescribieran aquí, en un
+mes el plan dependería de por dónde se abrió —y cualquiera podría saltárselas
+desde la consola del navegador—.
+
+Para entrar necesita el `token_sesion` que guarda `index.html` al iniciar
+sesión. Si falta o caduca, la página devuelve al login sola.
 
 ## La configuración está en un solo sitio
 
