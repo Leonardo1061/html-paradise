@@ -300,6 +300,16 @@ function diaActual() {
            (estado.datos.dias || [])[0];
 }
 
+function esHoy(nombreDia) {
+    const dia = (estado.datos.dias || []).find((d) => d.dia === nombreDia);
+    return dia ? !!dia.es_hoy : nombreDia === estado.datos.hoy;
+}
+
+function textoAnadido(nombreShow) {
+    return nombreShow + ' añadido a ' +
+        (esHoy(estado.dia) ? 'tu turno de hoy' : 'tu ' + estado.dia.toLowerCase()) + '.';
+}
+
 function pintar() {
     pintarCabecera();
     pintarDias();
@@ -887,7 +897,7 @@ function pintarShows() {
             if (estado.reemplazando) { alternarElegido(show); return; }
             cerrarHoja();
             accion('/api/plan/agregar', { dia: estado.dia, id_show: show.id },
-                   show.nombre + ' añadido a tu ' + estado.dia.toLowerCase() + '.');
+                   textoAnadido(show.nombre));
         };
     });
 }
@@ -969,9 +979,11 @@ function abrirFicha(show, idBloque) {
             escapar(paso) + '</span></li>').join('') + '</ul>');
     }
     if ((show.goals || []).length) {
-        partes.push('<div class="goals">' + show.goals.map((goal) =>
-            '<div class="goal"><span class="accion">' + escapar(goal.accion) + '</span>' +
-            '<span class="precio">🪙 ' + goal.tokens + '</span></div>').join('') + '</div>');
+        partes.push('<div class="goals">' + show.goals.map((goal, indice) =>
+            '<button class="goal" data-goal="' + indice + '" title="Copiar este goal">' +
+            '<span class="accion">' + escapar(goal.accion) + '</span>' +
+            '<span class="copiar">📋</span>' +
+            '<span class="precio">🪙 ' + goal.tokens + '</span></button>').join('') + '</div>');
         partes.push('<button class="boton-icono" style="margin-top:10px" id="btn-copiar-goals">' +
             '📋 Copiar el menú para la sala</button>');
     }
@@ -1003,8 +1015,8 @@ function abrirFicha(show, idBloque) {
         '</div>');
 
     const pie = bloque ? '' :
-        '<button class="boton-principal ancho" id="btn-programar">📅 Programar en ' +
-        escapar(estado.dia) + '</button>';
+        '<button class="boton-principal ancho" id="btn-programar">📅 ' +
+        (esHoy(estado.dia) ? 'Programar ahora' : 'Programar en ' + escapar(estado.dia)) + '</button>';
 
     abrirHoja(escapar(show.nombre), partes.join(''), pie);
 
@@ -1031,15 +1043,35 @@ function abrirFicha(show, idBloque) {
     if (programar) programar.onclick = () => {
         cerrarHoja();
         accion('/api/plan/agregar', { dia: estado.dia, id_show: show.id, duracion: duracion },
-               show.nombre + ' añadido a tu ' + estado.dia.toLowerCase() + '.');
+               textoAnadido(show.nombre));
     };
+
+    // Mismo formato que el menú completo, pero una sola línea.
+    const textoGoal = (g) => g.accion + ' (' + g.tokens + 'tk)';
 
     const copiar = $('btn-copiar-goals');
     if (copiar) copiar.onclick = async () => {
-        const texto = (show.goals || []).map((g) => g.accion + ' (' + g.tokens + 'tk)').join(' | ');
+        const texto = (show.goals || []).map(textoGoal).join(' | ');
         try { await navigator.clipboard.writeText(texto); avisar('Menú copiado.', 'bueno'); }
         catch (e) { avisar('Tu navegador no deja copiar aquí. Mantén pulsado el texto.', 'malo'); }
     };
+
+    document.querySelectorAll('[data-goal]').forEach((fila) => {
+        fila.onclick = async () => {
+            const goal = (show.goals || [])[parseInt(fila.dataset.goal, 10)];
+            if (!goal) return;
+            try { await navigator.clipboard.writeText(textoGoal(goal)); }
+            catch (e) { avisar('Tu navegador no deja copiar aquí. Mantén pulsado el texto.', 'malo'); return; }
+            const marca = fila.querySelector('.copiar');
+            fila.classList.add('copiado');
+            marca.textContent = '✓ Copiado';
+            clearTimeout(fila._reloj);
+            fila._reloj = setTimeout(() => {
+                fila.classList.remove('copiado');
+                marca.textContent = '📋';
+            }, 1500);
+        };
+    });
 
     $('btn-editar').onclick = () => abrirEditor(show);
     const restaurar = $('btn-restaurar');

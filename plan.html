@@ -241,6 +241,11 @@ button { font-family: inherit; cursor: pointer; }
     border: 1px solid var(--borde); border-radius: 12px; padding: 11px 12px; font-size: 14px;
 }
 .goal .accion { flex: 1; }
+button.goal { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.goal:active { transform: scale(.98); }
+.goal .copiar { color: var(--tenue); font-size: 12px; white-space: nowrap; }
+.goal.copiado { border-color: rgba(34, 197, 94, .6); }
+.goal.copiado .copiar { color: #22c55e; font-weight: 700; }
 .precio {
     background: var(--high-fondo); color: var(--high); border: 1px solid rgba(239, 68, 68, .4);
     border-radius: 9px; padding: 4px 10px; font-weight: 700; font-size: 13px; white-space: nowrap;
