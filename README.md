@@ -24,13 +24,18 @@ Las cuatro piezas hablan con la MISMA base de Firestore.
 | `panel.html` | **Panel de inicio**: resumen de su semana y la barra de navegación |
 | `turnos.html` | Pre-agendamiento y toma de cupos de la semana |
 | `reuniones.html` | Reuniones de Meet (uso de los monitores) |
-| `plan.html` | **Plan de trabajo**: la misma pantalla del programa de escritorio |
+| `plan.html` | **Plan de trabajo** (TUS SHOWS): la misma pantalla del programa de escritorio |
+| `fotografia.html` | **Fotografía**: malla del fotógrafo (agendarse y cancelar) y portafolio de estilos |
 | `dashboard.html` | Tablero de métricas. Hoy con datos de ejemplo |
 
 `panel.html` usa `js/panel.js`: los números los calcula la API (`/api/acceso/panel`)
 con las mismas funciones del planificador, así que el panel y el plan no pueden
-decir cosas distintas. La barra de abajo lleva a PROGRAMADOR (`plan.html`) y a
-STATUS (`turnos.html`).
+decir cosas distintas. La barra de abajo lleva a TUS SHOWS (`plan.html`), a
+STATUS ROOM (`turnos.html`) y a FOTOGRAFÍA (`fotografia.html`).
+
+`fotografia.html` usa `js/fotografia.js` y la API `/api/fotografia/…`. La malla
+se vuelve a pedir cada 20 segundos mientras la página está a la vista, y las
+fotos de referencia se comprimen en el teléfono antes de subirlas.
 
 La contraseña inicial de una modelo son los últimos 4 dígitos de su cédula, igual
 que en el programa de escritorio; la cambia desde PERFIL y vale para los dos.

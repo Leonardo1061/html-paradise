@@ -10,7 +10,8 @@
   PANEL DE INICIO DE LA MODELO
   ============================
   Lo primero que ve al entrar. Resume su semana y la lleva a las dos cosas que
-  usa: el PROGRAMADOR (plan.html) y el STATUS de turnos (turnos.html).
+  usa: TUS SHOWS (plan.html), el STATUS ROOM de turnos (turnos.html) y
+  FOTOGRAFÍA (fotografia.html).
 
   Los números NO son de adorno ni de ejemplo: salen de `/api/acceso/panel`,
   que los calcula con las mismas funciones que usa el planificador. Así el
@@ -147,13 +148,13 @@ button { font-family: inherit; cursor: pointer; }
 .navegacion {
     position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 30; background: var(--degradado); border-radius: 20px;
-    display: flex; padding: 10px 6px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
 }
-@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 420px; } }
+@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
 .navegacion button {
-    flex: 1; background: none; border: 0; color: rgba(255, 255, 255, .78);
+    flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
     display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 10.5px; font-weight: 600; letter-spacing: .4px; padding: 4px 0;
+    font-size: 9.5px; font-weight: 600; letter-spacing: .2px; padding: 4px 0; white-space: nowrap;
 }
 .navegacion button .simbolo { font-size: 19px; line-height: 1; }
 .navegacion button.activo { color: #fff; }
@@ -239,8 +240,9 @@ button { font-family: inherit; cursor: pointer; }
 
 <nav class="navegacion">
     <button class="activo" id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
-    <button id="nav-programador"><span class="simbolo">🗓️</span>PROGRAMADOR</button>
-    <button id="nav-status"><span class="simbolo">📋</span>STATUS</button>
+    <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
+    <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
+    <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
     <button id="nav-perfil"><span class="simbolo">👤</span>PERFIL</button>
 </nav>
 

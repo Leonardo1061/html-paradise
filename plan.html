@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0b">
-<title>Mi plan de trabajo · PARADISE</title>
+<title>Tus shows · PARADISE</title>
 
 <!--
   PLAN DE TRABAJO · versión web
@@ -399,13 +399,13 @@ button.goal:active { transform: scale(.98); }
 .navegacion {
     position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 35; background: var(--degradado); border-radius: 20px;
-    display: flex; padding: 10px 6px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
 }
-@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 420px; } }
+@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
 .navegacion button {
-    flex: 1; background: none; border: 0; color: rgba(255, 255, 255, .78);
+    flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
     display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 10.5px; font-weight: 600; letter-spacing: .4px; padding: 4px 0;
+    font-size: 9.5px; font-weight: 600; letter-spacing: .2px; padding: 4px 0; white-space: nowrap;
 }
 .navegacion button .simbolo { font-size: 19px; line-height: 1; }
 .navegacion button.activo { color: #fff; }
@@ -485,8 +485,9 @@ button.goal:active { transform: scale(.98); }
 
 <nav class="navegacion">
     <button id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
-    <button class="activo" id="nav-programador"><span class="simbolo">🗓️</span>PROGRAMADOR</button>
-    <button id="nav-status"><span class="simbolo">📋</span>STATUS</button>
+    <button class="activo" id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
+    <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
+    <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
     <button id="nav-perfil"><span class="simbolo">👤</span>PERFIL</button>
 </nav>
 

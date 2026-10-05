@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Fotografía · PARADISE</title>
+
+<!--
+  FOTOGRAFÍA · la malla del fotógrafo y el portafolio
+  ===================================================
+  La misma malla que el monitor ve en el escritorio (1.PARADISE_ADMIN,
+  módulo Fotografía), vista desde el teléfono de la modelo. Lee y escribe la
+  MISMA colección `Agenda_Fotografia` a través de la API (fotografia.py).
+
+  - AGENDA: bloques de media hora de 9:00 AM a 6:00 PM, de lunes a sábado.
+    Ella se agenda en uno libre (con el asunto y fotos de referencia) y se
+    desagenda de uno suyo que no haya pasado. Lo de otras sale «Ocupado».
+  - PORTAFOLIO: los estilos del catálogo de dirección de arte, con buscador.
+    «Agendar» la lleva a la malla con el asunto ya escrito.
+
+  Las reglas (la sede, quién puede cancelar qué) las decide la API: esta
+  página pinta y pregunta.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141318;
+    --panel-alto: #1b1a22;
+    --borde:      #2a2932;
+    --texto:      #f4f4f5;
+    --tenue:      #9b9ba3;
+    --apagado:    #6b6b73;
+
+    --violeta:    #8b5cf6;
+    --magenta:    #d946ef;
+    --soft:       #22d3ee;
+    --verde:      #34d399;
+    --rojo:       #ef4444;
+    --ambar:      #fbbf24;
+
+    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --radio: 18px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 120px;
+}
+button { font-family: inherit; cursor: pointer; }
+.oculto { display: none !important; }
+
+/* ------------------------------------------------------------------ barra */
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; }
+.marca {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--degradado); font-size: 19px; color: #fff;
+    box-shadow: 0 8px 20px rgba(168, 85, 247, .35);
+}
+.barra .derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.redondo {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    font-size: 16px;
+}
+
+.contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+
+/* --------------------------------------------------------------- pestañas */
+.pestanas {
+    display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 4px; margin-bottom: 16px;
+}
+.pestanas button {
+    flex: 1; background: none; border: 0; color: var(--tenue); font-size: 14px;
+    font-weight: 600; padding: 10px 0; border-radius: 11px;
+}
+.pestanas button.activo { background: var(--degradado); color: #fff; }
+
+.titulo-seccion {
+    font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--tenue);
+    margin: 18px 0 8px; display: flex; align-items: center; gap: 8px;
+}
+.titulo-seccion .linea { flex: 1; height: 1px; background: var(--borde); }
+
+.tarjeta {
+    background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 14px 16px;
+}
+
+/* ----------------------------------------------------------- mis sesiones */
+.mis-sesiones { display: flex; flex-direction: column; gap: 8px; }
+.sesion {
+    display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
+    background: var(--panel); border: 1px solid var(--borde); border-left: 4px solid var(--magenta);
+    border-radius: 14px; padding: 12px 14px; color: var(--texto);
+}
+.sesion .icono {
+    width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+    background: rgba(217, 70, 239, .14); font-size: 19px; flex: none;
+}
+.sesion .cuando { font-size: 14px; font-weight: 600; }
+.sesion .detalle { font-size: 12px; color: var(--tenue); margin-top: 2px; }
+.sesion .chapa { margin-left: auto; flex: none; }
+.vacio { font-size: 13px; color: var(--apagado); padding: 4px 2px; }
+
+.chapa {
+    font-size: 11px; font-weight: 600; border-radius: 999px; padding: 3px 9px;
+    background: var(--panel-alto); color: var(--tenue); border: 1px solid var(--borde);
+    white-space: nowrap;
+}
+.chapa.programada { color: #c4b5fd; border-color: rgba(139, 92, 246, .45); }
+.chapa.asistio { color: #6ee7b7; border-color: rgba(52, 211, 153, .45); }
+.chapa.no-asistio { color: #fca5a5; border-color: rgba(239, 68, 68, .45); }
+
+/* -------------------------------------------------------- pista portafolio */
+.pendiente {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    background: rgba(217, 70, 239, .1); border: 1px solid rgba(217, 70, 239, .4);
+    border-radius: 14px; padding: 11px 14px; font-size: 13px; line-height: 1.4;
+}
+.pendiente b { color: #fff; }
+.pendiente button { margin-left: auto; background: none; border: 0; color: var(--tenue); font-size: 18px; }
+
+/* ----------------------------------------------------------------- semana */
+.semana { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.semana .rotulo { flex: 1; text-align: center; font-size: 14px; font-weight: 600; }
+.semana .rotulo small { display: block; font-size: 11px; color: var(--tenue); font-weight: 500; }
+.semana button {
+    width: 38px; height: 38px; border-radius: 12px; background: var(--panel-alto);
+    border: 1px solid var(--borde); color: var(--texto); font-size: 15px;
+}
+.semana button:disabled { opacity: .3; cursor: default; }
+
+.dias { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.dias::-webkit-scrollbar { display: none; }
+.dia {
+    flex: 1 0 52px; background: var(--panel); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 14px; padding: 8px 4px; display: flex; flex-direction: column;
+    align-items: center; gap: 2px; position: relative;
+}
+.dia .nombre { font-size: 11px; color: var(--tenue); font-weight: 600; text-transform: uppercase; }
+.dia .numero { font-size: 17px; font-weight: 700; }
+.dia .libres { font-size: 10px; color: var(--apagado); }
+.dia.activo { background: var(--degradado); border-color: transparent; }
+.dia.activo .nombre, .dia.activo .libres { color: rgba(255, 255, 255, .85); }
+.dia .punto {
+    position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--magenta); box-shadow: 0 0 0 2px var(--fondo);
+}
+.dia.activo .punto { background: #fff; box-shadow: none; }
+
+/* ---------------------------------------------------------------- bloques */
+.bloques { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.bloque {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 13px;
+    padding: 11px 14px; color: var(--texto); min-height: 54px;
+}
+.bloque .hora { font-size: 14px; font-weight: 600; min-width: 82px; }
+.bloque .sede { font-size: 11px; color: var(--apagado); }
+.bloque .lado { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.bloque .estado { font-size: 12px; font-weight: 600; }
+.bloque.libre .estado { color: var(--verde); }
+.bloque.libre:active { transform: scale(.99); }
+.bloque.ocupado { cursor: default; opacity: .6; }
+.bloque.ocupado .estado { color: var(--tenue); }
+.bloque.mia { background: linear-gradient(90deg, rgba(217, 70, 239, .22), rgba(139, 92, 246, .16));
+              border-color: rgba(217, 70, 239, .55); }
+.bloque.mia .estado { color: #fff; }
+.bloque.pasado { cursor: default; opacity: .35; }
+.bloque.pasado.mia { opacity: .7; cursor: pointer; }
+.bloque .asunto { font-size: 12px; color: rgba(255, 255, 255, .8); margin-top: 1px;
+                  max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corte-sede {
+    font-size: 11px; color: var(--soft); display: flex; align-items: center; gap: 8px;
+    margin: 6px 0 2px; letter-spacing: .3px;
+}
+.corte-sede .linea { flex: 1; height: 1px; background: rgba(34, 211, 238, .3); }
+
+.al-dia { font-size: 11px; color: var(--apagado); text-align: center; margin-top: 14px; }
+
+/* -------------------------------------------------------------- portafolio */
+.buscador {
+    width: 100%; background: var(--panel); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 12px 14px; color: var(--texto); font-size: 15px; font-family: inherit; margin-bottom: 12px;
+}
+.estilos { display: flex; flex-direction: column; gap: 10px; }
+.estilo {
+    width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 14px 16px; color: var(--texto); display: flex; gap: 12px;
+    align-items: center;
+}
+.estilo .icono {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: rgba(139, 92, 246, .16); font-size: 21px; flex: none;
+}
+.estilo .nombre { font-size: 15px; font-weight: 600; }
+.estilo .resumen {
+    font-size: 12px; color: var(--tenue); margin-top: 3px; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.estilo .flecha { margin-left: auto; color: var(--apagado); font-size: 18px; flex: none; }
+
+/* --------------------------------------------------------- barra inferior */
+.navegacion {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 30; background: var(--degradado); border-radius: 20px;
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
+}
+@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
+.navegacion button {
+    flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 9.5px; font-weight: 600; letter-spacing: .2px; padding: 4px 0; white-space: nowrap;
+}
+.navegacion button .simbolo { font-size: 19px; line-height: 1; }
+.navegacion button.activo { color: #fff; }
+.navegacion button.activo .simbolo {
+    background: rgba(255, 255, 255, .2); border-radius: 10px; padding: 4px 10px;
+}
+
+/* ------------------------------------------------------------------ hoja */
+.velo { position: fixed; inset: 0; background: rgba(0, 0, 0, .66); backdrop-filter: blur(3px); z-index: 40; }
+.hoja {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--panel);
+    border-top: 1px solid var(--borde); border-radius: 22px 22px 0 0; max-height: 92vh;
+    display: flex; flex-direction: column;
+}
+@media (min-width: 760px) { .hoja { left: 50%; transform: translateX(-50%); width: 500px; } }
+.hoja-cabecera { padding: 16px; border-bottom: 1px solid var(--borde); display: flex; gap: 10px; align-items: flex-start; }
+.hoja-cabecera h3 { margin: 0; font-size: 17px; }
+.hoja-cabecera .sub { font-size: 12px; color: var(--tenue); margin-top: 3px; }
+.hoja-cabecera .cerrar { margin-left: auto; }
+.hoja-cuerpo { padding: 16px; overflow-y: auto; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.cerrar { background: none; border: 0; color: var(--tenue); font-size: 22px; padding: 0 6px; }
+
+.campo { margin-bottom: 14px; }
+.campo label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 6px; }
+.campo textarea {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 12px 13px; color: var(--texto); font-size: 15px;
+    font-family: inherit; resize: vertical; min-height: 70px;
+}
+.miniaturas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.miniatura { position: relative; aspect-ratio: 1; border-radius: 11px; overflow: hidden; background: var(--panel-alto); }
+.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.miniatura button {
+    position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%;
+    border: 0; background: rgba(0, 0, 0, .7); color: #fff; font-size: 13px; line-height: 1;
+}
+.adjuntar {
+    aspect-ratio: 1; border-radius: 11px; border: 1px dashed var(--borde); background: none;
+    color: var(--tenue); font-size: 12px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px;
+}
+.adjuntar span { font-size: 22px; }
+.nota { font-size: 12px; color: var(--apagado); line-height: 1.5; margin-top: 8px; }
+
+.galeria { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.galeria img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 11px; display: block; cursor: zoom-in; }
+.requisitos {
+    white-space: pre-wrap; font-size: 14px; line-height: 1.55; background: var(--panel-alto);
+    border: 1px solid var(--borde); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
+}
+.fila-dato { display: flex; gap: 10px; font-size: 14px; padding: 9px 0; border-bottom: 1px solid var(--borde); }
+.fila-dato .r { color: var(--tenue); min-width: 74px; }
+
+.boton-principal {
+    width: 100%; background: var(--degradado); border: 0; color: #fff; font-weight: 600;
+    border-radius: 12px; padding: 14px; font-size: 15px;
+}
+.boton-principal:disabled { opacity: .55; }
+.boton-peligro {
+    width: 100%; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .5);
+    color: #fca5a5; font-weight: 600; border-radius: 12px; padding: 13px; font-size: 14px; margin-top: 16px;
+}
+.boton-peligro:disabled { opacity: .55; }
+
+.visor {
+    position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, .94);
+    display: grid; place-items: center; padding: 16px; cursor: zoom-out;
+}
+.visor img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+
+.aviso {
+    position: fixed; left: 16px; right: 16px; bottom: 100px; z-index: 90;
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 13px 15px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+}
+.aviso.malo { border-color: rgba(239, 68, 68, .55); }
+.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+@media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
+
+.cargando { text-align: center; color: var(--apagado); padding: 40px 0; font-size: 14px; }
+.girando { display: inline-block; animation: giro 1s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+</style>
+</head>
+
+<body>
+
+<div class="barra">
+    <div class="marca">📷</div>
+    <div>
+        <div style="font-size:15px;font-weight:600" id="nombre-barra">Fotografía</div>
+        <div style="font-size:11px;color:var(--tenue)">Malla del fotógrafo y portafolio</div>
+    </div>
+    <div class="derecha">
+        <button class="redondo" id="btn-recargar" title="Actualizar">↻</button>
+    </div>
+</div>
+
+<main class="contenido">
+    <div class="pestanas">
+        <button class="activo" id="tab-agenda">Agenda</button>
+        <button id="tab-portafolio">Portafolio</button>
+    </div>
+
+    <section id="vista-agenda">
+        <div id="pendiente"></div>
+        <div class="titulo-seccion">Tus sesiones <span class="linea"></span></div>
+        <div id="mis-sesiones" class="mis-sesiones"><div class="vacio">Cargando…</div></div>
+
+        <div class="titulo-seccion">Malla del fotógrafo <span class="linea"></span></div>
+        <div class="semana">
+            <button id="sem-anterior" title="Semana anterior">◀</button>
+            <div class="rotulo" id="sem-rotulo">—<small>Lunes a sábado</small></div>
+            <button id="sem-siguiente" title="Semana siguiente">▶</button>
+        </div>
+        <div class="dias" id="dias"></div>
+        <div id="bloques" class="bloques"><div class="cargando"><span class="girando">◌</span> Cargando la malla…</div></div>
+        <div class="al-dia" id="al-dia"></div>
+    </section>
+
+    <section id="vista-portafolio" class="oculto">
+        <input class="buscador" id="buscador" type="search" placeholder="Buscar una sesión…" autocomplete="off">
+        <div id="estilos" class="estilos"><div class="cargando"><span class="girando">◌</span> Cargando el portafolio…</div></div>
+    </section>
+</main>
+
+<nav class="navegacion">
+    <button id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
+    <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
+    <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
+    <button class="activo" id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
+    <button id="nav-perfil"><span class="simbolo">👤</span>PERFIL</button>
+</nav>
+
+<div id="capas"></div>
+<input type="file" id="selector-fotos" accept="image/*" multiple class="oculto">
+
+<script src="js/config.js"></script>
+<script src="js/fotografia.js"></script>
+</body>
+</html>

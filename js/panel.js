@@ -7,8 +7,8 @@
  * mismas funciones del planificador— para que el panel y el plan no puedan
  * decir cosas distintas.
  *
- * La barra de abajo lleva a las dos pantallas de verdad: PROGRAMADOR
- * (plan.html) y STATUS (turnos.html).
+ * La barra de abajo lleva a las pantallas de verdad: TUS SHOWS (plan.html),
+ * STATUS ROOM (turnos.html) y FOTOGRAFÍA (fotografia.html).
  */
 
 (function () {
@@ -348,12 +348,13 @@ function salir() {
 // =======================================================================
 $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
+$('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
 $('nav-perfil').onclick = abrirPerfil;
 $('nav-inicio').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 $('btn-salir').onclick = salir;
 $('btn-avisos').onclick = () => {
     const espera = (estado.datos && estado.datos.turnos.en_espera) || 0;
-    avisar(espera ? 'Tienes ' + espera + ' turno(s) en lista de espera. Míralos en STATUS.'
+    avisar(espera ? 'Tienes ' + espera + ' turno(s) en lista de espera. Míralos en STATUS ROOM.'
                   : 'No tienes turnos en lista de espera.', espera ? 'malo' : 'bueno');
 };
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarHoja(); });

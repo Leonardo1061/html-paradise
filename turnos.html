@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Turnos</title>
+    <title>Status Room · PARADISE</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="apple-touch-icon" href="iconos/icono-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -260,13 +260,13 @@
         .navegacion {
             position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
             z-index: 150; background: var(--degradado); border-radius: 20px;
-            display: flex; padding: 10px 6px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
+            display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
         }
-        @media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 420px; } }
+        @media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
         .navegacion button {
-            flex: 1; background: none; border: 0; color: rgba(255, 255, 255, .78);
+            flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
             display: flex; flex-direction: column; align-items: center; gap: 4px;
-            font-size: 10.5px; font-weight: 600; letter-spacing: .4px; padding: 4px 0; cursor: pointer;
+            font-size: 9.5px; font-weight: 600; letter-spacing: .2px; padding: 4px 0; white-space: nowrap; cursor: pointer;
             font-family: inherit;
         }
         .navegacion button .simbolo { font-size: 19px; line-height: 1; }
@@ -318,7 +318,7 @@
         <div class="card">
             <div class="card-header">
                 <h2 style="font-size:1.2rem; margin:0;">
-                    STATUS SEMANAL
+                    STATUS ROOM
                     <span id="rango-fechas" style="font-size:0.9rem; color:#666; font-weight:normal;"></span>
                 </h2>
                 <button id="btn-toggle-semana" class="btn-amarillo" style="display:none;" onclick="alternarSemana()">📅 AGENDAR PRÓXIMA SEMANA</button>
@@ -1078,8 +1078,9 @@ setInterval(cargarDatos, 60000);
 
     <nav class="navegacion">
         <button id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
-        <button id="nav-programador"><span class="simbolo">🗓️</span>PROGRAMADOR</button>
-        <button class="activo" id="nav-status"><span class="simbolo">📋</span>STATUS</button>
+        <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
+        <button class="activo" id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
+        <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
         <button id="nav-perfil"><span class="simbolo">👤</span>PERFIL</button>
     </nav>
 
@@ -1087,6 +1088,7 @@ setInterval(cargarDatos, 60000);
     document.getElementById('nav-inicio').onclick      = () => location.href = 'panel.html';
     document.getElementById('nav-programador').onclick = () => location.href = 'plan.html';
     document.getElementById('nav-status').onclick      = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('nav-fotografia').onclick  = () => location.href = 'fotografia.html';
     document.getElementById('nav-perfil').onclick      = () => location.href = 'panel.html#perfil';
     </script>
 </body>

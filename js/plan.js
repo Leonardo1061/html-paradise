@@ -1217,6 +1217,7 @@ async function recargarCatalogo() {
 $('btn-turnos').onclick = () => { window.location.href = 'panel.html'; };
 $('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
+$('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
 $('nav-perfil').onclick = () => { window.location.href = 'panel.html#perfil'; };
 $('nav-programador').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 $('btn-salir').onclick = () => {
