@@ -492,16 +492,24 @@ function abrirEstilo(estilo) {
 // =======================================================================
 // PESTAÑAS Y ARRANQUE
 // =======================================================================
+// El chat con Fotografía: el mismo componente de chat.html, fijo en ese canal.
+const chatFotografia = ChatParadise.montar($('vista-chat'), {
+    canalFijo: 'fotografia', nombreFijo: 'Fotografía', avisar: avisar,
+});
+
 function cambiarVista(vista) {
     estado.vista = vista;
     $('tab-agenda').classList.toggle('activo', vista === 'agenda');
     $('tab-portafolio').classList.toggle('activo', vista === 'portafolio');
+    $('tab-chat').classList.toggle('activo', vista === 'chat');
     $('vista-agenda').classList.toggle('oculto', vista !== 'agenda');
     $('vista-portafolio').classList.toggle('oculto', vista !== 'portafolio');
+    $('vista-chat').classList.toggle('oculto', vista !== 'chat');
+    if (vista === 'chat') chatFotografia.activar(); else chatFotografia.desactivar();
     if (vista === 'agenda') {
         if (estado.semana) pintarAgenda();
         cargarAgenda(!!estado.semana);
-    } else if (estado.estilos === null) {
+    } else if (vista === 'portafolio' && estado.estilos === null) {
         cargarPortafolio();
     }
 }
@@ -514,15 +522,17 @@ if (!estado.token) {
 $('nombre-barra').textContent = 'Fotografía';
 $('tab-agenda').onclick = () => cambiarVista('agenda');
 $('tab-portafolio').onclick = () => cambiarVista('portafolio');
+$('tab-chat').onclick = () => cambiarVista('chat');
 $('buscador').oninput = pintarPortafolio;
 $('sem-anterior').onclick = () => { if (estado.indice > 0) { estado.indice--; estado.diaElegido = null; cargarAgenda(); } };
 $('sem-siguiente').onclick = () => { estado.indice++; estado.diaElegido = null; cargarAgenda(); };
 $('btn-recargar').onclick = () => {
     if (estado.vista === 'agenda') cargarAgenda();
-    else { estado.estilos = null; cargarPortafolio(); }
+    else if (estado.vista === 'portafolio') { estado.estilos = null; cargarPortafolio(); }
 };
 
 $('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
+$('nav-chat').onclick = () => { window.location.href = 'chat.html'; };
 $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -542,6 +552,7 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && estado.vista === 'agenda') cargarAgenda(true);
 });
 
-cargarAgenda();
+if (new URLSearchParams(window.location.search).get('vista') === 'chat') cambiarVista('chat');
+else cargarAgenda();
 
 })();

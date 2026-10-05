@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Chat · PARADISE</title>
+
+<!--
+  CHAT · Soporte y mensajes privados a los roles del estudio
+  ==========================================================
+  Todo cae en la MISMA conversación que el monitor ya atiende en el escritorio
+  (1.PARADISE_ADMIN, 💬 Chat). Cada mensaje lleva su canal: Soporte o el rol
+  al que va. Notas de voz y videos van a la carpeta de Drive de la modelo.
+  El componente vive en js/chat.js y también se usa en fotografia.html.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/chat.css">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141318;
+    --panel-alto: #1b1a22;
+    --borde:      #2a2932;
+    --texto:      #f4f4f5;
+    --tenue:      #9b9ba3;
+    --apagado:    #6b6b73;
+
+    --violeta:    #8b5cf6;
+    --magenta:    #d946ef;
+    --soft:       #22d3ee;
+    --verde:      #34d399;
+    --rojo:       #ef4444;
+    --ambar:      #fbbf24;
+
+    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --radio: 18px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 120px;
+}
+button { font-family: inherit; cursor: pointer; }
+.oculto { display: none !important; }
+
+/* ------------------------------------------------------------------ barra */
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; }
+.marca {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--degradado); font-size: 19px; color: #fff;
+    box-shadow: 0 8px 20px rgba(168, 85, 247, .35);
+}
+.barra .derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.redondo {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    font-size: 16px;
+}
+
+.contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+
+/* --------------------------------------------------------- barra inferior */
+.navegacion {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 30; background: var(--degradado); border-radius: 20px;
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
+}
+@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
+.navegacion button {
+    flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 8px; font-weight: 600; letter-spacing: -.2px; padding: 4px 0; white-space: nowrap;
+}
+.navegacion button .simbolo { font-size: 19px; line-height: 1; }
+.navegacion button.activo { color: #fff; }
+.navegacion button.activo .simbolo {
+    background: rgba(255, 255, 255, .2); border-radius: 10px; padding: 4px 10px;
+}
+
+.aviso {
+    position: fixed; left: 16px; right: 16px; bottom: 100px; z-index: 90;
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 13px 15px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+}
+.aviso.malo { border-color: rgba(239, 68, 68, .55); }
+.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+@media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
+
+</style>
+</head>
+
+<body>
+
+<div class="barra">
+    <div class="marca">💬</div>
+    <div>
+        <div style="font-size:15px;font-weight:600">Chat</div>
+        <div style="font-size:11px;color:var(--tenue)">Soporte y mensajes privados</div>
+    </div>
+</div>
+
+<main class="contenido" id="chat"></main>
+
+<nav class="navegacion">
+    <button id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
+    <button class="activo" id="nav-chat"><span class="simbolo">💬</span>CHAT</button>
+    <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
+    <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
+    <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
+    <button id="nav-perfil"><span class="simbolo">👤</span>PERFIL</button>
+</nav>
+
+<script src="js/config.js"></script>
+<script src="js/chat.js"></script>
+<script>
+(function () {
+    'use strict';
+    if (!localStorage.getItem('token_sesion')) { window.location.href = PARADISE.URL_LOGIN; return; }
+    const $ = (id) => document.getElementById(id);
+    let avisoActual = null;
+    function avisar(mensaje, tipo) {
+        if (avisoActual) avisoActual.remove();
+        const caja = document.createElement('div');
+        caja.className = 'aviso ' + (tipo || '');
+        caja.textContent = mensaje;
+        document.body.appendChild(caja);
+        avisoActual = caja;
+        setTimeout(() => { if (caja === avisoActual) { caja.remove(); avisoActual = null; } },
+                  tipo === 'malo' ? 6000 : 3200);
+    }
+    ChatParadise.montar($('chat'), { avisar: avisar }).activar();
+
+    $('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
+    $('nav-chat').onclick = () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
+    $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
+    $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
+    $('nav-perfil').onclick = () => { window.location.href = 'panel.html#perfil'; };
+})();
+</script>
+</body>
+</html>

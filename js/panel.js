@@ -347,6 +347,7 @@ function salir() {
 // ARRANQUE
 // =======================================================================
 $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
+$('nav-chat').onclick = () => { window.location.href = 'chat.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
 $('nav-perfil').onclick = abrirPerfil;

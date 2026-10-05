@@ -16,6 +16,8 @@
   - AGENDA: bloques de media hora de 9:00 AM a 6:00 PM, de lunes a sábado.
     Ella se agenda en uno libre (con el asunto y fotos de referencia) y se
     desagenda de uno suyo que no haya pasado. Lo de otras sale «Ocupado».
+  - CHAT: conversación privada con Fotografía (js/chat.js, canal
+    'fotografia'). Por ahora la recibe el monitor en el escritorio.
   - PORTAFOLIO: los estilos del catálogo de dirección de arte, con buscador.
     «Agendar» la lleva a la malla con el asunto ya escrito.
 
@@ -31,6 +33,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/chat.css">
 
 <style>
 :root {
@@ -226,7 +229,7 @@ button { font-family: inherit; cursor: pointer; }
 .navegacion button {
     flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
     display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 9.5px; font-weight: 600; letter-spacing: .2px; padding: 4px 0; white-space: nowrap;
+    font-size: 8px; font-weight: 600; letter-spacing: -.2px; padding: 4px 0; white-space: nowrap;
 }
 .navegacion button .simbolo { font-size: 19px; line-height: 1; }
 .navegacion button.activo { color: #fff; }
@@ -330,6 +333,7 @@ button { font-family: inherit; cursor: pointer; }
     <div class="pestanas">
         <button class="activo" id="tab-agenda">Agenda</button>
         <button id="tab-portafolio">Portafolio</button>
+        <button id="tab-chat">Chat</button>
     </div>
 
     <section id="vista-agenda">
@@ -352,10 +356,13 @@ button { font-family: inherit; cursor: pointer; }
         <input class="buscador" id="buscador" type="search" placeholder="Buscar una sesión…" autocomplete="off">
         <div id="estilos" class="estilos"><div class="cargando"><span class="girando">◌</span> Cargando el portafolio…</div></div>
     </section>
+
+    <section id="vista-chat" class="oculto"></section>
 </main>
 
 <nav class="navegacion">
     <button id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
+    <button id="nav-chat"><span class="simbolo">💬</span>CHAT</button>
     <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
     <button class="activo" id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
     <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
@@ -366,6 +373,7 @@ button { font-family: inherit; cursor: pointer; }
 <input type="file" id="selector-fotos" accept="image/*" multiple class="oculto">
 
 <script src="js/config.js"></script>
+<script src="js/chat.js"></script>
 <script src="js/fotografia.js"></script>
 </body>
 </html>
