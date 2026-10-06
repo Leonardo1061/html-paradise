@@ -14,9 +14,10 @@
  * TODO VA AL MISMO SITIO
  * ----------------------
  * La API escribe en la misma conversación que el monitor ya tiene en el
- * escritorio, con el canal marcado en cada mensaje. Por ahora todos los
- * canales los atiende el monitor; aquí solo se separan para que ella vea
- * cada conversación por su lado.
+ * escritorio, con el canal marcado en cada mensaje. Soporte lo atiende el
+ * monitor de turno (Mañana, Tarde, Noche o Satélites). Cada chip de rol
+ * (Monitor Mañana, Programación, CEO, Gerencia…) es privado: solo lo lee
+ * quien tiene ese rol (api/reglas_personal.py y repo_chats del escritorio).
  *
  * «EN TIEMPO REAL»
  * ----------------
@@ -270,7 +271,7 @@ function montar(raiz, opciones) {
         const nombre = nombreCanal(estado.canal);
         el('.chat-ayuda').textContent = estado.canal === 'soporte'
             ? 'Soporte del estudio: te responde el monitor de turno.'
-            : 'Mensaje privado para ' + nombre + '. Por ahora lo recibe el monitor y se lo hace llegar.';
+            : 'Mensaje privado para ' + nombre + ': solo lo lee quien tiene ese rol.';
         caja.placeholder = 'Escribe a ' + nombre + '…';
     }
 
