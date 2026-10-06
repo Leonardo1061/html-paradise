@@ -9,11 +9,18 @@
 <!--
   FOTOGRAFÍA PARA EL PERSONAL
   ===========================
-  La malla del fotógrafo como la ve el escritorio del monitor: quién viene a
-  cada bloque, el asunto, su celular y las fotos de referencia que adjuntó.
-  Se marca Asistió / No Asistió. Misma colección (Agenda_Fotografia).
-  Las sesiones de modelos de Tropic salen «Ocupado», sin nombre, para quien
-  no ve Tropic. La malla se vuelve a pedir cada 30 s con la página a la vista.
+  La MISMA pantalla que ven las modelos (fotografia.html): la malla del
+  fotógrafo y el portafolio. Lo que cambia es lo que se puede hacer:
+
+    - en un bloque libre se agenda a CUALQUIER modelo (con un asunto o con
+      un estilo del portafolio, y fotos de referencia si hacen falta);
+    - en uno reservado se ve quién es, su celular y las fotos, se marca
+      Asistió / No Asistió y se puede cancelar;
+    - «Agendar» de un estilo del portafolio lleva a la malla para elegir el
+      bloque y luego la modelo.
+
+  Las sesiones de modelos de Tropic salen «Ocupado» para quien no ve Tropic.
+  La lógica vive en js/fotografia_personal.js; las reglas, en la API.
 -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -24,162 +31,218 @@
 <link rel="stylesheet" href="css/personal.css">
 
 <style>
-.semana { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.semana .etiqueta { flex: 1; text-align: center; font-weight: 600; font-size: 14px; }
-.dias { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none; }
+.contenido { max-width: 760px; }
+/* El estilo de la página de las modelos (fotografia.html), con el acento del personal. */
+/* --------------------------------------------------------------- pestañas */
+.pestanas-foto {
+    display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 4px; margin-bottom: 16px;
+}
+.pestanas-foto button {
+    flex: 1; background: none; border: 0; color: var(--tenue); font-size: 14px;
+    font-weight: 600; padding: 10px 0; border-radius: 11px;
+}
+.pestanas-foto button.activo { background: var(--degradado); color: #fff; }
+
+.titulo-seccion {
+    font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--tenue);
+    margin: 18px 0 8px; display: flex; align-items: center; gap: 8px;
+}
+.titulo-seccion .linea { flex: 1; height: 1px; background: var(--borde); }
+
+.tarjeta {
+    background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 14px 16px;
+}
+
+
+.chapa { margin-left: auto; flex: none; }
+.vacio { font-size: 13px; color: var(--apagado); padding: 4px 2px; }
+
+.chapa {
+    font-size: 11px; font-weight: 600; border-radius: 999px; padding: 3px 9px;
+    background: var(--panel-alto); color: var(--tenue); border: 1px solid var(--borde);
+    white-space: nowrap;
+}
+.chapa.programada { color: #c4b5fd; border-color: rgba(139, 92, 246, .45); }
+.chapa.asistio { color: #6ee7b7; border-color: rgba(52, 211, 153, .45); }
+.chapa.no-asistio { color: #fca5a5; border-color: rgba(239, 68, 68, .45); }
+
+
+/* -------------------------------------------------------- pista portafolio */
+.pendiente {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    background: rgba(217, 70, 239, .1); border: 1px solid rgba(217, 70, 239, .4);
+    border-radius: 14px; padding: 11px 14px; font-size: 13px; line-height: 1.4;
+}
+.pendiente b { color: #fff; }
+.pendiente button { margin-left: auto; background: none; border: 0; color: var(--tenue); font-size: 18px; }
+
+/* ----------------------------------------------------------------- semana */
+.semana { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.semana .rotulo { flex: 1; text-align: center; font-size: 14px; font-weight: 600; }
+.semana .rotulo small { display: block; font-size: 11px; color: var(--tenue); font-weight: 500; }
+.semana button {
+    width: 38px; height: 38px; border-radius: 12px; background: var(--panel-alto);
+    border: 1px solid var(--borde); color: var(--texto); font-size: 15px;
+}
+.semana button:disabled { opacity: .3; cursor: default; }
+
+.dias { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
 .dias::-webkit-scrollbar { display: none; }
 .dia {
-    flex: none; background: var(--panel); border: 1px solid var(--borde); color: var(--tenue);
-    border-radius: 14px; padding: 8px 13px; font-size: 13px; font-weight: 600; text-align: center;
+    flex: 1 0 52px; background: var(--panel); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 14px; padding: 8px 4px; display: flex; flex-direction: column;
+    align-items: center; gap: 2px; position: relative;
 }
-.dia small { display: block; font-size: 11px; font-weight: 500; }
-.dia.activo { background: var(--degradado); color: #fff; border-color: transparent; }
-.dia.hoy:not(.activo) { border-color: var(--cian); color: #a5f3fc; }
+.dia .nombre { font-size: 11px; color: var(--tenue); font-weight: 600; text-transform: uppercase; }
+.dia .numero { font-size: 17px; font-weight: 700; }
+.dia .libres { font-size: 10px; color: var(--apagado); }
+.dia.activo { background: var(--degradado); border-color: transparent; }
+.dia.activo .nombre, .dia.activo .libres { color: rgba(255, 255, 255, .85); }
+.dia .punto {
+    position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--magenta); box-shadow: 0 0 0 2px var(--fondo);
+}
+.dia.activo .punto { background: #fff; box-shadow: none; }
 
-.bloque { display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid var(--borde); align-items: flex-start; }
-.bloque:first-child { border-top: 0; }
-.bloque .hora { width: 92px; flex: none; font-size: 12.5px; color: var(--tenue); }
-.bloque .hora b { display: block; color: var(--texto); font-size: 13.5px; }
-.bloque .cuerpo { flex: 1; min-width: 0; font-size: 14px; }
-.bloque.libre .cuerpo { color: var(--apagado); }
-.bloque.pasado { opacity: .62; }
-.bloque .nombre { font-weight: 600; }
-.bloque .asunto { font-size: 13px; color: var(--tenue); margin-top: 2px; }
-.bloque .botones { margin-top: 8px; }
-.bloque .boton-secundario.elegido { background: var(--degradado); border-color: transparent; color: #fff; }
-.tel { color: #a5f3fc; text-decoration: none; font-size: 12.5px; }
+/* ---------------------------------------------------------------- bloques */
+.bloques { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.bloque {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 13px;
+    padding: 11px 14px; color: var(--texto); min-height: 54px;
+}
+.bloque .hora { font-size: 14px; font-weight: 600; min-width: 82px; }
+.bloque .sede { font-size: 11px; color: var(--apagado); }
+.bloque .lado { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.bloque .estado { font-size: 12px; font-weight: 600; }
+.bloque.libre .estado { color: var(--verde); }
+.bloque.libre:active { transform: scale(.99); }
+.bloque.ocupado { cursor: default; opacity: .6; }
+.bloque.ocupado .estado { color: var(--tenue); }
+.bloque.mia { background: linear-gradient(90deg, rgba(217, 70, 239, .22), rgba(139, 92, 246, .16));
+              border-color: rgba(217, 70, 239, .55); }
+.bloque.mia .estado { color: #fff; }
+.bloque.pasado { cursor: default; opacity: .35; }
+.bloque.pasado.mia { opacity: .7; cursor: pointer; }
+.bloque .asunto { font-size: 12px; color: rgba(255, 255, 255, .8); margin-top: 1px;
+                  max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corte-sede {
+    font-size: 11px; color: var(--soft); display: flex; align-items: center; gap: 8px;
+    margin: 6px 0 2px; letter-spacing: .3px;
+}
+.corte-sede .linea { flex: 1; height: 1px; background: rgba(34, 211, 238, .3); }
+
+.al-dia { font-size: 11px; color: var(--apagado); text-align: center; margin-top: 14px; }
+
+/* -------------------------------------------------------------- portafolio */
+.buscador {
+    width: 100%; background: var(--panel); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 12px 14px; color: var(--texto); font-size: 15px; font-family: inherit; margin-bottom: 12px;
+}
+.estilos { display: flex; flex-direction: column; gap: 10px; }
+.estilo {
+    width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 14px 16px; color: var(--texto); display: flex; gap: 12px;
+    align-items: center;
+}
+.estilo .icono {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: rgba(139, 92, 246, .16); font-size: 21px; flex: none;
+}
+.estilo .nombre { font-size: 15px; font-weight: 600; }
+.estilo .resumen {
+    font-size: 12px; color: var(--tenue); margin-top: 3px; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.estilo .flecha { margin-left: auto; color: var(--apagado); font-size: 18px; flex: none; }
+
+
+.campo { margin-bottom: 14px; }
+.campo label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 6px; }
+.campo textarea {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 12px 13px; color: var(--texto); font-size: 15px;
+    font-family: inherit; resize: vertical; min-height: 70px;
+}
+.miniaturas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.miniatura { position: relative; aspect-ratio: 1; border-radius: 11px; overflow: hidden; background: var(--panel-alto); }
+.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.miniatura button {
+    position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%;
+    border: 0; background: rgba(0, 0, 0, .7); color: #fff; font-size: 13px; line-height: 1;
+}
+.adjuntar {
+    aspect-ratio: 1; border-radius: 11px; border: 1px dashed var(--borde); background: none;
+    color: var(--tenue); font-size: 12px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px;
+}
+.adjuntar span { font-size: 22px; }
+.nota { font-size: 12px; color: var(--apagado); line-height: 1.5; margin-top: 8px; }
+
+.galeria { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.galeria img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 11px; display: block; cursor: zoom-in; }
+.requisitos {
+    white-space: pre-wrap; font-size: 14px; line-height: 1.55; background: var(--panel-alto);
+    border: 1px solid var(--borde); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
+}
+.fila-dato { display: flex; gap: 10px; font-size: 14px; padding: 9px 0; border-bottom: 1px solid var(--borde); }
+.fila-dato .r { color: var(--tenue); min-width: 74px; }
+
+
+.boton-peligro {
+    width: 100%; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .5);
+    color: #fca5a5; font-weight: 600; border-radius: 12px; padding: 13px; font-size: 14px; margin-top: 16px;
+}
+.boton-peligro:disabled { opacity: .55; }
+
+
+.bloque.reservado { background: linear-gradient(90deg, rgba(6, 182, 212, .2), rgba(139, 92, 246, .16));
+                    border-color: rgba(6, 182, 212, .55); }
+.bloque.reservado .estado { color: #fff; }
+.bloque.pasado.reservado { opacity: .7; cursor: pointer; }
+.botones-estado { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
+.botones-estado button {
+    flex: 1; background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 11px; padding: 10px 6px; font-size: 13px; font-weight: 600;
+}
+.botones-estado button.elegido { background: var(--degradado); border-color: transparent; color: #fff; }
+.modelo-elegida { font-size: 13px; color: #a5f3fc; margin-top: 6px; min-height: 18px; }
 </style>
 </head>
 
 <body>
 
 <main class="contenido">
-    <div class="titulo-pagina"><h1>Fotografía</h1><p>La malla del fotógrafo, de lunes a sábado.</p></div>
-    <div class="semana">
-        <button class="redondo" id="anterior" title="Semana anterior">‹</button>
-        <div class="etiqueta" id="etiqueta">—</div>
-        <button class="redondo" id="siguiente" title="Semana siguiente">›</button>
+    <div class="pestanas-foto">
+        <button class="activo" id="tab-agenda">Agenda</button>
+        <button id="tab-portafolio">Portafolio</button>
     </div>
-    <div class="dias" id="dias"></div>
-    <div class="tarjeta" id="malla"><div class="cargando"><span class="girando">◌</span></div></div>
+
+    <section id="vista-agenda">
+        <div id="pendiente"></div>
+        <div class="titulo-seccion">Malla del fotógrafo <span class="linea"></span></div>
+        <div class="semana">
+            <button id="sem-anterior" title="Semana anterior">◀</button>
+            <div class="rotulo" id="sem-rotulo">—<small>Lunes a sábado</small></div>
+            <button id="sem-siguiente" title="Semana siguiente">▶</button>
+        </div>
+        <div class="dias" id="dias"></div>
+        <div id="bloques" class="bloques"><div class="cargando"><span class="girando">◌</span> Cargando la malla…</div></div>
+        <div class="al-dia" id="al-dia"></div>
+    </section>
+
+    <section id="vista-portafolio" class="oculto">
+        <input class="buscador" id="buscador" type="search" placeholder="Buscar una sesión…" autocomplete="off">
+        <div id="estilos" class="estilos"><div class="cargando"><span class="girando">◌</span> Cargando el portafolio…</div></div>
+    </section>
 </main>
+
+<input type="file" id="selector-fotos" accept="image/*" multiple class="oculto">
 
 <script src="js/config.js"></script>
 <script src="js/personal.js"></script>
-<script>
-(function () {
-    'use strict';
-    const P = window.Personal;
-    const esc = P.escapar;
-    const $ = (id) => document.getElementById(id);
-    const estado = { indice: 0, datos: null, dia: '', cargando: false };
-
-    function claseEstado(e) { return e === 'Asistió' ? 'bien' : e === 'No Asistió' ? 'urgente' : 'cian'; }
-
-    function pintar() {
-        const datos = estado.datos;
-        if (!datos) return;
-        $('etiqueta').textContent = datos.etiqueta;
-        $('anterior').disabled = estado.indice <= datos.min_indice;
-        $('siguiente').disabled = estado.indice >= datos.max_indice;
-        if (!datos.dias.some((d) => d.fecha === estado.dia)) {
-            const hoy = datos.dias.find((d) => d.es_hoy);
-            estado.dia = (hoy || datos.dias[0]).fecha;
-        }
-        $('dias').innerHTML = datos.dias.map((d) => {
-            const reservas = d.bloques.filter((b) => b.estado !== 'libre').length;
-            return '<button class="dia' + (d.fecha === estado.dia ? ' activo' : '') + (d.es_hoy ? ' hoy' : '') +
-                '" data-fecha="' + d.fecha + '">' + esc(d.etiqueta) + '<small>' +
-                (reservas ? reservas + ' sesión' + (reservas === 1 ? '' : 'es') : 'libre') + '</small></button>';
-        }).join('');
-        $('dias').querySelectorAll('.dia').forEach((b) => { b.onclick = () => { estado.dia = b.dataset.fecha; pintar(); }; });
-
-        const dia = datos.dias.find((d) => d.fecha === estado.dia);
-        const malla = $('malla');
-        malla.innerHTML = '';
-        dia.bloques.forEach((b) => malla.appendChild(bloque(dia, b)));
-    }
-
-    function bloque(dia, b) {
-        const fila = document.createElement('div');
-        fila.className = 'bloque ' + b.estado + (b.pasado ? ' pasado' : '');
-        let cuerpo;
-        if (b.estado === 'libre') cuerpo = 'Libre';
-        else if (b.estado === 'ocupado') cuerpo = '<span class="pildora">Ocupado</span>';
-        else {
-            cuerpo = '<div class="nombre">' + esc(b.nombre || b.asunto || 'Reservado') + ' ' +
-                '<span class="pildora ' + claseEstado(b.estado_sesion) + '">' + esc(b.estado_sesion) + '</span></div>' +
-                (b.asunto && b.nombre ? '<div class="asunto">' + esc(b.asunto) + '</div>' : '') +
-                (b.celular ? '<a class="tel" href="tel:' + esc(b.celular) + '">📞 ' + esc(b.celular) + '</a>' : '') +
-                '<div class="botones"></div>';
-        }
-        fila.innerHTML = '<div class="hora"><b>' + esc(b.rango.split(' – ')[0]) + '</b>' + esc(b.sede.replace('SEDE ', '')) +
-            '</div><div class="cuerpo">' + cuerpo + '</div>';
-        if (b.estado === 'reservado') {
-            const botones = fila.querySelector('.botones');
-            (estado.datos.estados || []).forEach((e) => {
-                const boton = document.createElement('button');
-                boton.className = 'boton-secundario' + (e === b.estado_sesion ? ' elegido' : '');
-                boton.textContent = e;
-                boton.disabled = e === b.estado_sesion;
-                boton.onclick = async () => {
-                    boton.disabled = true;
-                    try {
-                        const r = await P.pedir('/api/personal/fotografia/estado', 'POST',
-                            { fecha: dia.fecha, hora_inicio: b.hora_inicio, estado: e });
-                        P.avisar(r.mensaje, 'bueno');
-                        b.estado_sesion = e;
-                        pintar();
-                    } catch (error) { P.avisar(error.message, 'malo'); boton.disabled = false; }
-                };
-                botones.appendChild(boton);
-            });
-            if (b.referencias) {
-                const ver = document.createElement('button');
-                ver.className = 'boton-secundario';
-                ver.textContent = '🖼️ Referencias (' + b.referencias + ')';
-                ver.onclick = async () => {
-                    ver.disabled = true;
-                    try {
-                        const r = await P.pedir('/api/personal/fotografia/referencias/' + encodeURIComponent(b.id));
-                        const mini = document.createElement('div');
-                        mini.className = 'miniaturas';
-                        (r.fotos || []).forEach((f) => {
-                            const img = document.createElement('img');
-                            img.src = P.aDataUrl(f);
-                            img.onclick = () => P.abrirVisor(img.src);
-                            mini.appendChild(img);
-                        });
-                        ver.replaceWith(mini);
-                    } catch (error) { P.avisar(error.message, 'malo'); ver.disabled = false; }
-                };
-                botones.appendChild(ver);
-            }
-        }
-        return fila;
-    }
-
-    async function cargar(silencioso) {
-        if (estado.cargando) return;
-        estado.cargando = true;
-        if (!silencioso) $('malla').innerHTML = '<div class="cargando"><span class="girando">◌</span></div>';
-        try {
-            estado.datos = await P.pedir('/api/personal/fotografia/semana?indice=' + estado.indice);
-            pintar();
-        } catch (error) {
-            if (!silencioso) $('malla').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
-        } finally {
-            estado.cargando = false;
-        }
-    }
-
-    P.iniciar('fotografia').then(() => {
-        $('anterior').onclick = () => { estado.indice--; estado.dia = ''; cargar(); };
-        $('siguiente').onclick = () => { estado.indice++; estado.dia = ''; cargar(); };
-        cargar();
-        setInterval(() => { if (document.visibilityState === 'visible') cargar(true); }, 30000);
-    });
-})();
-</script>
+<script src="js/fotografia_personal.js"></script>
 </body>
 </html>

@@ -9,9 +9,9 @@
 <!--
   INICIO DEL PERSONAL ADMINISTRATIVO
   ==================================
-  Lo que le toca hoy a quien ha entrado: sus tareas (la campana 🔔), los
-  chats que esperan respuesta, las sesiones de fotos del día y cómo están
-  los cuartos. Cada número sale de la API (/api/personal/resumen y
+  Lo que le toca hoy a quien ha entrado: sus tareas (la campana 🔔), las
+  sesiones de fotos del día y cómo están los cuartos. Los chats que esperan
+  respuesta se ven en CHAT (aquí solo el globo de la barra). Cada número sale de la API (/api/personal/resumen y
   /api/personal/chat/conversaciones) con las reglas del escritorio: a cada
   uno le salen solo los chats y las modelos que su rol le deja ver.
 -->
@@ -34,7 +34,6 @@
     <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
     <div id="tablero" class="oculto">
         <div class="rejilla" id="datos"></div>
-        <div class="seccion tarjeta oculto" id="sec-chats"><h2>💬 Esperando respuesta</h2><div id="lista-chats"></div></div>
         <div class="seccion tarjeta" id="sec-tareas"><h2>🔔 Tus tareas</h2><div id="lista-tareas"></div></div>
         <div class="seccion tarjeta oculto" id="sec-fotos"><h2>📷 Fotos de hoy</h2><div id="lista-fotos"></div></div>
     </div>
@@ -97,24 +96,8 @@
             resumen.tareas.urgentes ? resumen.tareas.urgentes + ' urgente(s)' :
             resumen.tareas.sin_leer ? resumen.tareas.sin_leer + ' sin leer' : 'Al día', P.abrirCampana));
 
-        if (chats) {
-            const esperando = (chats.conversaciones || []).filter((c) => c.esperando);
-            P.globoChat(esperando.length);
-            datos.appendChild(dato('Chats sin responder', esperando.length,
-                (chats.conversaciones || []).length + ' conversación(es) reciente(s)',
-                () => { window.location.href = 'personal_chat.html'; }));
-            $('sec-chats').classList.remove('oculto');
-            $('lista-chats').innerHTML = esperando.length ? esperando.slice(0, 6).map((c) =>
-                '<div class="fila" style="cursor:pointer" data-cedula="' + esc(c.cedula) + '">' +
-                '<div class="principal"><div class="linea1">' + esc(c.nombre) + '</div>' +
-                '<div class="linea2">' + (c.ultimo.canal !== 'Soporte' ? '[' + esc(c.ultimo.canal) + '] ' : '') +
-                esc(c.ultimo.texto || (c.ultimo.imagen ? '🖼️ Foto' : c.ultimo.adjunto ? '🎤 Adjunto' : '')) + '</div></div>' +
-                '<div class="lado">' + esc(c.ultimo.hora) + '</div></div>').join('')
-                : '<div class="vacio">Nadie espera respuesta. 👌</div>';
-            $('lista-chats').querySelectorAll('[data-cedula]').forEach((f) => {
-                f.onclick = () => { window.location.href = 'personal_chat.html?cedula=' + encodeURIComponent(f.dataset.cedula); };
-            });
-        }
+        // Los chats sin responder viven en CHAT; aquí solo se enciende su globo.
+        if (chats) P.globoChat((chats.conversaciones || []).filter((c) => c.esperando).length);
 
         if (resumen.fotografia) {
             const hoy = resumen.fotografia.hoy || [];

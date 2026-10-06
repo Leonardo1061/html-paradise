@@ -182,3 +182,24 @@ button { cursor: pointer; }
 .cargando { text-align: center; color: var(--apagado); padding: 50px 0; font-size: 14px; }
 .girando { display: inline-block; animation: giro 1s linear infinite; }
 @keyframes giro { to { transform: rotate(360deg); } }
+
+/* --------------------------------------------- selector de modelos (buscar) */
+.selector-modelos .buscar {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 12px;
+    padding: 11px 13px; color: var(--texto); font-size: 15px; outline: none; margin-bottom: 8px;
+}
+.selector-modelos .buscar:focus { border-color: var(--cian); }
+.selector-modelos .opciones {
+    max-height: 240px; overflow-y: auto; border: 1px solid var(--borde); border-radius: 12px;
+    background: var(--panel-alto);
+}
+.selector-modelos .opcion {
+    display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left;
+    background: none; border: 0; border-top: 1px solid var(--borde); color: var(--texto);
+    padding: 10px 13px; font-size: 14px;
+}
+.selector-modelos .opcion:first-child { border-top: 0; }
+.selector-modelos .opcion small { color: var(--tenue); font-size: 12px; }
+.selector-modelos .opcion.elegida { background: var(--degradado); color: #fff; }
+.selector-modelos .opcion.elegida small { color: rgba(255, 255, 255, .85); }
+.hoja-cabecera .sub { font-size: 12px; color: var(--tenue); margin-top: 3px; font-weight: 400; }

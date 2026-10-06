@@ -71,7 +71,11 @@ async function pedir(ruta, metodo, cuerpo) {
         salirPorSesion();
         throw new Error(datos.detail || 'Tu sesión caducó. Entra otra vez.');
     }
-    if (!respuesta.ok) throw new Error(datos.detail || 'No se pudo completar la acción.');
+    if (!respuesta.ok) {
+        const error = new Error(datos.detail || 'No se pudo completar la acción.');
+        error.codigo = respuesta.status;
+        throw error;
+    }
     return datos;
 }
 
@@ -471,7 +475,38 @@ async function iniciar(actual) {
     return yo;
 }
 
+/* Lista de modelos con buscador, dentro de `contenedor`. Llama a
+ * `alElegir(modelo)` al tocar una. modelos = [{cedula, nombre, jornada}]. */
+function selectorModelos(contenedor, modelos, alElegir) {
+    const sinTildes = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    let elegida = '';
+    contenedor.classList.add('selector-modelos');
+    contenedor.innerHTML = '<input class="buscar" type="search" placeholder="Buscar modelo…" autocomplete="off">' +
+        '<div class="opciones"></div>';
+    const buscar = contenedor.querySelector('.buscar');
+    const opciones = contenedor.querySelector('.opciones');
+    function pintar() {
+        const f = sinTildes(buscar.value.trim());
+        const lista = modelos.filter((m) => !f || sinTildes(m.nombre + ' ' + m.jornada).indexOf(f) >= 0);
+        opciones.innerHTML = lista.length ? lista.map((m) =>
+            '<button type="button" class="opcion' + (m.cedula === elegida ? ' elegida' : '') +
+            '" data-cedula="' + escapar(m.cedula) + '"><span>' + escapar(m.nombre) + '</span><small>' +
+            escapar(m.jornada) + '</small></button>').join('')
+            : '<div class="vacio">Ninguna modelo con ese nombre.</div>';
+        opciones.querySelectorAll('.opcion').forEach((b) => {
+            b.onclick = () => {
+                elegida = b.dataset.cedula;
+                pintar();
+                alElegir(modelos.find((m) => m.cedula === elegida));
+            };
+        });
+    }
+    buscar.oninput = pintar;
+    pintar();
+}
+
 window.Personal = {
+    selectorModelos: selectorModelos,
     iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, avisar: avisar,
     escapar: escapar, abrirVisor: abrirVisor, aDataUrl: aDataUrl, comprimir: comprimir,
     abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha,

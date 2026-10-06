@@ -9,11 +9,17 @@
 <!--
   STATUS ROOM PARA EL PERSONAL
   ============================
-  Los 12 cuartos de hoy (Estado_Estudio/Cuartos_Hoy) y quién tiene cada
-  cuarto en cada jornada de la semana (Semana_Actual). Solo lectura: asignar,
-  liberar o poner en mantenimiento se sigue haciendo desde CUARTOS en el
-  escritorio. Igual que allá, el monitor asignado a Tropic Studio no tiene
-  este módulo. Se vuelve a pedir cada 20 s con la página a la vista.
+  La MISMA pantalla que ven las modelos (turnos.html): los cuartos de hoy y
+  la grilla de la semana en curso, con sus mismos colores. Lo que cambia:
+
+    - en un cuarto DISPONIBLE de hoy, «＋ ASIGNAR» pone ahí a CUALQUIER
+      modelo; un cuarto ocupado se puede liberar;
+    - en un cupo VACÍO de la semana, «➕ DISPONIBLE» pone ahí a cualquier
+      modelo; un cupo ocupado se puede vaciar.
+
+  Escribe lo mismo que cuando una modelo toma un cuarto o un cupo (la API lo
+  firma con el nombre del monitor en el historial). Como en el escritorio,
+  el monitor asignado a Tropic Studio no tiene este módulo.
 -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -24,47 +30,110 @@
 <link rel="stylesheet" href="css/personal.css">
 
 <style>
-.cuartos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-.cuarto { border-radius: 14px; padding: 12px; background: var(--panel); border: 1px solid var(--borde); border-left-width: 4px; }
-.cuarto .num { font-size: 12px; color: var(--tenue); font-weight: 600; }
-.cuarto .quien { font-size: 14px; font-weight: 600; margin-top: 4px; min-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cuarto .est { font-size: 11px; margin-top: 4px; color: var(--tenue); }
-.cuarto.DISPONIBLE { border-left-color: var(--verde); }
-.cuarto.OCUPADA { border-left-color: var(--violeta); }
-.cuarto.DE.SALIDA, .cuarto.SALIDA { border-left-color: var(--ambar); }
-.cuarto.MANTENIMIENTO { border-left-color: var(--rojo); }
-.leyenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--tenue); margin: 10px 0 0; }
-.leyenda span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; background: var(--c); }
-
-.dias { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 12px; scrollbar-width: none; }
-.dias::-webkit-scrollbar { display: none; }
-.dia {
-    flex: none; background: var(--panel); border: 1px solid var(--borde); color: var(--tenue);
-    border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600;
+/* Los estilos de turnos.html (la página de las modelos), con el acento del personal. */
+:root {
+    --texto-tenue: #9b9ba3;
+    --acento: #06b6d4;
+    /* --- Colores CON SIGNIFICADO de la grilla: los mismos de las modelos --- */
+    --verde-g: #4CAF50;    /* libre */
+    --morado: #9C27B0;     /* ocupado */
+    --fijo: #03A9F4;       /* cuarto fijo */
+    --satelite: #00BFA5;   /* satélite */
+    --extra: #EC407A;      /* supernumeraria */
+    --espera: #FFFFFF;     /* lista de espera */
 }
-.dia.activo { background: var(--degradado); color: #fff; border-color: transparent; }
-.tabla-envoltura { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 420px; }
-th, td { border-top: 1px solid var(--borde); padding: 8px 6px; text-align: left; }
-th { color: var(--tenue); font-weight: 600; font-size: 12px; }
-td.vacio-celda { color: var(--apagado); }
-td .espera { color: var(--ambar); font-size: 11px; }
+.contenido { max-width: 760px; }
+.card { background: var(--panel); border: 1px solid var(--borde); border-radius: 18px; padding: 16px; margin-bottom: 16px; }
+.card-header { display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid var(--borde); padding-bottom: 12px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+.card-header h2 { color: var(--texto); font-size: 1.05rem; font-weight: 600; margin: 0; }
+.fecha-hoy { font-weight: 600; color: var(--texto); font-size: 0.92rem; }
+.dropdown-jornada { font-size: 0.8rem; font-weight: 600; color: var(--texto); border: 1px solid var(--borde);
+        background: var(--panel-alto); padding: 9px 12px; border-radius: 999px; outline: none; cursor: pointer; }
+
+.room-row { display: grid; grid-template-columns: 38px 1fr 118px; border: 1px solid var(--borde);
+        border-bottom: none; align-items: center; overflow: hidden; }
+.room-row:first-child { border-radius: 12px 12px 0 0; }
+.room-row:last-child { border-bottom: 1px solid var(--borde); border-radius: 0 0 12px 12px; }
+.room-row > div { padding: 11px 5px; text-align: center; font-size: 0.82rem; border-right: 1px solid var(--borde); }
+.r-num { font-weight: 700; background-color: var(--panel-alto); color: var(--acento); }
+.r-name { text-align: left !important; text-transform: uppercase; font-weight: 600; color: var(--texto); }
+.r-state { font-weight: 600; font-size: 0.73rem; }
+.estado-ocupada { background-color: rgba(244, 67, 54, .16); color: #ff8a80; cursor: pointer; }
+.estado-salida { background-color: rgba(255, 152, 0, .16); color: #ffd180; cursor: pointer; }
+.estado-disponible { background-color: rgba(76, 175, 80, .16); color: #a5d6a7; cursor: pointer; }
+.estado-neutro { background-color: var(--panel-alto); color: var(--apagado); }
+.estado-programada { background-color: rgba(244, 67, 54, .16); color: #ff8a80; }
+
+.leyenda { display: flex; gap: 12px; font-size: 0.7rem; justify-content: center; flex-wrap: wrap;
+        background: var(--panel-alto); border: 1px solid var(--borde); padding: 11px;
+        border-radius: 14px; font-weight: 500; margin-bottom: 15px; }
+.leyenda span { display: flex; align-items: center; gap: 5px; color: var(--texto-tenue); }
+.caja-color { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); }
+
+#barra-jornada { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+#barra-jornada .etiqueta { font-size: 0.78rem; color: var(--texto-tenue); font-weight: 500; }
+.titulo-grilla { margin: 18px 0 10px; font-size: 0.95rem; font-weight: 600; color: var(--texto);
+        background: var(--panel-alto); padding: 10px 14px; border-radius: 12px; border-left: 4px solid var(--acento); }
+.semana-scroll { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 8px; }
+.dia-columna { min-width: 142px; border: 1px solid var(--borde); border-radius: 14px; overflow: hidden; background-color: var(--panel); }
+.dia-titulo { background-color: var(--panel-alto); color: var(--texto); text-align: center; padding: 9px; font-weight: 600; font-size: 0.82rem; }
+.dia-titulo.hoy { color: var(--acento); }
+.turno-bloque { padding: 9px 5px; border-bottom: 1px solid var(--borde); font-size: 0.7rem;
+        text-align: center; color: #fff; font-weight: 600; line-height: 1.3; cursor: pointer; }
+.bg-morado { background-color: var(--morado); }
+.bg-verde { background-color: var(--verde-g); }
+.bg-fija { background-color: var(--fijo); color: #00243a; }
+.bg-satelite { background-color: var(--satelite); color: #00211D; }
+.bg-extra { background-color: var(--extra); color: #2B0716; }
+.bg-espera-otra { background-color: var(--espera); color: #9E9E9E; border: 1px dashed #D5D5D5; }
+.modelo-elegida { font-size: 13px; color: #a5f3fc; margin: 8px 0 12px; min-height: 18px; }
+.boton-peligro {
+    width: 100%; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .5);
+    color: #fca5a5; font-weight: 600; border-radius: 12px; padding: 13px; font-size: 14px;
+}
+.boton-peligro:disabled { opacity: .55; }
 </style>
 </head>
 
 <body>
 
 <main class="contenido">
-    <div class="titulo-pagina"><h1>Status Room</h1><p>Los cuartos de hoy y la semana. Solo lectura.</p></div>
-    <div id="hoy" class="cuartos"><div class="cargando"><span class="girando">◌</span></div></div>
-    <div class="leyenda">
-        <span style="--c:var(--verde)">Disponible</span><span style="--c:var(--violeta)">Ocupada</span>
-        <span style="--c:var(--ambar)">De salida</span><span style="--c:var(--rojo)">Mantenimiento</span>
+    <!-- ================= CUARTOS DE HOY ================= -->
+    <div class="card">
+        <div class="card-header">
+            <span class="fecha-hoy" id="fecha-actual">Cargando...</span>
+            <select id="filtro-jornada-hoy" class="dropdown-jornada">
+                <option value="Mañana">ROOM MAÑANA (7 AM - 1 PM)</option>
+                <option value="Tarde">ROOM TARDE (1 PM - 8 PM)</option>
+                <option value="Noche">ROOM NOCHE (8 PM - 7 AM)</option>
+            </select>
+        </div>
+        <div id="tabla-rooms"><p style="text-align:center;color:var(--apagado)">Conectando...</p></div>
     </div>
-    <div class="seccion">
-        <h2>Programación de la semana</h2>
-        <div class="dias" id="dias"></div>
-        <div class="tarjeta tabla-envoltura" id="semana"></div>
+
+    <!-- ================= STATUS SEMANAL ================= -->
+    <div class="card">
+        <div class="card-header">
+            <h2>STATUS ROOM <span id="rango-fechas" style="font-size:0.85rem; color:var(--apagado); font-weight:normal;"></span></h2>
+        </div>
+        <div class="leyenda">
+            <span><div class="caja-color" style="background:var(--verde-g);"></div> Libre</span>
+            <span><div class="caja-color" style="background:var(--morado);"></div> Ocupado</span>
+            <span><div class="caja-color" style="background:var(--fijo);"></div> Fijo</span>
+            <span><div class="caja-color" style="background:#FFF;"></div> En espera</span>
+            <span><div class="caja-color" style="background:var(--satelite);"></div> 🛰 Satélite</span>
+            <span><div class="caja-color" style="background:var(--extra);"></div> ➕ Supernumeraria</span>
+        </div>
+        <div id="barra-jornada">
+            <span class="etiqueta">Jornada:</span>
+            <select id="sel-jornada" class="dropdown-jornada">
+                <option value="Mañana">MAÑANA</option>
+                <option value="Tarde">TARDE</option>
+                <option value="Noche">NOCHE</option>
+            </select>
+        </div>
+        <div id="grillas"></div>
     </div>
 </main>
 
@@ -76,45 +145,180 @@ td .espera { color: var(--ambar); font-size: 11px; }
     const P = window.Personal;
     const esc = P.escapar;
     const $ = (id) => document.getElementById(id);
-    const estado = { datos: null, dia: '' };
+    const TOTAL_CUARTOS = 12;
+    const estado = { datos: null, modelos: null };
 
-    function pintar() {
+    // La jornada de ahora, igual que turnos.html: 7-13 mañana, 13-20 tarde, resto noche.
+    const hoy = new Date();
+    const hora = hoy.getHours();
+    const jornadaAhora = (hora >= 7 && hora < 13) ? 'Mañana' : (hora >= 13 && hora < 20) ? 'Tarde' : 'Noche';
+    $('fecha-actual').textContent = hoy.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    $('filtro-jornada-hoy').value = jornadaAhora;
+    $('sel-jornada').value = jornadaAhora;
+    (function rango() {
+        const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+        const fmt = (d) => String(d.getDate()).padStart(2, '0') + '/' + meses[d.getMonth()];
+        const inicio = new Date(hoy); inicio.setDate(hoy.getDate() - hoy.getDay());
+        const fin = new Date(inicio); fin.setDate(inicio.getDate() + 6);
+        $('rango-fechas').textContent = fmt(inicio) + ' - ' + fmt(fin);
+    })();
+
+    function perfil(nombre) { return (estado.datos.perfiles || {})[nombre] || {}; }
+    const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+    /* ------------------------------------------------- cuartos de hoy */
+    function pintarCuartos() {
         const d = estado.datos;
-        $('hoy').innerHTML = d.cuartos.map((c) =>
-            '<div class="cuarto ' + esc(c.estado) + '"><div class="num">Cuarto ' + c.numero +
-            (c.jornada ? ' · ' + esc(c.jornada) : '') + '</div><div class="quien">' + esc(c.nombre || '—') +
-            '</div><div class="est">' + esc(c.estado) + '</div></div>').join('');
-
-        if (!estado.dia) estado.dia = d.hoy;
-        $('dias').innerHTML = d.dias.map((dia) => '<button class="dia' + (dia === estado.dia ? ' activo' : '') +
-            '" data-dia="' + esc(dia) + '">' + esc(dia === d.hoy ? dia + ' (hoy)' : dia) + '</button>').join('');
-        $('dias').querySelectorAll('.dia').forEach((b) => { b.onclick = () => { estado.dia = b.dataset.dia; pintar(); }; });
-
-        const semana = d.semana[estado.dia] || {};
-        let html = '<table><thead><tr><th>Cuarto</th>' + d.jornadas.map((j) => '<th>' + esc(j) + '</th>').join('') +
-            '</tr></thead><tbody>';
-        for (let i = 0; i < 12; i++) {
-            html += '<tr><td><b>' + (i + 1) + '</b></td>' + d.jornadas.map((j) => {
-                const c = (semana[j] || [])[i] || {};
-                if (!c.nombre) return '<td class="vacio-celda">—</td>';
-                return '<td>' + esc(c.nombre) + (c.en_espera ? ' <span class="espera">(en espera)</span>' : '') + '</td>';
-            }).join('') + '</tr>';
+        const jornada = $('filtro-jornada-hoy').value;
+        let html = '';
+        if (jornada === jornadaAhora) {
+            d.cuartos.forEach((c) => {
+                let clase, texto;
+                if (c.estado === 'OCUPADA') { clase = 'estado-ocupada'; texto = 'OCUPADA'; }
+                else if (c.estado === 'DE SALIDA') { clase = 'estado-salida'; texto = 'DE SALIDA'; }
+                else if (c.estado === 'DISPONIBLE') { clase = 'estado-disponible'; texto = '＋ ASIGNAR'; }
+                else { clase = 'estado-neutro'; texto = c.estado; }
+                html += '<div class="room-row"><div class="r-num">' + c.numero + '</div><div class="r-name">' +
+                    esc(c.nombre || '') + '</div><div class="r-state ' + clase + '" data-room="' + c.numero + '">' +
+                    esc(texto) + '</div></div>';
+            });
+        } else {
+            const fila = (d.semana[d.hoy] || {})[jornada] || [];
+            for (let i = 0; i < TOTAL_CUARTOS; i++) {
+                const nom = (fila[i] || {}).nombre || '';
+                html += '<div class="room-row"><div class="r-num">' + (i + 1) + '</div><div class="r-name" style="color:' +
+                    (nom ? 'var(--texto)' : 'var(--apagado)') + '">' + esc(nom || '---') + '</div><div class="r-state ' +
+                    (nom ? 'estado-programada' : 'estado-neutro') + '">' + (nom ? 'PROGRAMADA' : 'CUPO') + '</div></div>';
+            }
         }
-        $('semana').innerHTML = html + '</tbody></table>';
+        $('tabla-rooms').innerHTML = html;
+        $('tabla-rooms').querySelectorAll('[data-room]').forEach((celda) => {
+            const c = d.cuartos.find((x) => String(x.numero) === celda.dataset.room);
+            if (c.estado === 'DISPONIBLE') celda.onclick = () => asignar('Cuarto ' + c.numero + ' · hoy · ' + jornada,
+                (cedula) => P.pedir('/api/personal/status/cuarto', 'POST', { room: c.numero, jornada: jornada, cedula: cedula }));
+            else if (c.estado === 'OCUPADA' || c.estado === 'DE SALIDA') celda.onclick = () => quitar(
+                'Cuarto ' + c.numero, c.nombre, 'Liberar el cuarto',
+                () => P.pedir('/api/personal/status/cuarto', 'POST', { room: c.numero, jornada: jornada, cedula: '' }));
+        });
+    }
+
+    /* ------------------------------------------------- grilla de la semana */
+    function pintarGrilla() {
+        const d = estado.datos;
+        const jornada = $('sel-jornada').value;
+        let html = '<div class="titulo-grilla">' + esc(jornada.toUpperCase()) + '</div><div class="semana-scroll">';
+        d.dias.forEach((dia) => {
+            html += '<div class="dia-columna"><div class="dia-titulo' + (dia === d.hoy ? ' hoy' : '') + '">' + esc(dia) + '</div>';
+            const fila = (d.semana[dia] || {})[jornada] || [];
+            for (let i = 1; i <= TOTAL_CUARTOS; i++) {
+                const cupo = fila[i - 1] || {};
+                const nombre = cupo.nombre || '';
+                const datos = 'data-dia="' + esc(dia) + '" data-room="' + i + '" data-nombre="' + esc(nombre) + '"';
+                if (!nombre) { html += '<div class="turno-bloque bg-verde" ' + datos + '>➕ DISPONIBLE</div>'; continue; }
+                const p = perfil(nombre);
+                const fija = String(p.cuarto_fijo) === String(i);
+                const satelite = norm(p.jornada) === 'satelites';
+                const extra = norm(p.jornada) === 'supernumerario';
+                const visible = (satelite ? '🛰 ' : extra ? '➕ ' : '') + esc(nombre.toUpperCase());
+                let clase = 'bg-morado', texto = visible;
+                if (cupo.en_espera) { clase = 'bg-espera-otra'; texto = visible + ' (espera)'; }
+                else if (fija) { clase = 'bg-fija'; texto = 'R' + i + ': ' + visible; }
+                else if (satelite) clase = 'bg-satelite';
+                else if (extra) clase = 'bg-extra';
+                html += '<div class="turno-bloque ' + clase + '" ' + datos + '>' + texto + '</div>';
+            }
+            html += '</div>';
+        });
+        $('grillas').innerHTML = html + '</div>';
+        $('grillas').querySelectorAll('.turno-bloque').forEach((celda) => {
+            const dia = celda.dataset.dia, room = parseInt(celda.dataset.room, 10), nombre = celda.dataset.nombre;
+            celda.onclick = nombre
+                ? () => quitar('Cuarto ' + room + ' · ' + dia + ' · ' + jornada, nombre, 'Vaciar este cupo',
+                    () => P.pedir('/api/personal/status/cupo', 'POST', { dia: dia, jornada: jornada, room: room, cedula: '' }))
+                : () => asignar('Cuarto ' + room + ' · ' + dia + ' · ' + jornada,
+                    (cedula) => P.pedir('/api/personal/status/cupo', 'POST', { dia: dia, jornada: jornada, room: room, cedula: cedula }));
+        });
+    }
+
+    /* ------------------------------------------------------------- hojas */
+    function hoja(titulo, cuerpo) {
+        const capas = $('capas-personal');
+        capas.innerHTML = '<div class="velo"></div><div class="hoja"><div class="hoja-cabecera"><h3>' + esc(titulo) +
+            '</h3><button class="cerrar">✕</button></div><div class="hoja-cuerpo">' + cuerpo + '</div></div>';
+        const cerrar = () => { capas.innerHTML = ''; };
+        capas.querySelector('.velo').onclick = cerrar;
+        capas.querySelector('.cerrar').onclick = cerrar;
+        return { capas: capas, cerrar: cerrar };
+    }
+
+    async function asignar(titulo, guardar) {
+        let elegida = null;
+        const h = hoja(titulo, '<div class="campo"><label>¿Qué modelo va aquí?</label><div id="s-modelos">' +
+            '<div class="cargando"><span class="girando">◌</span></div></div></div>' +
+            '<div class="modelo-elegida" id="s-elegida"></div>' +
+            '<button class="boton-principal" id="s-guardar">Asignar</button>');
+        $('s-guardar').onclick = async () => {
+            if (!elegida) { P.avisar('Elige la modelo.', 'malo'); return; }
+            const boton = $('s-guardar');
+            boton.disabled = true;
+            boton.textContent = 'Guardando…';
+            try {
+                const r = await guardar(elegida.cedula);
+                h.cerrar();
+                P.avisar(r.mensaje, 'bueno');
+            } catch (error) {
+                P.avisar(error.message, 'malo');
+                boton.disabled = false;
+                boton.textContent = 'Asignar';
+            }
+            cargar();
+        };
+        try {
+            if (!estado.modelos) estado.modelos = (await P.pedir('/api/personal/status/modelos')).modelos || [];
+            const caja = $('s-modelos');
+            if (!caja) return;
+            P.selectorModelos(caja, estado.modelos, (m) => {
+                elegida = m;
+                $('s-elegida').textContent = '✓ ' + m.nombre + (m.jornada ? ' · ' + m.jornada : '');
+            });
+        } catch (error) {
+            const caja = $('s-modelos');
+            if (caja) caja.innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
+        }
+    }
+
+    function quitar(titulo, nombre, accion, guardar) {
+        const h = hoja(titulo, '<p style="margin:0 0 16px;font-size:14px">Está <b>' + esc(nombre) + '</b>.</p>' +
+            '<button class="boton-peligro" id="s-quitar">' + esc(accion) + '</button>');
+        $('s-quitar').onclick = async () => {
+            const boton = $('s-quitar');
+            boton.disabled = true;
+            try {
+                const r = await guardar();
+                h.cerrar();
+                P.avisar(r.mensaje, 'bueno');
+            } catch (error) { P.avisar(error.message, 'malo'); boton.disabled = false; }
+            cargar();
+        };
     }
 
     async function cargar() {
         try {
             estado.datos = await P.pedir('/api/personal/status');
-            pintar();
+            pintarCuartos();
+            pintarGrilla();
         } catch (error) {
-            if (!estado.datos) $('hoy').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
+            if (!estado.datos) $('tabla-rooms').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
         }
     }
 
     P.iniciar('status').then(() => {
+        $('filtro-jornada-hoy').onchange = pintarCuartos;
+        $('sel-jornada').onchange = pintarGrilla;
         cargar();
-        setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 20000);
+        setInterval(() => {
+            if (document.visibilityState === 'visible' && !$('capas-personal').innerHTML) cargar();
+        }, 30000);
     });
 })();
 </script>
