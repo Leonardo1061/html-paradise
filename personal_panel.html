@@ -76,12 +76,15 @@
         $('subtitulo').textContent = (yo.texto_roles || 'Sin rol') +
             (yo.jornada && yo.jornada !== 'Todas' ? ' · Jornada ' + yo.jornada : '');
         const modulos = yo.modulos || [];
-        let resumen, chats = null;
+        let resumen, chats = null, privado = null;
         try {
-            [resumen, chats] = await Promise.all([
+            [resumen, chats, privado] = await Promise.all([
                 P.pedir('/api/personal/resumen'),
                 modulos.indexOf('chat') >= 0
                     ? P.pedir('/api/personal/chat/conversaciones?limite=150').catch(() => null)
+                    : Promise.resolve(null),
+                modulos.indexOf('chat') >= 0
+                    ? P.pedir('/api/personal/privado').catch(() => null)
                     : Promise.resolve(null),
             ]);
         } catch (error) {
@@ -97,7 +100,11 @@
             resumen.tareas.sin_leer ? resumen.tareas.sin_leer + ' sin leer' : 'Al día', P.abrirCampana));
 
         // Los chats sin responder viven en CHAT; aquí solo se enciende su globo.
-        if (chats) P.globoChat((chats.conversaciones || []).filter((c) => c.esperando).length);
+        // ... y suma los chats privados del personal con algo sin leer.
+        if (chats || privado) {
+            P.globoChat((chats ? (chats.conversaciones || []).filter((c) => c.esperando).length : 0) +
+                        (privado ? privado.sin_leer || 0 : 0));
+        }
 
         if (resumen.fotografia) {
             const hoy = resumen.fotografia.hoy || [];
