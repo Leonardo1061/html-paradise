@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Chat personal · PARADISE</title>
+
+<!--
+  CHAT DEL PERSONAL ADMINISTRATIVO
+  ================================
+  La misma conversación que el chat del escritorio del monitor
+  (Chats/{cedula}/Mensajes), con sus mismas reglas: Soporte para los
+  monitores de jornada, el chat de cada rol para quien tiene ese rol, y
+  Tropic Studio solo para quien le toca. El componente vive en
+  js/chat_personal.js; las burbujas usan css/chat.css, como el de las modelos.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+<link rel="stylesheet" href="css/chat.css">
+
+<style>
+body { padding-bottom: 120px; }
+.buscador {
+    flex: 1; min-width: 160px; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 11px; padding: 9px 12px; color: var(--texto); font-size: 14px; outline: none;
+}
+.buscador:focus { border-color: var(--cian); }
+.lista-conv { padding: 4px 14px; }
+.fila.conv { cursor: pointer; }
+.punto { width: 9px; height: 9px; border-radius: 50%; flex: none; background: transparent; }
+.punto.encendido { background: var(--rojo); box-shadow: 0 0 0 3px rgba(239, 68, 68, .18); }
+
+.cabeza-conv {
+    display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 6;
+    background: var(--fondo); padding: 4px 0 10px;
+}
+.quien-conv .nombre { font-size: 16px; font-weight: 600; }
+.quien-conv .jornada { font-size: 12px; color: var(--tenue); }
+
+/* La conversación lleva su caja de texto encima de la barra de abajo. */
+.chat-lista { padding-bottom: 130px; }
+.fila-canal {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; color: var(--tenue);
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 14px; padding: 6px 10px;
+}
+.fila-canal select {
+    flex: 1; background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 9px; padding: 6px 8px; font-size: 13px;
+}
+.chat-barra .chat-enviar { background: var(--degradado); color: #fff; }
+</style>
+</head>
+
+<body>
+
+<main class="contenido" id="chat"></main>
+
+<script src="js/config.js"></script>
+<script src="js/personal.js"></script>
+<script src="js/chat_personal.js"></script>
+<script>
+Personal.iniciar('chat').then(() => ChatPersonal.montar(document.getElementById('chat')));
+</script>
+</body>
+</html>

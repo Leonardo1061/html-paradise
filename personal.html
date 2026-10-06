@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Acceso personal · PARADISE</title>
+
+<!--
+  ACCESO DEL PERSONAL ADMINISTRATIVO
+  ==================================
+  Las MISMAS cuentas del programa de escritorio del monitor (1.PARADISE_ADMIN):
+  el usuario es el nombre con el que aparece en «Monitor» y la contraseña es
+  la misma. Se crean y se cambian en el BackOffice del escritorio, no aquí.
+
+  Esta página no publica la lista de nombres (el escritorio la muestra en un
+  desplegable porque está dentro del estudio; esta web es pública): se
+  escribe el usuario, sin importar mayúsculas ni tildes.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+
+<style>
+body {
+    display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    padding: 22px; background-image: radial-gradient(circle at 20% 0%, rgba(6, 182, 212, .16) 0%, rgba(10,10,11,0) 55%);
+}
+.caja {
+    width: 100%; max-width: 380px; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: 22px; padding: 30px 24px 26px; box-shadow: 0 26px 60px rgba(0, 0, 0, .55);
+}
+.caja .marca { width: 54px; height: 54px; border-radius: 17px; margin: 0 auto 16px; font-size: 25px; }
+h1 { margin: 0; font-size: 21px; font-weight: 700; text-align: center; }
+.sub { margin: 5px 0 24px; font-size: 12px; color: var(--tenue); text-align: center;
+       letter-spacing: 1.6px; text-transform: uppercase; }
+.campo input { font-size: 16px; padding: 14px; border-radius: 13px; }
+.ayuda { font-size: 11.5px; color: var(--apagado); margin-top: 7px; line-height: 1.45; }
+.error {
+    display: none; margin-top: 16px; font-size: 13.5px; line-height: 1.45;
+    background: rgba(239, 68, 68, .1); border: 1px solid rgba(239, 68, 68, .45);
+    border-radius: 12px; padding: 12px 13px; color: #fecaca;
+}
+.otro { display: block; text-align: center; margin-top: 18px; font-size: 12.5px; color: var(--tenue); }
+.otro a { color: #a5f3fc; }
+</style>
+</head>
+
+<body>
+
+<div class="caja">
+    <div class="marca">P</div>
+    <h1>Acceso personal</h1>
+    <p class="sub">Equipo administrativo</p>
+
+    <form id="formulario">
+        <div class="campo">
+            <label for="usuario">Usuario</label>
+            <input id="usuario" autocomplete="username" autocapitalize="words"
+                   placeholder="Tu nombre de monitor" required>
+        </div>
+        <div class="campo">
+            <label for="password">Contraseña</label>
+            <input id="password" type="password" autocomplete="current-password" placeholder="••••" required>
+            <div class="ayuda">Son el mismo usuario y la misma contraseña del programa
+                de escritorio (PARADISE ADMIN).</div>
+        </div>
+        <button type="submit" class="boton-principal" id="btn-entrar">Ingresar</button>
+        <div class="error" id="error"></div>
+    </form>
+    <span class="otro">¿Eres modelo? <a href="index.html">Entra aquí</a></span>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+(function () {
+    'use strict';
+    const API_URL = PARADISE.API_URL;
+    if (localStorage.getItem('token_personal')) { window.location.href = 'personal_panel.html'; return; }
+
+    document.getElementById('formulario').addEventListener('submit', async function (evento) {
+        evento.preventDefault();
+        const boton = document.getElementById('btn-entrar');
+        const error = document.getElementById('error');
+        error.style.display = 'none';
+        boton.disabled = true;
+        boton.textContent = 'Verificando…';
+        try {
+            const respuesta = await fetch(API_URL + '/api/personal/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    usuario: document.getElementById('usuario').value.trim(),
+                    password: document.getElementById('password').value,
+                }),
+            });
+            const datos = await respuesta.json().catch(() => ({}));
+            if (!respuesta.ok) throw new Error(datos.detail || 'No se pudo iniciar sesión.');
+            localStorage.setItem('token_personal', datos.token);
+            const ficha = Object.assign({}, datos);
+            delete ficha.token;
+            localStorage.setItem('ficha_personal', JSON.stringify(ficha));
+            boton.textContent = '¡Bienvenido!';
+            window.location.href = 'personal_panel.html';
+        } catch (fallo) {
+            error.textContent = fallo instanceof TypeError
+                ? 'No hay conexión con el servidor. Inténtalo otra vez.' : fallo.message;
+            error.style.display = 'block';
+            boton.disabled = false;
+            boton.textContent = 'Ingresar';
+        }
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Fotografía personal · PARADISE</title>
+
+<!--
+  FOTOGRAFÍA PARA EL PERSONAL
+  ===========================
+  La malla del fotógrafo como la ve el escritorio del monitor: quién viene a
+  cada bloque, el asunto, su celular y las fotos de referencia que adjuntó.
+  Se marca Asistió / No Asistió. Misma colección (Agenda_Fotografia).
+  Las sesiones de modelos de Tropic salen «Ocupado», sin nombre, para quien
+  no ve Tropic. La malla se vuelve a pedir cada 30 s con la página a la vista.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+
+<style>
+.semana { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.semana .etiqueta { flex: 1; text-align: center; font-weight: 600; font-size: 14px; }
+.dias { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none; }
+.dias::-webkit-scrollbar { display: none; }
+.dia {
+    flex: none; background: var(--panel); border: 1px solid var(--borde); color: var(--tenue);
+    border-radius: 14px; padding: 8px 13px; font-size: 13px; font-weight: 600; text-align: center;
+}
+.dia small { display: block; font-size: 11px; font-weight: 500; }
+.dia.activo { background: var(--degradado); color: #fff; border-color: transparent; }
+.dia.hoy:not(.activo) { border-color: var(--cian); color: #a5f3fc; }
+
+.bloque { display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid var(--borde); align-items: flex-start; }
+.bloque:first-child { border-top: 0; }
+.bloque .hora { width: 92px; flex: none; font-size: 12.5px; color: var(--tenue); }
+.bloque .hora b { display: block; color: var(--texto); font-size: 13.5px; }
+.bloque .cuerpo { flex: 1; min-width: 0; font-size: 14px; }
+.bloque.libre .cuerpo { color: var(--apagado); }
+.bloque.pasado { opacity: .62; }
+.bloque .nombre { font-weight: 600; }
+.bloque .asunto { font-size: 13px; color: var(--tenue); margin-top: 2px; }
+.bloque .botones { margin-top: 8px; }
+.bloque .boton-secundario.elegido { background: var(--degradado); border-color: transparent; color: #fff; }
+.tel { color: #a5f3fc; text-decoration: none; font-size: 12.5px; }
+</style>
+</head>
+
+<body>
+
+<main class="contenido">
+    <div class="titulo-pagina"><h1>Fotografía</h1><p>La malla del fotógrafo, de lunes a sábado.</p></div>
+    <div class="semana">
+        <button class="redondo" id="anterior" title="Semana anterior">‹</button>
+        <div class="etiqueta" id="etiqueta">—</div>
+        <button class="redondo" id="siguiente" title="Semana siguiente">›</button>
+    </div>
+    <div class="dias" id="dias"></div>
+    <div class="tarjeta" id="malla"><div class="cargando"><span class="girando">◌</span></div></div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/personal.js"></script>
+<script>
+(function () {
+    'use strict';
+    const P = window.Personal;
+    const esc = P.escapar;
+    const $ = (id) => document.getElementById(id);
+    const estado = { indice: 0, datos: null, dia: '', cargando: false };
+
+    function claseEstado(e) { return e === 'Asistió' ? 'bien' : e === 'No Asistió' ? 'urgente' : 'cian'; }
+
+    function pintar() {
+        const datos = estado.datos;
+        if (!datos) return;
+        $('etiqueta').textContent = datos.etiqueta;
+        $('anterior').disabled = estado.indice <= datos.min_indice;
+        $('siguiente').disabled = estado.indice >= datos.max_indice;
+        if (!datos.dias.some((d) => d.fecha === estado.dia)) {
+            const hoy = datos.dias.find((d) => d.es_hoy);
+            estado.dia = (hoy || datos.dias[0]).fecha;
+        }
+        $('dias').innerHTML = datos.dias.map((d) => {
+            const reservas = d.bloques.filter((b) => b.estado !== 'libre').length;
+            return '<button class="dia' + (d.fecha === estado.dia ? ' activo' : '') + (d.es_hoy ? ' hoy' : '') +
+                '" data-fecha="' + d.fecha + '">' + esc(d.etiqueta) + '<small>' +
+                (reservas ? reservas + ' sesión' + (reservas === 1 ? '' : 'es') : 'libre') + '</small></button>';
+        }).join('');
+        $('dias').querySelectorAll('.dia').forEach((b) => { b.onclick = () => { estado.dia = b.dataset.fecha; pintar(); }; });
+
+        const dia = datos.dias.find((d) => d.fecha === estado.dia);
+        const malla = $('malla');
+        malla.innerHTML = '';
+        dia.bloques.forEach((b) => malla.appendChild(bloque(dia, b)));
+    }
+
+    function bloque(dia, b) {
+        const fila = document.createElement('div');
+        fila.className = 'bloque ' + b.estado + (b.pasado ? ' pasado' : '');
+        let cuerpo;
+        if (b.estado === 'libre') cuerpo = 'Libre';
+        else if (b.estado === 'ocupado') cuerpo = '<span class="pildora">Ocupado</span>';
+        else {
+            cuerpo = '<div class="nombre">' + esc(b.nombre || b.asunto || 'Reservado') + ' ' +
+                '<span class="pildora ' + claseEstado(b.estado_sesion) + '">' + esc(b.estado_sesion) + '</span></div>' +
+                (b.asunto && b.nombre ? '<div class="asunto">' + esc(b.asunto) + '</div>' : '') +
+                (b.celular ? '<a class="tel" href="tel:' + esc(b.celular) + '">📞 ' + esc(b.celular) + '</a>' : '') +
+                '<div class="botones"></div>';
+        }
+        fila.innerHTML = '<div class="hora"><b>' + esc(b.rango.split(' – ')[0]) + '</b>' + esc(b.sede.replace('SEDE ', '')) +
+            '</div><div class="cuerpo">' + cuerpo + '</div>';
+        if (b.estado === 'reservado') {
+            const botones = fila.querySelector('.botones');
+            (estado.datos.estados || []).forEach((e) => {
+                const boton = document.createElement('button');
+                boton.className = 'boton-secundario' + (e === b.estado_sesion ? ' elegido' : '');
+                boton.textContent = e;
+                boton.disabled = e === b.estado_sesion;
+                boton.onclick = async () => {
+                    boton.disabled = true;
+                    try {
+                        const r = await P.pedir('/api/personal/fotografia/estado', 'POST',
+                            { fecha: dia.fecha, hora_inicio: b.hora_inicio, estado: e });
+                        P.avisar(r.mensaje, 'bueno');
+                        b.estado_sesion = e;
+                        pintar();
+                    } catch (error) { P.avisar(error.message, 'malo'); boton.disabled = false; }
+                };
+                botones.appendChild(boton);
+            });
+            if (b.referencias) {
+                const ver = document.createElement('button');
+                ver.className = 'boton-secundario';
+                ver.textContent = '🖼️ Referencias (' + b.referencias + ')';
+                ver.onclick = async () => {
+                    ver.disabled = true;
+                    try {
+                        const r = await P.pedir('/api/personal/fotografia/referencias/' + encodeURIComponent(b.id));
+                        const mini = document.createElement('div');
+                        mini.className = 'miniaturas';
+                        (r.fotos || []).forEach((f) => {
+                            const img = document.createElement('img');
+                            img.src = P.aDataUrl(f);
+                            img.onclick = () => P.abrirVisor(img.src);
+                            mini.appendChild(img);
+                        });
+                        ver.replaceWith(mini);
+                    } catch (error) { P.avisar(error.message, 'malo'); ver.disabled = false; }
+                };
+                botones.appendChild(ver);
+            }
+        }
+        return fila;
+    }
+
+    async function cargar(silencioso) {
+        if (estado.cargando) return;
+        estado.cargando = true;
+        if (!silencioso) $('malla').innerHTML = '<div class="cargando"><span class="girando">◌</span></div>';
+        try {
+            estado.datos = await P.pedir('/api/personal/fotografia/semana?indice=' + estado.indice);
+            pintar();
+        } catch (error) {
+            if (!silencioso) $('malla').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
+        } finally {
+            estado.cargando = false;
+        }
+    }
+
+    P.iniciar('fotografia').then(() => {
+        $('anterior').onclick = () => { estado.indice--; estado.dia = ''; cargar(); };
+        $('siguiente').onclick = () => { estado.indice++; estado.dia = ''; cargar(); };
+        cargar();
+        setInterval(() => { if (document.visibilityState === 'visible') cargar(true); }, 30000);
+    });
+})();
+</script>
+</body>
+</html>

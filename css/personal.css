@@ -1,0 +1,184 @@
+/* ===========================================================================
+ * PARADISE · Web del personal administrativo (personal*.html)
+ * ===========================================================================
+ * Mismo aspecto que la web de las modelos, con el acento en cian para que
+ * nadie confunda en qué web está. El chat reutiliza css/chat.css.
+ */
+
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141318;
+    --panel-alto: #1b1a22;
+    --borde:      #2a2932;
+    --texto:      #f4f4f5;
+    --tenue:      #9b9ba3;
+    --apagado:    #6b6b73;
+
+    --cian:       #06b6d4;
+    --soft:       #22d3ee;      /* el nombre del autor en css/chat.css */
+    --violeta:    #8b5cf6;
+    --magenta:    #d946ef;
+    --verde:      #34d399;
+    --rojo:       #ef4444;
+    --ambar:      #fbbf24;
+
+    --degradado: linear-gradient(90deg, #06b6d4 0%, #8b5cf6 100%);
+    --radio: 18px;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased; padding-bottom: 110px;
+}
+button, input, select, textarea { font-family: inherit; }
+button { cursor: pointer; }
+.oculto { display: none !important; }
+
+/* ------------------------------------------------------------------ barra */
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 980px; margin: 0 auto; }
+.marca {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; flex: none;
+    background: var(--degradado); font-size: 19px; font-weight: 700; color: #fff;
+    box-shadow: 0 8px 20px rgba(6, 182, 212, .3);
+}
+.barra .quien { min-width: 0; }
+.barra .quien .nombre { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.barra .quien .roles { font-size: 11px; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.barra .derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+.redondo {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    font-size: 16px; position: relative;
+}
+.globo {
+    position: absolute; top: -5px; right: -5px; min-width: 19px; height: 19px;
+    border-radius: 999px; background: var(--rojo); color: #fff; font-size: 11px;
+    font-weight: 700; display: grid; place-items: center; padding: 0 5px;
+    border: 2px solid var(--fondo);
+}
+
+.contenido { padding: 6px 18px 0; max-width: 980px; margin: 0 auto; }
+.titulo-pagina { margin: 4px 0 14px; }
+.titulo-pagina h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.3px; }
+.titulo-pagina p { margin: 3px 0 0; font-size: 13px; color: var(--tenue); }
+
+/* ------------------------------------------------------------- tarjetas */
+.tarjeta { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 16px; }
+.rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.dato .rotulo { font-size: 13px; color: var(--tenue); }
+.dato .cifra { font-size: 26px; font-weight: 700; margin-top: 6px; line-height: 1.1; }
+.dato .pie { font-size: 12px; margin-top: 8px; color: var(--tenue); }
+.dato.clic { cursor: pointer; }
+.dato.clic:hover { border-color: #3b3a45; }
+.seccion { margin-top: 18px; }
+.seccion h2 { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
+.fila {
+    display: flex; align-items: center; gap: 12px; padding: 11px 0;
+    border-top: 1px solid var(--borde); font-size: 14px;
+}
+.fila:first-child { border-top: 0; }
+.fila .principal { flex: 1; min-width: 0; }
+.fila .principal .linea1 { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fila .principal .linea2 { font-size: 12.5px; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fila .lado { font-size: 12px; color: var(--tenue); flex: none; text-align: right; }
+.vacio { color: var(--apagado); font-size: 13.5px; text-align: center; padding: 22px 8px; line-height: 1.5; }
+
+.pildora {
+    display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--tenue); white-space: nowrap;
+}
+.pildora.urgente { background: rgba(239, 68, 68, .14); border-color: rgba(239, 68, 68, .5); color: #fecaca; }
+.pildora.alta { background: rgba(251, 191, 36, .12); border-color: rgba(251, 191, 36, .45); color: #fde68a; }
+.pildora.bien { background: rgba(52, 211, 153, .12); border-color: rgba(52, 211, 153, .45); color: #a7f3d0; }
+.pildora.cian { background: rgba(6, 182, 212, .12); border-color: rgba(6, 182, 212, .45); color: #a5f3fc; }
+
+/* --------------------------------------------------------- barra inferior */
+.navegacion {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 30; background: var(--degradado); border-radius: 20px;
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(6, 182, 212, .32);
+}
+@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 460px; } }
+.navegacion button {
+    flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .8);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 9px; font-weight: 600; letter-spacing: -.2px; padding: 4px 0; white-space: nowrap;
+    position: relative;
+}
+.navegacion button .simbolo { font-size: 19px; line-height: 1; }
+.navegacion button.activo { color: #fff; }
+.navegacion button.activo .simbolo { background: rgba(255, 255, 255, .2); border-radius: 10px; padding: 4px 10px; }
+.navegacion .globo { top: -4px; right: calc(50% - 26px); border-color: transparent; }
+
+/* ------------------------------------------------------------- formularios */
+.campo { margin-bottom: 14px; }
+.campo label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 6px; }
+.campo input, .campo select, .campo textarea {
+    width: 100%; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 12px 13px; color: var(--texto); font-size: 15px; outline: none;
+}
+.campo textarea { resize: vertical; min-height: 84px; }
+.campo input:focus, .campo select:focus, .campo textarea:focus { border-color: var(--cian); }
+.boton-principal {
+    width: 100%; background: var(--degradado); border: 0; color: #fff; font-weight: 600;
+    border-radius: 12px; padding: 14px; font-size: 15px;
+}
+.boton-principal:disabled { opacity: .6; cursor: default; }
+.boton-secundario {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 11px; padding: 9px 13px; font-size: 13px; font-weight: 600;
+}
+.boton-secundario:disabled { opacity: .5; cursor: default; }
+.botones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ------------------------------------------------------------------ hoja */
+.velo { position: fixed; inset: 0; background: rgba(0, 0, 0, .66); backdrop-filter: blur(3px); z-index: 40; }
+.hoja {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--panel);
+    border-top: 1px solid var(--borde); border-radius: 22px 22px 0 0; max-height: 92vh;
+    display: flex; flex-direction: column;
+}
+@media (min-width: 760px) { .hoja { left: 50%; transform: translateX(-50%); width: 560px; } }
+.hoja-cabecera { padding: 16px; border-bottom: 1px solid var(--borde); display: flex; gap: 10px; align-items: center; }
+.hoja-cabecera h3 { margin: 0; font-size: 17px; flex: 1; }
+.hoja-cuerpo { padding: 16px; overflow-y: auto; }
+.cerrar { background: none; border: 0; color: var(--tenue); font-size: 22px; padding: 4px 6px; }
+.pestanas { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+.pestana {
+    flex: none; background: var(--panel-alto); border: 1px solid var(--borde); color: var(--tenue);
+    border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+}
+.pestana.activa { background: var(--degradado); color: #fff; border-color: transparent; }
+
+.tarea { border: 1px solid var(--borde); border-radius: 14px; padding: 13px; margin-bottom: 10px; background: var(--panel-alto); }
+.tarea.nueva { border-color: rgba(6, 182, 212, .6); }
+.tarea .cabeza { display: flex; gap: 8px; align-items: flex-start; }
+.tarea .cabeza .t { flex: 1; font-weight: 600; font-size: 14.5px; }
+.tarea .meta { font-size: 12px; color: var(--tenue); margin-top: 4px; }
+.tarea .desc { font-size: 13.5px; margin-top: 8px; white-space: pre-wrap; line-height: 1.45; }
+.tarea .botones { margin-top: 10px; }
+.miniaturas { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.miniaturas img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; cursor: zoom-in; border: 1px solid var(--borde); }
+.miniaturas .quitar-img { position: relative; }
+.miniaturas .quitar-img button {
+    position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%;
+    border: 0; background: var(--rojo); color: #fff; font-size: 12px; line-height: 22px; padding: 0;
+}
+
+.visor { position: fixed; inset: 0; z-index: 95; background: rgba(0, 0, 0, .92); display: grid; place-items: center; padding: 16px; cursor: zoom-out; }
+.visor img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+
+.aviso {
+    position: fixed; left: 16px; right: 16px; bottom: 100px; z-index: 90;
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 13px 15px; font-size: 14px; line-height: 1.4; box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+}
+.aviso.malo { border-color: rgba(239, 68, 68, .55); }
+.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+@media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
+
+.cargando { text-align: center; color: var(--apagado); padding: 50px 0; font-size: 14px; }
+.girando { display: inline-block; animation: giro 1s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }

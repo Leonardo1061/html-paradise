@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Status Room personal · PARADISE</title>
+
+<!--
+  STATUS ROOM PARA EL PERSONAL
+  ============================
+  Los 12 cuartos de hoy (Estado_Estudio/Cuartos_Hoy) y quién tiene cada
+  cuarto en cada jornada de la semana (Semana_Actual). Solo lectura: asignar,
+  liberar o poner en mantenimiento se sigue haciendo desde CUARTOS en el
+  escritorio. Igual que allá, el monitor asignado a Tropic Studio no tiene
+  este módulo. Se vuelve a pedir cada 20 s con la página a la vista.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+
+<style>
+.cuartos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.cuarto { border-radius: 14px; padding: 12px; background: var(--panel); border: 1px solid var(--borde); border-left-width: 4px; }
+.cuarto .num { font-size: 12px; color: var(--tenue); font-weight: 600; }
+.cuarto .quien { font-size: 14px; font-weight: 600; margin-top: 4px; min-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cuarto .est { font-size: 11px; margin-top: 4px; color: var(--tenue); }
+.cuarto.DISPONIBLE { border-left-color: var(--verde); }
+.cuarto.OCUPADA { border-left-color: var(--violeta); }
+.cuarto.DE.SALIDA, .cuarto.SALIDA { border-left-color: var(--ambar); }
+.cuarto.MANTENIMIENTO { border-left-color: var(--rojo); }
+.leyenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--tenue); margin: 10px 0 0; }
+.leyenda span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; background: var(--c); }
+
+.dias { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 12px; scrollbar-width: none; }
+.dias::-webkit-scrollbar { display: none; }
+.dia {
+    flex: none; background: var(--panel); border: 1px solid var(--borde); color: var(--tenue);
+    border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600;
+}
+.dia.activo { background: var(--degradado); color: #fff; border-color: transparent; }
+.tabla-envoltura { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 420px; }
+th, td { border-top: 1px solid var(--borde); padding: 8px 6px; text-align: left; }
+th { color: var(--tenue); font-weight: 600; font-size: 12px; }
+td.vacio-celda { color: var(--apagado); }
+td .espera { color: var(--ambar); font-size: 11px; }
+</style>
+</head>
+
+<body>
+
+<main class="contenido">
+    <div class="titulo-pagina"><h1>Status Room</h1><p>Los cuartos de hoy y la semana. Solo lectura.</p></div>
+    <div id="hoy" class="cuartos"><div class="cargando"><span class="girando">◌</span></div></div>
+    <div class="leyenda">
+        <span style="--c:var(--verde)">Disponible</span><span style="--c:var(--violeta)">Ocupada</span>
+        <span style="--c:var(--ambar)">De salida</span><span style="--c:var(--rojo)">Mantenimiento</span>
+    </div>
+    <div class="seccion">
+        <h2>Programación de la semana</h2>
+        <div class="dias" id="dias"></div>
+        <div class="tarjeta tabla-envoltura" id="semana"></div>
+    </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/personal.js"></script>
+<script>
+(function () {
+    'use strict';
+    const P = window.Personal;
+    const esc = P.escapar;
+    const $ = (id) => document.getElementById(id);
+    const estado = { datos: null, dia: '' };
+
+    function pintar() {
+        const d = estado.datos;
+        $('hoy').innerHTML = d.cuartos.map((c) =>
+            '<div class="cuarto ' + esc(c.estado) + '"><div class="num">Cuarto ' + c.numero +
+            (c.jornada ? ' · ' + esc(c.jornada) : '') + '</div><div class="quien">' + esc(c.nombre || '—') +
+            '</div><div class="est">' + esc(c.estado) + '</div></div>').join('');
+
+        if (!estado.dia) estado.dia = d.hoy;
+        $('dias').innerHTML = d.dias.map((dia) => '<button class="dia' + (dia === estado.dia ? ' activo' : '') +
+            '" data-dia="' + esc(dia) + '">' + esc(dia === d.hoy ? dia + ' (hoy)' : dia) + '</button>').join('');
+        $('dias').querySelectorAll('.dia').forEach((b) => { b.onclick = () => { estado.dia = b.dataset.dia; pintar(); }; });
+
+        const semana = d.semana[estado.dia] || {};
+        let html = '<table><thead><tr><th>Cuarto</th>' + d.jornadas.map((j) => '<th>' + esc(j) + '</th>').join('') +
+            '</tr></thead><tbody>';
+        for (let i = 0; i < 12; i++) {
+            html += '<tr><td><b>' + (i + 1) + '</b></td>' + d.jornadas.map((j) => {
+                const c = (semana[j] || [])[i] || {};
+                if (!c.nombre) return '<td class="vacio-celda">—</td>';
+                return '<td>' + esc(c.nombre) + (c.en_espera ? ' <span class="espera">(en espera)</span>' : '') + '</td>';
+            }).join('') + '</tr>';
+        }
+        $('semana').innerHTML = html + '</tbody></table>';
+    }
+
+    async function cargar() {
+        try {
+            estado.datos = await P.pedir('/api/personal/status');
+            pintar();
+        } catch (error) {
+            if (!estado.datos) $('hoy').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
+        }
+    }
+
+    P.iniciar('status').then(() => {
+        cargar();
+        setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 20000);
+    });
+})();
+</script>
+</body>
+</html>

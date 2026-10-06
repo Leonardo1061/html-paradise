@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Inicio personal · PARADISE</title>
+
+<!--
+  INICIO DEL PERSONAL ADMINISTRATIVO
+  ==================================
+  Lo que le toca hoy a quien ha entrado: sus tareas (la campana 🔔), los
+  chats que esperan respuesta, las sesiones de fotos del día y cómo están
+  los cuartos. Cada número sale de la API (/api/personal/resumen y
+  /api/personal/chat/conversaciones) con las reglas del escritorio: a cada
+  uno le salen solo los chats y las modelos que su rol le deja ver.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+</head>
+
+<body>
+
+<main class="contenido">
+    <div class="titulo-pagina">
+        <h1 id="saludo">Hola</h1>
+        <p id="subtitulo">Esto es lo que tienes hoy.</p>
+    </div>
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
+    <div id="tablero" class="oculto">
+        <div class="rejilla" id="datos"></div>
+        <div class="seccion tarjeta oculto" id="sec-chats"><h2>💬 Esperando respuesta</h2><div id="lista-chats"></div></div>
+        <div class="seccion tarjeta" id="sec-tareas"><h2>🔔 Tus tareas</h2><div id="lista-tareas"></div></div>
+        <div class="seccion tarjeta oculto" id="sec-fotos"><h2>📷 Fotos de hoy</h2><div id="lista-fotos"></div></div>
+    </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/personal.js"></script>
+<script>
+(function () {
+    'use strict';
+    const P = window.Personal;
+    const $ = (id) => document.getElementById(id);
+    const esc = P.escapar;
+
+    function dato(rotulo, cifra, pie, alPulsar) {
+        const caja = document.createElement('div');
+        caja.className = 'tarjeta dato' + (alPulsar ? ' clic' : '');
+        caja.innerHTML = '<div class="rotulo">' + esc(rotulo) + '</div><div class="cifra">' + esc(cifra) +
+            '</div><div class="pie">' + esc(pie || '') + '</div>';
+        if (alPulsar) caja.onclick = alPulsar;
+        return caja;
+    }
+
+    function pintarTareas(tareas) {
+        const lista = $('lista-tareas');
+        if (!tareas.length) { lista.innerHTML = '<div class="vacio">No tienes tareas pendientes. 🎉</div>'; return; }
+        lista.innerHTML = tareas.slice(0, 5).map((t) =>
+            '<div class="fila"><div class="principal"><div class="linea1">' + esc(t.titulo) + '</div>' +
+            '<div class="linea2">De ' + esc(t.creada_por) + (t.creada ? ' · ' + esc(t.creada) : '') + '</div></div>' +
+            '<div class="lado"><span class="pildora ' + (t.prioridad === 'Urgente' ? 'urgente' : t.prioridad === 'Alta' ? 'alta' : '') + '">' +
+            esc(t.prioridad) + '</span></div></div>').join('') +
+            '<div class="botones" style="margin-top:10px"><button class="boton-secundario" id="ver-tareas">Abrir la campana</button></div>';
+        $('ver-tareas').onclick = P.abrirCampana;
+    }
+
+    P.iniciar('inicio').then(async (yo) => {
+        // La campana llega por su lado (personal.js): se escucha desde ya.
+        document.addEventListener('personal:tareas', (e) => pintarTareas(e.detail || []));
+        $('saludo').textContent = 'Hola, ' + (yo.monitor || '').split(' ')[0];
+        $('subtitulo').textContent = (yo.texto_roles || 'Sin rol') +
+            (yo.jornada && yo.jornada !== 'Todas' ? ' · Jornada ' + yo.jornada : '');
+        const modulos = yo.modulos || [];
+        let resumen, chats = null;
+        try {
+            [resumen, chats] = await Promise.all([
+                P.pedir('/api/personal/resumen'),
+                modulos.indexOf('chat') >= 0
+                    ? P.pedir('/api/personal/chat/conversaciones?limite=150').catch(() => null)
+                    : Promise.resolve(null),
+            ]);
+        } catch (error) {
+            $('cargando').innerHTML = esc(error.message);
+            return;
+        }
+        $('cargando').classList.add('oculto');
+        $('tablero').classList.remove('oculto');
+        const datos = $('datos');
+
+        datos.appendChild(dato('Tareas abiertas', resumen.tareas.abiertas,
+            resumen.tareas.urgentes ? resumen.tareas.urgentes + ' urgente(s)' :
+            resumen.tareas.sin_leer ? resumen.tareas.sin_leer + ' sin leer' : 'Al día', P.abrirCampana));
+
+        if (chats) {
+            const esperando = (chats.conversaciones || []).filter((c) => c.esperando);
+            P.globoChat(esperando.length);
+            datos.appendChild(dato('Chats sin responder', esperando.length,
+                (chats.conversaciones || []).length + ' conversación(es) reciente(s)',
+                () => { window.location.href = 'personal_chat.html'; }));
+            $('sec-chats').classList.remove('oculto');
+            $('lista-chats').innerHTML = esperando.length ? esperando.slice(0, 6).map((c) =>
+                '<div class="fila" style="cursor:pointer" data-cedula="' + esc(c.cedula) + '">' +
+                '<div class="principal"><div class="linea1">' + esc(c.nombre) + '</div>' +
+                '<div class="linea2">' + (c.ultimo.canal !== 'Soporte' ? '[' + esc(c.ultimo.canal) + '] ' : '') +
+                esc(c.ultimo.texto || (c.ultimo.imagen ? '🖼️ Foto' : c.ultimo.adjunto ? '🎤 Adjunto' : '')) + '</div></div>' +
+                '<div class="lado">' + esc(c.ultimo.hora) + '</div></div>').join('')
+                : '<div class="vacio">Nadie espera respuesta. 👌</div>';
+            $('lista-chats').querySelectorAll('[data-cedula]').forEach((f) => {
+                f.onclick = () => { window.location.href = 'personal_chat.html?cedula=' + encodeURIComponent(f.dataset.cedula); };
+            });
+        }
+
+        if (resumen.fotografia) {
+            const hoy = resumen.fotografia.hoy || [];
+            datos.appendChild(dato('Fotos hoy', hoy.length,
+                hoy.length ? 'Primera: ' + hoy[0].rango : 'Sin sesiones',
+                () => { window.location.href = 'personal_fotografia.html'; }));
+            $('sec-fotos').classList.remove('oculto');
+            $('lista-fotos').innerHTML = hoy.length ? hoy.map((s) =>
+                '<div class="fila"><div class="principal"><div class="linea1">' + esc(s.nombre || s.asunto || 'Reservado') + '</div>' +
+                '<div class="linea2">' + esc(s.asunto) + '</div></div>' +
+                '<div class="lado">' + esc(s.rango) + '<br><span class="pildora ' + (s.estado_sesion === 'Asistió' ? 'bien' : '') + '">' +
+                esc(s.estado_sesion) + '</span></div></div>').join('')
+                : '<div class="vacio">No hay sesiones de fotos hoy.</div>';
+        }
+
+        if (resumen.cuartos) {
+            const e = resumen.cuartos.por_estado || {};
+            datos.appendChild(dato('Cuartos ocupados', (e.OCUPADA || 0) + '/' + resumen.cuartos.total,
+                (e.DISPONIBLE || 0) + ' disponibles' + (e.MANTENIMIENTO ? ' · ' + e.MANTENIMIENTO + ' en mant.' : ''),
+                () => { window.location.href = 'personal_status.html'; }));
+        }
+
+        pintarTareas(P.tareas());
+    });
+})();
+</script>
+</body>
+</html>

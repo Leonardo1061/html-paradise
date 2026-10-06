@@ -1,6 +1,6 @@
 # PARADISE · Web
 
-Las páginas que usan las modelos y los monitores desde el navegador. Sitio
+Las páginas que usan las modelos y el personal administrativo desde el navegador. Sitio
 **estático**: solo HTML, CSS y JavaScript. Desplegado en Render.
 
     https://paradise-go1a.onrender.com
@@ -48,6 +48,34 @@ desde la consola del navegador—.
 
 Para entrar necesita el `token_sesion` que guarda `index.html` al iniciar
 sesión. Si falta o caduca, la página devuelve al login sola.
+
+## Web del personal administrativo
+
+Para el equipo (monitores, CEO, Gerencia, Fotografía…). Se entra desde
+`personal.html` (hay un enlace al pie del login de las modelos) con **el mismo
+usuario y la misma contraseña del programa de escritorio** (PARADISE ADMIN,
+`Configuracion/Monitores`). Las cuentas se siguen creando y cambiando en el
+BackOffice del escritorio.
+
+| Archivo | Qué es |
+|---|---|
+| `personal.html` | Login del personal: usuario + contraseña |
+| `personal_panel.html` | **Inicio**: tareas, chats sin responder, fotos de hoy y cuartos |
+| `personal_chat.html` | **Chat** con las modelos (`js/chat_personal.js`, burbujas de `css/chat.css`) |
+| `personal_fotografia.html` | **Fotografía**: la malla con nombres; marca Asistió / No Asistió |
+| `personal_status.html` | **Status Room**: los 12 cuartos de hoy y la semana. Solo lectura |
+| `js/personal.js` | Lo común: sesión, barras y la 🔔 **campana de tareas** |
+| `css/personal.css` | El aspecto (acento cian para no confundirla con la de las modelos) |
+
+Las reglas de roles son las del escritorio y las aplica la API
+(`/api/personal/…`, `reglas_personal.py`): solo CEO y Gerencia asignan tareas;
+Soporte llega a Monitor Mañana, Tarde, Noche y Satélites según su jornada (y la
+de su segundo rol); el chat de un rol le llega a quien tiene ese rol; Tropic
+Studio solo lo ve quien está asignado a Tropic, el CEO y Gerencia, y el
+asignado a Tropic no tiene Status Room. La página solo pinta lo que la API le
+manda.
+
+La sesión es `token_personal`, aparte del `token_sesion` de las modelos.
 
 ## La configuración está en un solo sitio
 
