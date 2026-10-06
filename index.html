@@ -149,6 +149,10 @@ h1 { margin: 0; font-size: 21px; font-weight: 700; text-align: center; }
 <script>
 const API_URL = PARADISE.API_URL;
 
+// La sesión no caduca: quien ya entró en este teléfono no vuelve a ver el
+// login (solo «Salir» la cierra).
+if (localStorage.getItem('token_sesion')) window.location.replace('panel.html');
+
 function continuar() {
     window.location.href = "panel.html";
 }

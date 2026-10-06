@@ -480,7 +480,7 @@ document.getElementById('sel-jornada-actual').value = jornadaDetectada;
 const faseAbierta = (diaIso === 4) || (diaIso === 5) || (diaIso === 6 && horaH < 12);
 if (faseAbierta) document.getElementById('btn-toggle-semana').style.display = 'block';
 
-function cerrarSesion() { ['modelo_actual','jornada_actual','token_sesion','password_por_defecto'].forEach(c => localStorage.removeItem(c)); window.location.href = URL_LOGIN; }
+async function cerrarSesion() { if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(false); ['modelo_actual','jornada_actual','token_sesion','password_por_defecto'].forEach(c => localStorage.removeItem(c)); window.location.href = URL_LOGIN; }
 function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
 
 function mostrarToast(mensaje, tipo) {

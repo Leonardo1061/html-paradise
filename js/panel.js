@@ -337,7 +337,9 @@ async function conectarAvisos() {
     };
 }
 
-function salir() {
+async function salir() {
+    // La sesión ya no caduca: solo «Salir» la cierra (y deja de avisar aquí).
+    if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(false);
     ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto']
         .forEach((clave) => localStorage.removeItem(clave));
     window.location.href = PARADISE.URL_LOGIN;

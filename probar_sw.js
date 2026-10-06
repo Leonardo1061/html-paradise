@@ -34,6 +34,18 @@ comprobar('se queda en pantalla hasta que la toquen', notificacion && notificaci
 comprobar('vibra el teléfono', notificacion && Array.isArray(notificacion.opciones.vibrate));
 comprobar('lleva el icono de la aplicación', notificacion && /iconos\//.test(notificacion.opciones.icon));
 
+// Un mensaje de chat: se agrupa por conversación y no se queda fijo.
+notificacion = null;
+manejadores.push({
+  data: { json: () => ({ titulo: '💬 Ana · Soporte', cuerpo: 'hola', url: 'personal_chat.html?cedula=1',
+                         etiqueta: 'chat-modelo-1', fijo: false, accion: 'Abrir el chat' }) },
+  waitUntil: (p) => esperas.push(p),
+});
+comprobar('un mensaje de chat lleva la etiqueta de su conversación', notificacion && notificacion.opciones.tag === 'chat-modelo-1');
+comprobar('y vuelve a sonar si llega otro del mismo chat', notificacion && notificacion.opciones.renotify === true);
+comprobar('el del chat no se queda fijo en pantalla', notificacion && notificacion.opciones.requireInteraction === false);
+comprobar('el botón dice «Abrir el chat»', notificacion && notificacion.opciones.actions[0].title === 'Abrir el chat');
+
 // Un push vacío (algunos servicios mandan uno de prueba sin datos) no debe romper nada.
 notificacion = null;
 manejadores.push({ waitUntil: (p) => esperas.push(p) });

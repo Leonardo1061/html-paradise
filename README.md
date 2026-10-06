@@ -47,7 +47,7 @@ mes el plan dependería de por dónde se abrió —y cualquiera podría saltárs
 desde la consola del navegador—.
 
 Para entrar necesita el `token_sesion` que guarda `index.html` al iniciar
-sesión. Si falta o caduca, la página devuelve al login sola.
+sesión. Si falta (o se cerró con «Salir»), la página devuelve al login sola.
 
 ## Web del personal administrativo
 
@@ -98,7 +98,8 @@ tocaría editar cuatro archivos y se te olvidaría uno.
 
 | Archivo | Qué es |
 |---|---|
-| `manifest.webmanifest` | Nombre, iconos y colores de la aplicación instalada |
+| `manifest.webmanifest` | Nombre, iconos y colores de la aplicación instalada (modelos) |
+| `manifest_personal.webmanifest` | La del personal: se instala aparte y abre en `personal_panel.html` |
 | `sw.js` | Service worker: enseña las notificaciones con la app cerrada |
 | `js/push.js` | Registra el service worker y suscribe el teléfono a los avisos |
 | `iconos/` | Los iconos de la aplicación |
@@ -113,6 +114,18 @@ llaves VAPID y cron). El permiso se pide cuando pulsa «Empezar» un show, que
 es cuando se entiende para qué sirve; también puede activarlos o probarlos
 desde PERFIL. Si los rechaza, todo lo demás sigue funcionando: solo pierde el
 aviso cuando la página no está delante.
+
+**Los mensajes de chat** también llegan como notificación, con el teléfono
+bloqueado, a quien puede leerlos (las mismas reglas de roles del escritorio;
+ver `avisos_chat.py` en la API). Vale para las dos webs: al abrir cualquier
+página con sesión sale abajo la tarjeta «Activar avisos»; si ya dio permiso,
+la suscripción se renueva sola. **En iPhone** solo funciona con la web
+instalada en la pantalla de inicio (Compartir → Agregar a inicio) e iOS 16.4
+o más nuevo; en Safari normal la tarjeta explica cómo instalarla.
+
+**La sesión no caduca**: quien entra en un teléfono no vuelve a ver el login
+hasta que pulse «Salir». Salir borra la sesión en la API y hace que ese
+teléfono deje de recibir los avisos de esa cuenta.
 
 `sw.js` **no cachea nada** a propósito. Un service worker que sirve archivos
 viejos es la forma más rápida de que una modelo siga viendo la versión de la

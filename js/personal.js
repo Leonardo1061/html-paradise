@@ -411,7 +411,10 @@ function pintarBarras(actual, yo) {
         '</div>';
     document.getElementById('btn-campana').onclick = abrirCampana;
     document.getElementById('btn-salir').onclick = async () => {
-        try { await pedir('/api/personal/salir', 'POST'); } catch (e) { /* da igual */ }
+        // La sesión ya no caduca: solo este botón la cierra. Antes se le
+        // dice a la API que este teléfono deja de recibir sus mensajes.
+        if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(true);
+        else { try { await pedir('/api/personal/salir', 'POST'); } catch (e) { /* da igual */ } }
         localStorage.removeItem(CLAVE_TOKEN);
         localStorage.removeItem(CLAVE_FICHA);
         aLogin();

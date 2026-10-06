@@ -1221,7 +1221,8 @@ $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
 $('nav-perfil').onclick = () => { window.location.href = 'panel.html#perfil'; };
 $('nav-programador').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-$('btn-salir').onclick = () => {
+$('btn-salir').onclick = async () => {
+    if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(false);
     ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto']
         .forEach((clave) => localStorage.removeItem(clave));
     window.location.href = PARADISE.URL_LOGIN;
