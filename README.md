@@ -61,7 +61,8 @@ BackOffice del escritorio.
 |---|---|
 | `personal.html` | Login del personal: usuario + contraseña |
 | `personal_panel.html` | **Inicio**: tareas, fotos de hoy y cuartos (los chats sin responder están en Chat) |
-| `personal_chat.html` | **Chat** con las modelos (`js/chat_personal.js`, burbujas de `css/chat.css`) |
+| `personal_chat.html` | **Chat** con las modelos y chat privado entre el personal (`js/chat_personal.js`, burbujas de `css/chat.css`) |
+| `js/adjuntos.js` | Lo que se adjunta en TODOS los chats (modelos y personal): 📎 Galería, Cámara y Documento (PDF), y 🎤 nota de voz en WAV |
 | `personal_fotografia.html` | **Fotografía**: la misma pantalla de las modelos; agenda a cualquier modelo (asunto o estilo del portafolio), marca Asistió / No Asistió y cancela (`js/fotografia_personal.js`) |
 | `personal_status.html` | **Status Room**: la misma pantalla de las modelos; pone a cualquier modelo en un cuarto disponible o en un cupo vacío de la semana, o lo libera |
 | `js/personal.js` | Lo común: sesión, barras y la 🔔 **campana de tareas** |

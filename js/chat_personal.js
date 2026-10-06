@@ -19,8 +19,13 @@
  * llegó después (`/api/personal/chat/nuevos`), para todas sus conversaciones
  * a la vez. Si no llegó nada cuesta una lectura.
  *
- * Responde con texto y fotos. Las notas de voz y los videos de las modelos se
- * oyen y se ven aquí (la API los sirve desde Drive).
+ * ADJUNTOS (js/adjuntos.js, el mismo menú de las modelos): 📎 Galería (fotos
+ * y videos), Cámara y Documento (PDF), y 🎤 nota de voz en WAV.
+ *   · A una modelo: la foto va en base64 dentro del mensaje (el .exe de la
+ *     modelo solo pinta esa); la nota de voz, el video y el PDF van a la
+ *     carpeta de Drive de la modelo, como los que manda ella.
+ *   · En el chat privado: TODO va a Drive, a «Chat Personal PARADISE», y se
+ *     baja a través de la API.
  *
  * CHAT PRIVADO ENTRE EL PERSONAL: arriba de la lista, una fila con cada
  * persona de Configuracion/Monitores (menos él). Abre una conversación uno a
@@ -37,6 +42,7 @@ const P = window.Personal;
 const esc = P.escapar;
 const CADA_MS = 5000;
 const TOPE_FOTO = 650000;            // base64; la API acepta 700 000
+const A = window.Adjuntos;
 
 function etiquetaDia(fecha) {
     if (!fecha) return '';
@@ -52,12 +58,31 @@ function etiquetaDia(fecha) {
 function resumenDe(m) {
     if (m.texto) return m.texto;
     if (m.imagen) return '🖼️ Foto';
-    if (m.adjunto) return m.adjunto.tipo === 'audio' ? '🎤 Nota de voz' : '🎬 Video';
+    if (m.adjunto) return A.resumen(m.adjunto);
     return '';
 }
 
-function duracion(segundos) {
-    return Math.floor(segundos / 60) + ':' + String(segundos % 60).padStart(2, '0');
+/* Subida con barra de progreso: fetch no la da, XMLHttpRequest sí. */
+function subir(ruta, formulario, alAvanzar) {
+    let xhr = null;
+    const promesa = new Promise((resolver, rechazar) => {
+        xhr = new XMLHttpRequest();
+        xhr.open('POST', PARADISE.API_URL + ruta);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + (localStorage.getItem(P.CLAVE_TOKEN) || ''));
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) alAvanzar(e.loaded / e.total); };
+        xhr.onload = () => {
+            let datos = {};
+            try { datos = JSON.parse(xhr.responseText); } catch (e) { datos = {}; }
+            if (xhr.status >= 200 && xhr.status < 300) resolver(datos);
+            else rechazar(new Error(xhr.status === 401 ? 'Tu sesión caducó. Entra otra vez.'
+                                    : datos.detail || 'No se pudo enviar el archivo.'));
+        };
+        xhr.onerror = () => rechazar(new Error('Se cortó la conexión. Inténtalo otra vez.'));
+        xhr.onabort = () => rechazar(new Error('cancelado'));
+        xhr.send(formulario);
+    });
+    promesa.cancelar = () => xhr && xhr.abort();
+    return promesa;
 }
 
 function montar(raiz) {
@@ -70,7 +95,9 @@ function montar(raiz) {
         cursor: '',
         preguntando: false,
         filtro: '',
-        fotoPendiente: '',
+        fotoPendiente: '',           // base64, para una modelo
+        fotoArchivo: null,           // File, para el chat privado (va a Drive)
+        subida: null,
         fotos: {},
         medios: {},
     };
@@ -98,12 +125,12 @@ function montar(raiz) {
         '    <div class="chat-previa"></div>' +
         '    <div class="fila-canal"><span>Responder en:</span><select class="sel-canal"></select></div>' +
         '    <div class="chat-barra">' +
-        '      <button class="chat-clip" title="Adjuntar foto">📎</button>' +
+        '      <button class="chat-clip" title="Adjuntar">📎</button>' +
         '      <textarea class="chat-texto" rows="1" maxlength="2000" placeholder="Escribe un mensaje…"></textarea>' +
-        '      <button class="chat-enviar" title="Enviar">➤</button>' +
-        '    </div>' +
+        '      <button class="chat-mic" title="Grabar nota de voz">🎤</button>' +
+        '      <button class="chat-enviar oculto" title="Enviar">➤</button>' +
+        '    </div>' + A.BARRA_GRABANDO +
         '  </div>' +
-        '  <input type="file" class="chat-archivo oculto" accept="image/*">' +
         '</section>';
 
     const el = (s) => raiz.querySelector(s);
@@ -232,6 +259,7 @@ function montar(raiz) {
     }
 
     function volver() {
+        nota.cancelar();
         estado.abierta = null;
         quitarPrevia();
         mostrar('lista');
@@ -243,6 +271,7 @@ function montar(raiz) {
     async function abrir(cedula, guardarHistorial) {
         if (guardarHistorial) history.pushState({ cedula: cedula }, '', '?cedula=' + encodeURIComponent(cedula));
         estado.desdeLista = !!guardarHistorial;
+        quitarPrevia();
         const conocida = estado.conversaciones[cedula];
         estado.abierta = { cedula: cedula, nombre: conocida ? conocida.nombre : '', mensajes: [], canales: [] };
         el('.quien-conv .nombre').textContent = conocida ? conocida.nombre : 'Cargando…';
@@ -409,36 +438,12 @@ function montar(raiz) {
     }
 
     function medio(m) {
-        const tipo = m.adjunto.tipo === 'audio' ? 'audio' : 'video';
-        if (estado.medios[m.id]) return reproductor(tipo, estado.medios[m.id], false);
-        const boton = document.createElement('button');
-        boton.className = 'chat-medio';
-        boton.innerHTML = '<span class="reproducir">▶</span><span>' + (tipo === 'audio' ? 'Nota de voz' : 'Video') +
-            '<small>' + esc(m.adjunto.segundos ? duracion(m.adjunto.segundos) : '') + '</small></span>';
-        boton.onclick = async () => {
-            boton.disabled = true;
-            boton.querySelector('.reproducir').textContent = '…';
-            try {
-                estado.medios[m.id] = await P.pedirArchivo('/api/personal/chat/' + encodeURIComponent(m.cedula) +
-                                                           '/adjunto/' + encodeURIComponent(m.id));
-                boton.replaceWith(reproductor(tipo, estado.medios[m.id], true));
-            } catch (error) {
-                boton.disabled = false;
-                boton.querySelector('.reproducir').textContent = '▶';
-                P.avisar(error.message, 'malo');
-            }
-        };
-        return boton;
-    }
-
-    function reproductor(tipo, url, arrancar) {
-        const elemento = document.createElement(tipo);
-        elemento.controls = true;
-        elemento.preload = 'metadata';
-        if (tipo === 'video') elemento.playsInline = true;
-        elemento.src = url;
-        if (arrancar) elemento.play().catch(() => {});
-        return elemento;
+        const ruta = m.cedula ? '/api/personal/chat/' + encodeURIComponent(m.cedula)
+            : '/api/personal/privado/' + encodeURIComponent(m.persona || estado.abierta.persona);
+        return A.pintar(m, {
+            ruta: ruta + '/adjunto/' + encodeURIComponent(m.id), bajar: P.pedirArchivo,
+            cache: estado.medios, avisar: P.avisar, abrirVisor: P.abrirVisor,
+        });
     }
 
     // -------------------------------------------------------- lo que llega
@@ -500,40 +505,114 @@ function montar(raiz) {
         caja.style.height = Math.min(caja.scrollHeight, 120) + 'px';
     }
 
+    function actualizarBotones() {
+        const hayAlgo = !!caja.value.trim() || !!estado.fotoPendiente || !!estado.fotoArchivo;
+        el('.chat-enviar').classList.toggle('oculto', !hayAlgo);
+        el('.chat-mic').classList.toggle('oculto', hayAlgo);
+    }
+
     function quitarPrevia() {
         estado.fotoPendiente = '';
-        el('.chat-previa').innerHTML = '';
+        estado.fotoArchivo = null;
+        if (!estado.subida) el('.chat-previa').innerHTML = '';
+        actualizarBotones();
+    }
+
+    /* Lo que acaba de mandar, ya con su id de verdad. */
+    function confirmar(conv, provisional, real) {
+        const i = conv.mensajes.indexOf(provisional);
+        if (estado.vistos.has(real.id)) { if (i >= 0) conv.mensajes.splice(i, 1); } else {
+            estado.vistos.add(real.id);
+            if (provisional.fotoLocal) estado.fotos[real.id] = provisional.fotoLocal;
+            if (provisional.medioLocal) estado.medios[real.id] = provisional.medioLocal;
+            if (i >= 0) conv.mensajes[i] = real; else conv.mensajes.push(real);
+        }
+        if (!conv.privado) {
+            estado.conversaciones[conv.cedula] = {
+                cedula: conv.cedula, nombre: conv.nombre, jornada: conv.jornada, ultimo: real, esperando: false,
+            };
+            actualizarGlobo();
+        }
+        if (estado.abierta === conv) pintarConversacion(true);
+    }
+
+    function descartar(conv, provisional) {
+        const i = conv.mensajes.indexOf(provisional);
+        if (i >= 0) conv.mensajes.splice(i, 1);
+        if (estado.abierta === conv) pintarConversacion(false);
+    }
+
+    /* Nota de voz, video, PDF (y, en el chat privado, la foto): por la API a Drive. */
+    function enviarArchivo(archivo, tipo, nombre, segundos) {
+        const conv = estado.abierta;
+        if (!conv) return;
+        const texto = caja.value.trim();
+        caja.value = '';
+        ajustarAltura();
+        const canal = conv.privado ? '' : el('.sel-canal').value;
+        const urlLocal = URL.createObjectURL(archivo);
+        const provisional = {
+            id: 'local-' + Date.now(), cedula: conv.cedula, de: '', de_modelo: false, mio: true, autor: '',
+            canal_id: canal, canal: conv.privado ? '' : (conv.canales.find((c) => c.id === canal) || {}).nombre || 'Soporte',
+            texto: texto, imagen: false, medioLocal: urlLocal, enviando: true, ts: '', hora: '', fecha: '',
+            adjunto: { tipo: tipo, bytes: archivo.size, segundos: segundos || 0,
+                       titulo: tipo === 'pdf' ? (archivo.name || '').replace(/\.pdf$/i, '') : '' },
+        };
+        conv.mensajes.push(provisional);
+        pintarConversacion(true);
+
+        const formulario = new FormData();
+        if (canal) formulario.append('canal', canal);
+        formulario.append('texto', texto);
+        if (segundos) formulario.append('segundos', String(segundos));
+        formulario.append('archivo', archivo, nombre || archivo.name || (tipo + '.bin'));
+        const ruta = conv.privado ? '/api/personal/privado/' + encodeURIComponent(conv.persona) + '/adjunto'
+            : '/api/personal/chat/' + encodeURIComponent(conv.cedula) + '/adjunto';
+
+        const previa = el('.chat-previa');
+        previa.innerHTML = '<span>' + ({ audio: '🎤', pdf: '📄', imagen: '🖼️' }[tipo] || '🎬') + '</span>' +
+            '<span>Enviando…</span><div class="chat-progreso"><div></div></div>' +
+            '<button class="quitar" title="Cancelar">✕</button>';
+        const barra = previa.querySelector('.chat-progreso div');
+        estado.subida = subir(ruta, formulario, (p) => { barra.style.width = Math.round(p * 100) + '%'; });
+        previa.querySelector('.quitar').onclick = () => estado.subida && estado.subida.cancelar();
+        estado.subida.then((datos) => confirmar(conv, provisional, datos.mensaje)).catch((error) => {
+            descartar(conv, provisional);
+            URL.revokeObjectURL(urlLocal);
+            if (error.message !== 'cancelado') P.avisar(error.message, 'malo');
+        }).finally(() => {
+            estado.subida = null;
+            previa.innerHTML = '';
+            actualizarBotones();
+        });
     }
 
     async function enviarPrivado(conv) {
+        if (estado.fotoArchivo) {
+            const foto = estado.fotoArchivo;
+            quitarPrevia();
+            enviarArchivo(foto, 'imagen', 'foto.jpg');
+            return;
+        }
         const texto = caja.value.trim();
-        const imagen = estado.fotoPendiente;
-        if (!texto && !imagen) return;
+        if (!texto) return;
         caja.value = '';
         ajustarAltura();
-        quitarPrevia();
+        actualizarBotones();
         const provisional = {
-            id: 'local-' + Date.now(), de: '', mio: true, texto: texto, imagen: !!imagen,
-            fotoLocal: imagen, enviando: true, ts: '', hora: '', fecha: '',
+            id: 'local-' + Date.now(), de: '', mio: true, texto: texto, imagen: false,
+            enviando: true, ts: '', hora: '', fecha: '',
         };
         conv.mensajes.push(provisional);
         pintarConversacion(true);
         try {
             const datos = await P.pedir('/api/personal/privado/' + encodeURIComponent(conv.persona) + '/enviar',
-                                        'POST', { texto: texto, imagen: imagen });
-            const real = datos.mensaje;
-            const i = conv.mensajes.indexOf(provisional);
-            if (estado.vistos.has(real.id)) { if (i >= 0) conv.mensajes.splice(i, 1); } else {
-                estado.vistos.add(real.id);
-                if (imagen) estado.fotos[real.id] = imagen;
-                if (i >= 0) conv.mensajes[i] = real; else conv.mensajes.push(real);
-            }
-            if (estado.abierta === conv) pintarConversacion(true);
+                                        'POST', { texto: texto });
+            confirmar(conv, provisional, datos.mensaje);
         } catch (error) {
-            const i = conv.mensajes.indexOf(provisional);
-            if (i >= 0) conv.mensajes.splice(i, 1);
-            if (estado.abierta === conv) pintarConversacion(false);
+            descartar(conv, provisional);
             if (!caja.value) caja.value = texto;
+            actualizarBotones();
             P.avisar(error.message, 'malo');
         }
     }
@@ -559,43 +638,55 @@ function montar(raiz) {
         try {
             const datos = await P.pedir('/api/personal/chat/' + encodeURIComponent(conv.cedula) + '/enviar', 'POST',
                                         { canal: canal, texto: texto, imagen: imagen });
-            const real = datos.mensaje;
-            const i = conv.mensajes.indexOf(provisional);
-            if (estado.vistos.has(real.id)) { if (i >= 0) conv.mensajes.splice(i, 1); } else {
-                estado.vistos.add(real.id);
-                if (imagen) estado.fotos[real.id] = imagen;
-                if (i >= 0) conv.mensajes[i] = real; else conv.mensajes.push(real);
-            }
-            estado.conversaciones[conv.cedula] = {
-                cedula: conv.cedula, nombre: conv.nombre, jornada: conv.jornada, ultimo: real, esperando: false,
-            };
-            if (estado.abierta === conv) pintarConversacion(true);
-            actualizarGlobo();
+            confirmar(conv, provisional, datos.mensaje);
         } catch (error) {
-            const i = conv.mensajes.indexOf(provisional);
-            if (i >= 0) conv.mensajes.splice(i, 1);
-            if (estado.abierta === conv) pintarConversacion(false);
+            descartar(conv, provisional);
             if (!caja.value) caja.value = texto;
+            actualizarBotones();
             P.avisar(error.message, 'malo');
         }
     }
 
-    async function alElegirFoto(e) {
-        const archivo = e.target.files && e.target.files[0];
-        e.target.value = '';
-        if (!archivo) return;
-        if ((archivo.type || '').indexOf('image/') !== 0) { P.avisar('Solo fotos.', 'malo'); return; }
-        try { estado.fotoPendiente = await P.comprimir(archivo, TOPE_FOTO); } catch (error) {
+    async function alElegirArchivo(archivo) {
+        const conv = estado.abierta;
+        if (!conv) return;
+        if (estado.subida) { P.avisar('Espera a que termine de enviarse el archivo anterior.', 'malo'); return; }
+        const tipo = A.tipoDe(archivo);
+        if (tipo === 'video' || tipo === 'pdf') {
+            const motivo = A.demasiadoGrande(archivo, tipo);
+            if (motivo) { P.avisar(motivo, 'malo'); return; }
+            enviarArchivo(archivo, tipo);
+            return;
+        }
+        if (tipo !== 'imagen') { P.avisar('Solo fotos, videos, notas de voz y PDF.', 'malo'); return; }
+        let vista;
+        try {
+            if (conv.privado) {
+                estado.fotoPendiente = '';
+                estado.fotoArchivo = await A.fotoParaDrive(archivo);
+                vista = URL.createObjectURL(estado.fotoArchivo);
+            } else {
+                estado.fotoArchivo = null;
+                estado.fotoPendiente = vista = await A.comprimir(archivo, TOPE_FOTO);
+            }
+        } catch (error) {
             P.avisar(error.message, 'malo');
             return;
         }
         const previa = el('.chat-previa');
-        previa.innerHTML = '<img alt=""><span>Foto lista. Escribe algo si quieres y pulsa ➤.</span>' +
-            '<button class="quitar" title="Quitar">✕</button>';
-        previa.querySelector('img').src = estado.fotoPendiente;
+        previa.innerHTML = '<img alt=""><span>Foto lista. ' + (conv.privado ? 'Pulsa ➤ para enviarla.'
+            : 'Escribe algo si quieres y pulsa ➤.') + '</span><button class="quitar" title="Quitar">✕</button>';
+        previa.querySelector('img').src = vista;
         previa.querySelector('.quitar').onclick = quitarPrevia;
+        actualizarBotones();
         caja.focus();
     }
+
+    const nota = A.notaDeVoz(raiz, {
+        avisar: P.avisar,
+        puedeEmpezar: () => estado.subida ? 'Espera a que termine de enviarse el archivo anterior.' : '',
+        alTerminar: (audio, segundos) => enviarArchivo(audio, 'audio', 'nota-de-voz.wav', segundos),
+    });
 
     // -------------------------------------------------------------- eventos
     el('.buscador').oninput = (e) => { estado.filtro = e.target.value.trim(); pintarLista(); };
@@ -605,13 +696,12 @@ function montar(raiz) {
         history.replaceState({}, '', window.location.pathname);      // llegó directo a un chat
         volver();
     };
-    caja.addEventListener('input', ajustarAltura);
+    caja.addEventListener('input', () => { ajustarAltura(); actualizarBotones(); });
     caja.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); enviar(); }
     });
     el('.chat-enviar').onclick = enviar;
-    el('.chat-clip').onclick = () => el('.chat-archivo').click();
-    el('.chat-archivo').onchange = alElegirFoto;
+    A.menu(el('.chat-clip'), alElegirArchivo);
     window.addEventListener('popstate', (e) => {
         const cedula = e.state && e.state.cedula;
         const persona = e.state && e.state.persona;

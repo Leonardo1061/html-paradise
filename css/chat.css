@@ -63,6 +63,20 @@
 .chat-burbuja audio { width: 230px; max-width: 100%; display: block; margin: 2px 0 4px; }
 .chat-burbuja video { width: 260px; max-width: 100%; max-height: 360px; border-radius: 11px; display: block; margin: 2px 0 4px; background: #000; }
 
+.chat-pdf {
+    display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, .18); border: 0;
+    color: inherit; border-radius: 12px; padding: 9px 12px; font-family: inherit; text-align: left;
+    margin: 2px 0 4px; min-width: 200px; max-width: 260px; cursor: pointer;
+}
+.chat-msg.suyo .chat-pdf { background: rgba(255, 255, 255, .06); }
+.chat-pdf .hoja-pdf {
+    width: 36px; height: 44px; flex: none; border-radius: 6px; background: #e5484d; color: #fff;
+    font-size: 10px; font-weight: 700; display: grid; place-items: center; letter-spacing: .5px;
+}
+.chat-pdf .datos-pdf { min-width: 0; }
+.chat-pdf b { display: block; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-pdf small { display: block; font-size: 11px; opacity: .75; }
+
 /* ------------------------------------------------------------------- pie */
 .chat-pie {
     position: fixed; left: 12px; right: 12px; z-index: 31;
@@ -78,6 +92,42 @@
 .chat-previa .quitar { margin-left: auto; background: none; border: 0; color: var(--tenue); font-size: 18px; }
 .chat-progreso { flex: 1; height: 6px; border-radius: 3px; background: var(--borde); overflow: hidden; }
 .chat-progreso div { height: 100%; width: 0; background: var(--degradado); transition: width .2s; }
+
+/* El menú del 📎: Galería, Cámara, Documento (como WhatsApp). */
+.chat-menu {
+    position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 2;
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 16px;
+    padding: 6px; display: flex; flex-direction: column; min-width: 190px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .6);
+}
+.chat-menu button {
+    display: flex; align-items: center; gap: 12px; background: none; border: 0; color: var(--texto);
+    font-family: inherit; font-size: 14.5px; padding: 9px 10px; border-radius: 11px; text-align: left;
+    cursor: pointer;
+}
+.chat-menu button:hover { background: rgba(255, 255, 255, .06); }
+.chat-menu .icono {
+    width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 17px;
+}
+.chat-menu .galeria { background: #3b82f6; }
+.chat-menu .camara { background: #ec4899; }
+.chat-menu .documento { background: #8b5cf6; }
+
+/* La cámara en el ordenador (en el teléfono se abre la del sistema). */
+.chat-camara {
+    position: fixed; inset: 0; z-index: 85; background: #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px;
+}
+.chat-camara video { max-width: 100%; max-height: calc(100% - 110px); border-radius: 12px; background: #111; }
+.botones-camara { display: flex; align-items: center; gap: 28px; }
+.botones-camara .cancelar {
+    width: 46px; height: 46px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .15);
+    color: #fff; font-size: 18px; cursor: pointer;
+}
+.botones-camara .disparar {
+    width: 70px; height: 70px; border-radius: 50%; border: 5px solid #fff; background: rgba(255, 255, 255, .25);
+    cursor: pointer;
+}
 
 .chat-barra {
     display: flex; align-items: flex-end; gap: 6px; background: var(--panel);

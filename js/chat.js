@@ -25,14 +25,12 @@
  * después de la última vez (`/api/chat/nuevos`). Si no llegó nada cuesta
  * una lectura. Lo que llega a otro canal enciende su contador.
  *
- * NOTAS DE VOZ Y VIDEOS
- * ---------------------
- * La nota de voz se graba aquí y se guarda como WAV (16 kHz, mono): es el
- * formato que el escritorio del monitor reproduce DENTRO de la app con lo
- * que ya trae Windows, sin instalar nada. Por eso no se usa MediaRecorder,
- * que da webm u m4a según el teléfono. El video se elige de la
- * galería o se graba con la cámara. Los dos van a su carpeta de Drive a
- * través de la API; para oírlos o verlos se piden a la API, porque su
+ * LO QUE SE ADJUNTA (js/adjuntos.js, el mismo menú del chat del personal)
+ * ------------------------------------------------------------------------
+ * 📎 Galería (fotos y videos), Cámara (una foto) y Documento (PDF), y 🎤 la
+ * nota de voz en WAV. La foto va comprimida DENTRO del mensaje, como las del
+ * escritorio. La nota de voz, el video y el PDF van a su carpeta de Drive a
+ * través de la API; para oírlos o abrirlos se piden a la API, porque su
  * navegador no tiene permiso sobre esa carpeta.
  */
 
@@ -42,9 +40,7 @@
 const API = PARADISE.API_URL;
 const CADA_MS = 4000;
 const TOPE_FOTO = 650000;                       // base64; la API acepta 700 000
-const TOPE_VIDEO = 100 * 1024 * 1024;           // el mismo de la API
-const TOPE_AUDIO = 15 * 1024 * 1024;
-const MAX_SEGUNDOS_AUDIO = 300;
+const A = window.Adjuntos;
 
 function escapar(texto) {
     return String(texto == null ? '' : texto)
@@ -105,16 +101,6 @@ async function pedirArchivo(ruta) {
     return URL.createObjectURL(await respuesta.blob());
 }
 
-function pesoLegible(bytes) {
-    if (!bytes) return '';
-    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1).replace('.0', '') + ' MB';
-}
-
-function duracion(segundos) {
-    return Math.floor(segundos / 60) + ':' + String(segundos % 60).padStart(2, '0');
-}
-
 function etiquetaDia(fecha) {
     if (!fecha) return '';
     const hoy = new Date();
@@ -125,76 +111,6 @@ function etiquetaDia(fecha) {
     if (fecha === iso(ayer)) return 'Ayer';
     const [a, m, d] = fecha.split('-');
     return d + '/' + m + '/' + a;
-}
-
-/* ----------------------------------------------------- fotos comprimidas */
-function cargarImagen(archivo) {
-    return new Promise((resolver, rechazar) => {
-        const url = URL.createObjectURL(archivo);
-        const imagen = new Image();
-        imagen.onload = () => { URL.revokeObjectURL(url); resolver(imagen); };
-        imagen.onerror = () => { URL.revokeObjectURL(url); rechazar(new Error('No se pudo abrir esa foto.')); };
-        imagen.src = url;
-    });
-}
-
-function aJpeg(imagen, lado, calidad) {
-    const escala = Math.min(1, lado / Math.max(imagen.naturalWidth, imagen.naturalHeight));
-    const lienzo = document.createElement('canvas');
-    lienzo.width = Math.max(1, Math.round(imagen.naturalWidth * escala));
-    lienzo.height = Math.max(1, Math.round(imagen.naturalHeight * escala));
-    const ctx = lienzo.getContext('2d');
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, lienzo.width, lienzo.height);
-    ctx.drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
-    return lienzo.toDataURL('image/jpeg', calidad);
-}
-
-function comprimir(imagen) {
-    for (let lado = 1280; lado >= 480; lado = Math.round(lado * 0.8)) {
-        for (const calidad of [0.78, 0.65, 0.5]) {
-            const jpeg = aJpeg(imagen, lado, calidad);
-            if (jpeg.length <= TOPE_FOTO) return jpeg;
-        }
-    }
-    throw new Error('La foto pesa demasiado aun comprimida.');
-}
-
-/* ---------------------------------------------- la nota de voz, en WAV */
-const HZ_NOTA = 16000;          // voz clara y 32 KB por segundo
-
-/* Junta los trozos del micrófono y los baja a 16 kHz (promediando). */
-function aMuestras(trozos, hzOrigen) {
-    const total = trozos.reduce((n, t) => n + t.length, 0);
-    const todo = new Float32Array(total);
-    let pos = 0;
-    trozos.forEach((t) => { todo.set(t, pos); pos += t.length; });
-    const paso = hzOrigen / HZ_NOTA;
-    if (paso <= 1) return todo;
-    const salida = new Float32Array(Math.floor(total / paso));
-    for (let i = 0; i < salida.length; i++) {
-        const desde = Math.floor(i * paso), hasta = Math.min(total, Math.floor((i + 1) * paso));
-        let suma = 0;
-        for (let k = desde; k < hasta; k++) suma += todo[k];
-        salida[i] = suma / Math.max(1, hasta - desde);
-    }
-    return salida;
-}
-
-/* WAV PCM de 16 bits, mono: lo más sencillo que existe y Windows lo suena solo. */
-function aWav(muestras) {
-    const datos = new DataView(new ArrayBuffer(44 + muestras.length * 2));
-    const texto = (pos, t) => { for (let i = 0; i < t.length; i++) datos.setUint8(pos + i, t.charCodeAt(i)); };
-    texto(0, 'RIFF'); datos.setUint32(4, 36 + muestras.length * 2, true); texto(8, 'WAVE');
-    texto(12, 'fmt '); datos.setUint32(16, 16, true); datos.setUint16(20, 1, true);
-    datos.setUint16(22, 1, true); datos.setUint32(24, HZ_NOTA, true);
-    datos.setUint32(28, HZ_NOTA * 2, true); datos.setUint16(32, 2, true); datos.setUint16(34, 16, true);
-    texto(36, 'data'); datos.setUint32(40, muestras.length * 2, true);
-    for (let i = 0; i < muestras.length; i++) {
-        const v = Math.max(-1, Math.min(1, muestras[i]));
-        datos.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
-    }
-    return new Blob([datos], { type: 'audio/wav' });
 }
 
 // =======================================================================
@@ -218,7 +134,6 @@ function montar(raiz, opciones) {
         preguntando: false,
         fotoPendiente: '',
         subida: null,
-        grabacion: null,
         medios: {},                     // id de mensaje -> URL ya descargada
         fotos: {},                      // id de mensaje -> data URL
     };
@@ -230,19 +145,13 @@ function montar(raiz, opciones) {
         '<div class="chat-pie">' +
         '  <div class="chat-previa"></div>' +
         '  <div class="chat-barra">' +
-        '    <button class="chat-clip" title="Adjuntar foto o video">📎</button>' +
+        '    <button class="chat-clip" title="Adjuntar">📎</button>' +
         '    <textarea class="chat-texto" rows="1" maxlength="2000" placeholder="Escribe un mensaje…"></textarea>' +
         '    <button class="chat-mic" title="Grabar nota de voz">🎤</button>' +
         '    <button class="chat-enviar oculto" title="Enviar">➤</button>' +
         '  </div>' +
-        '  <div class="chat-grabando oculto">' +
-        '    <span class="punto"></span><span class="tiempo">0:00</span>' +
-        '    <span class="pista">Grabando nota de voz…</span>' +
-        '    <button class="cancelar" title="Descartar">✕</button>' +
-        '    <button class="enviar" title="Enviar">➤</button>' +
-        '  </div>' +
-        '</div>' +
-        '<input type="file" class="chat-archivo oculto" accept="image/*,video/*">';
+        A.BARRA_GRABANDO +
+        '</div>';
 
     const el = (sel) => raiz.querySelector(sel);
     const lista = el('.chat-lista');
@@ -387,39 +296,10 @@ function montar(raiz, opciones) {
     }
 
     function medio(m) {
-        const tipo = m.adjunto.tipo === 'audio' ? 'audio' : 'video';
-        const url = estado.medios[m.id];
-        if (url) return reproductor(tipo, url, false);
-        const boton = document.createElement('button');
-        boton.className = 'chat-medio';
-        boton.innerHTML = '<span class="reproducir">▶</span><span>' +
-            (tipo === 'audio' ? 'Nota de voz' : 'Video') +
-            '<small>' + escapar(m.adjunto.segundos ? duracion(m.adjunto.segundos)
-                                                   : pesoLegible(m.adjunto.bytes)) + '</small></span>';
-        if (m.enviando) { boton.disabled = true; return boton; }
-        boton.onclick = async () => {
-            boton.disabled = true;
-            boton.querySelector('.reproducir').textContent = '…';
-            try {
-                estado.medios[m.id] = await pedirArchivo('/api/chat/adjunto/' + encodeURIComponent(m.id));
-                boton.replaceWith(reproductor(tipo, estado.medios[m.id], true));
-            } catch (error) {
-                boton.disabled = false;
-                boton.querySelector('.reproducir').textContent = '▶';
-                avisar(error.message, 'malo');
-            }
-        };
-        return boton;
-    }
-
-    function reproductor(tipo, url, arrancar) {
-        const elemento = document.createElement(tipo);
-        elemento.controls = true;
-        elemento.preload = 'metadata';
-        if (tipo === 'video') elemento.playsInline = true;
-        elemento.src = url;
-        if (arrancar) elemento.play().catch(() => {});
-        return elemento;
+        return A.pintar(m, {
+            ruta: '/api/chat/adjunto/' + encodeURIComponent(m.id), bajar: pedirArchivo,
+            cache: estado.medios, avisar: avisar, abrirVisor: abrirVisor,
+        });
     }
 
     function abrirVisor(src) {
@@ -528,8 +408,9 @@ function montar(raiz, opciones) {
         actualizarBotones();
         const urlLocal = URL.createObjectURL(archivo);
         const m = provisional({
-            texto: texto, adjunto: { tipo: tipo, bytes: archivo.size, segundos: segundos || 0 },
-            medioLocal: urlLocal,
+            texto: texto, medioLocal: urlLocal,
+            adjunto: { tipo: tipo, bytes: archivo.size, segundos: segundos || 0,
+                       titulo: tipo === 'pdf' ? (archivo.name || '').replace(/\.pdf$/i, '') : '' },
         });
         const formulario = new FormData();
         formulario.append('canal', m.canal_id);
@@ -538,7 +419,7 @@ function montar(raiz, opciones) {
         formulario.append('archivo', archivo, nombre || archivo.name || (tipo + '.bin'));
 
         const previa = el('.chat-previa');
-        previa.innerHTML = '<span>' + (tipo === 'audio' ? '🎤' : '🎬') + '</span>' +
+        previa.innerHTML = '<span>' + ({ audio: '🎤', pdf: '📄' }[tipo] || '🎬') + '</span>' +
             '<span>Enviando…</span><div class="chat-progreso"><div></div></div>' +
             '<button class="quitar" title="Cancelar">✕</button>';
         const barra = previa.querySelector('.chat-progreso div');
@@ -565,24 +446,18 @@ function montar(raiz, opciones) {
         actualizarBotones();
     }
 
-    async function alElegirArchivo(evento) {
-        const archivo = evento.target.files && evento.target.files[0];
-        evento.target.value = '';
-        if (!archivo) return;
+    async function alElegirArchivo(archivo) {
         if (estado.subida) { avisar('Espera a que termine de enviarse el archivo anterior.', 'malo'); return; }
-        const tipo = archivo.type || '';
-        if (tipo.indexOf('video/') === 0) {
-            if (archivo.size > TOPE_VIDEO) {
-                avisar('El video pesa ' + pesoLegible(archivo.size) + ': el máximo es 100 MB. ' +
-                       'Recórtalo o grábalo más corto.', 'malo');
-                return;
-            }
-            enviarArchivo(archivo, 'video');
+        const tipo = A.tipoDe(archivo);
+        if (tipo === 'video' || tipo === 'pdf') {
+            const motivo = A.demasiadoGrande(archivo, tipo);
+            if (motivo) { avisar(motivo, 'malo'); return; }
+            enviarArchivo(archivo, tipo);
             return;
         }
-        if (tipo.indexOf('image/') !== 0) { avisar('Solo fotos, videos y notas de voz.', 'malo'); return; }
+        if (tipo !== 'imagen') { avisar('Solo fotos, videos, notas de voz y PDF.', 'malo'); return; }
         try {
-            estado.fotoPendiente = comprimir(await cargarImagen(archivo));
+            estado.fotoPendiente = await A.comprimir(archivo, TOPE_FOTO);
         } catch (error) {
             avisar(error.message, 'malo');
             return;
@@ -597,74 +472,11 @@ function montar(raiz, opciones) {
     }
 
     // ------------------------------------------------------- nota de voz
-    async function empezarGrabacion() {
-        if (estado.grabacion) return;
-        if (estado.subida) { avisar('Espera a que termine de enviarse el archivo anterior.', 'malo'); return; }
-        const Contexto = window.AudioContext || window.webkitAudioContext;
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !Contexto) {
-            avisar('Este navegador no puede grabar audio. Prueba con Chrome o Safari actualizados.', 'malo');
-            return;
-        }
-        let flujo;
-        try {
-            flujo = await navigator.mediaDevices.getUserMedia(
-                { audio: { echoCancellation: true, noiseSuppression: true } });
-        } catch (error) {
-            avisar('No hay permiso para usar el micrófono. Actívalo en los ajustes del navegador.', 'malo');
-            return;
-        }
-        let contexto, fuente, procesador;
-        try {
-            contexto = new Contexto();
-            if (contexto.state === 'suspended') await contexto.resume();
-            fuente = contexto.createMediaStreamSource(flujo);
-            // ScriptProcessor está «en desuso» pero funciona en todos los
-            // teléfonos, Safari incluido, y no necesita un archivo aparte.
-            procesador = contexto.createScriptProcessor(4096, 1, 1);
-        } catch (error) {
-            flujo.getTracks().forEach((t) => t.stop());
-            avisar('No se pudo empezar a grabar.', 'malo');
-            return;
-        }
-        const trozos = [];
-        const g = { inicio: Date.now(), reloj: null, parar: null };
-        estado.grabacion = g;
-        procesador.onaudioprocess = (e) => trozos.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-        fuente.connect(procesador);
-        procesador.connect(contexto.destination);      // sin esto Chrome no lo llama
-
-        g.parar = (enviar) => {
-            procesador.onaudioprocess = null;
-            try { fuente.disconnect(); procesador.disconnect(); } catch (e) { /* ya estaba */ }
-            flujo.getTracks().forEach((t) => t.stop());
-            const hz = contexto.sampleRate;
-            contexto.close().catch(() => {});
-            clearInterval(g.reloj);
-            estado.grabacion = null;
-            el('.chat-grabando').classList.add('oculto');
-            el('.chat-barra').classList.remove('oculto');
-            if (!enviar || !trozos.length) return;
-            const muestras = aMuestras(trozos, hz);
-            if (muestras.length < HZ_NOTA / 2) { avisar('La nota de voz es demasiado corta.', 'malo'); return; }
-            const audio = aWav(muestras);
-            if (audio.size > TOPE_AUDIO) { avisar('La nota de voz es demasiado larga.', 'malo'); return; }
-            enviarArchivo(audio, 'audio', 'nota-de-voz.wav', Math.round(muestras.length / HZ_NOTA));
-        };
-
-        el('.chat-barra').classList.add('oculto');
-        el('.chat-grabando').classList.remove('oculto');
-        const tiempo = el('.chat-grabando .tiempo');
-        tiempo.textContent = '0:00';
-        g.reloj = setInterval(() => {
-            const s = Math.floor((Date.now() - g.inicio) / 1000);
-            tiempo.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-            if (s >= MAX_SEGUNDOS_AUDIO) terminarGrabacion(true);
-        }, 250);
-    }
-
-    function terminarGrabacion(enviar) {
-        if (estado.grabacion) estado.grabacion.parar(enviar);
-    }
+    const nota = A.notaDeVoz(raiz, {
+        avisar: avisar,
+        puedeEmpezar: () => estado.subida ? 'Espera a que termine de enviarse el archivo anterior.' : '',
+        alTerminar: (audio, segundos) => enviarArchivo(audio, 'audio', 'nota-de-voz.wav', segundos),
+    });
 
     // ------------------------------------------------------------ eventos
     caja.addEventListener('input', () => { ajustarAltura(); actualizarBotones(); });
@@ -677,11 +489,7 @@ function montar(raiz, opciones) {
         }
     });
     el('.chat-enviar').onclick = enviarTexto;
-    el('.chat-mic').onclick = empezarGrabacion;
-    el('.chat-grabando .cancelar').onclick = () => terminarGrabacion(false);
-    el('.chat-grabando .enviar').onclick = () => terminarGrabacion(true);
-    el('.chat-clip').onclick = () => el('.chat-archivo').click();
-    el('.chat-archivo').onchange = alElegirArchivo;
+    A.menu(el('.chat-clip'), alElegirArchivo);
     document.addEventListener('visibilitychange', preguntar);
 
     // ------------------------------------------------------------ arranque
@@ -714,7 +522,7 @@ function montar(raiz, opciones) {
             estado.activo = false;
             clearInterval(estado.reloj);
             estado.reloj = null;
-            terminarGrabacion(false);
+            nota.cancelar();
         },
     };
 }
