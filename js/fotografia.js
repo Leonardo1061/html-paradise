@@ -140,7 +140,7 @@ function pintarAgenda() {
 
     $('dias').innerHTML = semana.dias.map((dia) => {
         const libres = dia.bloques.filter((b) => b.estado === 'libre' && !b.pasado).length;
-        const tengo = dia.bloques.some((b) => b.estado === 'mia');
+        const tengo = dia.bloques.some((b) => b.estado === 'mia' && !b.pasado);
         const partes = dia.etiqueta.split(' ');
         return '<button class="dia' + (dia.fecha === estado.diaElegido ? ' activo' : '') +
             '" data-fecha="' + dia.fecha + '">' +
@@ -154,8 +154,15 @@ function pintarAgenda() {
     });
 
     const dia = semana.dias.find((d) => d.fecha === estado.diaElegido) || semana.dias[0];
+    // Las horas que ya pasaron no se enseñan: no se pueden agendar y solo
+    // estorban. Un día anterior a hoy queda vacío. (Sus sesiones pasadas
+    // siguen en «Mis sesiones» mientras sean de hoy.)
+    const visibles = dia.bloques.filter((b) => !b.pasado);
     let corteHecho = false;
-    $('bloques').innerHTML = dia.bloques.map((bloque) => {
+    $('bloques').innerHTML = !visibles.length
+        ? '<div class="vacio">' + (dia.es_hoy ? 'Por hoy ya no quedan horas para fotos. Mira los próximos días.'
+                                              : 'Este día ya pasó. Elige uno de los próximos.') + '</div>'
+        : visibles.map((bloque) => {
         let corte = '';
         if (!corteHecho && sedeCorta(bloque.sede) === 'Tropic') {
             corteHecho = true;
