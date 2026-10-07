@@ -45,6 +45,8 @@ const MODULOS = [
     { id: 'chat', texto: 'CHAT', simbolo: '💬', pagina: 'personal_chat.html' },
     { id: 'fotografia', texto: 'FOTOGRAFÍA', simbolo: '📷', pagina: 'personal_fotografia.html' },
     { id: 'status', texto: 'STATUS ROOM', simbolo: '📋', pagina: 'personal_status.html' },
+    // Solo el CEO: la API se lo añade a sus módulos (personal.es_ceo).
+    { id: 'tickets', texto: 'MIS TICKETS', simbolo: '🎫', pagina: 'personal_tickets.html' },
 ];
 
 function escapar(texto) {
@@ -574,6 +576,7 @@ window.Personal = {
     iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, avisar: avisar,
     escapar: escapar, abrirVisor: abrirVisor, aDataUrl: aDataUrl, comprimir: comprimir,
     abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha,
+    tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas,
     tareas: () => campana.tareas, CLAVE_TOKEN: CLAVE_TOKEN,
 };
 })();

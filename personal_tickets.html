@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Mis tickets · PARADISE</title>
+
+<!--
+  MIS TICKETS (solo el CEO)
+  =========================
+  El historial de los 🎫 TICKET CEO que le han mandado las modelos desde su
+  portal: los 15 más recientes y «Cargar más» para los anteriores
+  (/api/personal/tickets?desde=). Los abiertos se responden aquí mismo, igual
+  que en la campana. La pestaña solo sale si la API pone `tickets` en sus
+  módulos, y la API solo lo hace con el rol CEO.
+-->
+
+<link rel="manifest" href="manifest_personal.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE Staff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+</head>
+
+<body>
+
+<main class="contenido">
+    <div class="titulo-pagina">
+        <h1>🎫 Mis tickets</h1>
+        <p id="subtitulo">Lo que te han escrito las modelos, lo más reciente arriba.</p>
+    </div>
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
+    <div id="lista"></div>
+    <div class="botones oculto" id="pie" style="margin-top:12px">
+        <button class="boton-secundario" id="mas">Cargar más</button>
+    </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/personal.js"></script>
+<script>
+(function () {
+    'use strict';
+    const P = window.Personal;
+    const $ = (id) => document.getElementById(id);
+    let cargados = 0;
+
+    async function cargar(reiniciar) {
+        if (reiniciar) cargados = 0;
+        $('mas').disabled = true;
+        try {
+            const datos = await P.pedir('/api/personal/tickets?desde=' + cargados);
+            $('cargando').classList.add('oculto');
+            if (reiniciar) $('lista').innerHTML = '';
+            (datos.tickets || []).forEach((t) => {
+                $('lista').appendChild(P.tarjetaTarea(t, true, () => { cargar(true); P.revisarTareas(true); }));
+            });
+            cargados += (datos.tickets || []).length;
+            if (!datos.total) $('lista').innerHTML = '<div class="vacio">Todavía no te ha llegado ningún ticket.</div>';
+            $('subtitulo').textContent = datos.total
+                ? 'Viendo ' + cargados + ' de ' + datos.total + ', lo más reciente arriba.'
+                : 'Lo que te han escrito las modelos, lo más reciente arriba.';
+            $('pie').classList.toggle('oculto', !datos.hay_mas);
+        } catch (error) {
+            $('cargando').innerHTML = P.escapar(error.message);
+        }
+        $('mas').disabled = false;
+    }
+
+    $('mas').onclick = () => cargar(false);
+    P.iniciar('tickets').then(() => cargar(true));
+})();
+</script>
+</body>
+</html>

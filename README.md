@@ -72,6 +72,7 @@ BackOffice del escritorio.
 | `js/adjuntos.js` | Lo que se adjunta en TODOS los chats (modelos y personal): 📎 Galería, Cámara y Documento (PDF), y 🎤 nota de voz en WAV |
 | `personal_fotografia.html` | **Fotografía**: la misma pantalla de las modelos; agenda a cualquier modelo (asunto o estilo del portafolio), marca Asistió / No Asistió y cancela (`js/fotografia_personal.js`) |
 | `personal_status.html` | **Status Room**: la misma pantalla de las modelos; pone a cualquier modelo en un cuarto disponible o en un cupo vacío de la semana, o lo libera |
+| `personal_tickets.html` | **MIS TICKETS** (solo el CEO): el historial de los TICKET CEO, 15 a la vez con «Cargar más», y se responden ahí mismo |
 | `js/personal.js` | Lo común: sesión, barras y la 🔔 **campana de tareas** |
 | `css/personal.css` | El aspecto (acento cian para no confundirla con la de las modelos) |
 
