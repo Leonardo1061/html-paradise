@@ -457,7 +457,11 @@ function pintarPortafolio() {
     }
     $('estilos').innerHTML = lista.map((e) =>
         '<button class="estilo" data-id="' + escapar(e.id) + '">' +
-            '<div class="icono">🎞️</div>' +
+            // La primera foto en pequeño (la API la manda ya reducida a 160 px).
+            (e.miniatura
+                ? '<div class="icono foto"><img alt="" loading="lazy" src="data:image/jpeg;base64,' +
+                  escapar(e.miniatura) + '"></div>'
+                : '<div class="icono">🎞️</div>') +
             '<div style="min-width:0"><div class="nombre">' + escapar(e.nombre_sesion) + '</div>' +
             '<div class="resumen">' + escapar(e.descripcion || e.requisitos) + '</div>' +
             '<div class="resumen" style="margin-top:4px">⏱ ' + escapar(e.duracion || '30 min') +
