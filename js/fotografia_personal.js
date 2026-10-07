@@ -11,6 +11,11 @@
  *                     referencia; Programada / Asistió / No Asistió;
  *                     cancelar la sesión.
  *   PORTAFOLIO        «Agendar» lleva a la malla con el estilo elegido.
+ *                     Con su descripción y su duración: un show de 1 hora
+ *                     ocupa dos bloques, se marca y se cancela entero.
+ *
+ * Fotografía, CEO y Gerencia ven y agendan a TODAS las modelos, de Paradise
+ * y de Tropic (lo decide la API, `ve_modelo_fotografia`).
  *
  * La malla se vuelve a pedir cada 20 s con la página a la vista.
  */
@@ -34,7 +39,7 @@ const estado = {
     diaElegido: null,
     estilos: null,
     modelos: null,                 // a quién puede agendar
-    pendiente: null,               // {id, nombre}: estilo del portafolio
+    pendiente: null,               // {id, nombre, duracion, bloques}: estilo del portafolio
     actualizada: 0,
     cargandoMalla: false,
 };
@@ -119,7 +124,8 @@ function pintarAgenda() {
         let lado;
         if (bloque.estado === 'reservado') {
             lado = '<div style="text-align:right"><div class="estado">' + escapar(bloque.nombre || 'Reservado') + '</div>' +
-                '<div class="asunto">' + escapar(bloque.asunto) + '</div></div>' +
+                '<div class="asunto">' + (bloque.parte ? escapar(bloque.parte) + ' · ' : '') +
+                escapar(bloque.asunto) + '</div></div>' +
                 '<span class="chapa ' + claseEstadoSesion(bloque.estado_sesion) + '">' +
                 escapar(bloque.estado_sesion) + '</span>';
         } else if (bloque.estado === 'ocupado') {
@@ -153,8 +159,11 @@ function pintarActualizada() {
 function pintarPendiente() {
     const caja = $('pendiente');
     if (!estado.pendiente) { caja.innerHTML = ''; return; }
+    const largo = estado.pendiente.bloques > 1
+        ? ' Dura ' + escapar(estado.pendiente.duracion) + ': ocupa ' + estado.pendiente.bloques + ' bloques seguidos.'
+        : '';
     caja.innerHTML = '<div class="pendiente"><div>Elige un bloque libre para la sesión ' +
-        '<b>' + escapar(estado.pendiente.nombre) + '</b>.</div>' +
+        '<b>' + escapar(estado.pendiente.nombre) + '</b>.' + largo + '</div>' +
         '<button id="quitar-pendiente" title="Quitar">✕</button></div>';
     $('quitar-pendiente').onclick = () => { estado.pendiente = null; pintarPendiente(); };
 }
@@ -190,6 +199,9 @@ async function abrirAgendar(dia, bloque) {
         bloque.rango + ' · ' + bloque.sede,
         '<div class="campo"><label>Modelo</label><div id="f-modelos"><div class="cargando"><span class="girando">◌</span></div></div>' +
             '<div class="modelo-elegida" id="f-elegida"></div></div>' +
+        (estilo && estilo.bloques > 1
+            ? '<div class="nota" style="margin:0 0 12px">⏱ Dura ' + escapar(estilo.duracion) + ': se agendan ' +
+              estilo.bloques + ' bloques seguidos desde este.</div>' : '') +
         '<div class="campo"><label>' + (estilo ? 'Sesión del portafolio' : 'Asunto de las fotos') + '</label>' +
             '<textarea id="f-asunto" maxlength="200" placeholder="Ej: Fotos para perfil">' +
             escapar(estilo ? estilo.nombre : '') + '</textarea></div>' +
@@ -252,7 +264,9 @@ async function abrirAgendar(dia, bloque) {
 /* --- una sesión reservada: ficha, estado y cancelar --------------------- */
 function abrirSesion(dia, bloque) {
     const fecha = dia.fecha.slice(8, 10) + '/' + dia.fecha.slice(5, 7);
-    abrirHoja(bloque.nombre || 'Sesión de fotos', dia.nombre + ' ' + fecha + ' · ' + bloque.rango,
+    abrirHoja(bloque.nombre || 'Sesión de fotos', dia.nombre + ' ' + fecha + ' · ' + (bloque.rango_show || bloque.rango),
+        (bloque.parte ? '<div class="fila-dato"><span class="r">Show</span><span>' + escapar(bloque.duracion) +
+            ' · bloque ' + escapar(bloque.parte) + ' (el estado y cancelar valen para todo el show)</span></div>' : '') +
         '<div class="fila-dato"><span class="r">Sede</span><span>' + escapar(bloque.sede) + '</span></div>' +
         '<div class="fila-dato"><span class="r">Asunto</span><span>' + escapar(bloque.asunto) + '</span></div>' +
         (bloque.celular ? '<div class="fila-dato"><span class="r">Celular</span><a style="color:#a5f3fc" href="tel:' +
@@ -304,7 +318,8 @@ function abrirSesion(dia, bloque) {
 
     $('f-cancelar').onclick = async () => {
         if (!confirm('¿Cancelar la sesión de ' + (bloque.nombre || 'esta modelo') + ' de las ' +
-                     bloque.rango.split(' – ')[0] + '? El bloque quedará libre.')) return;
+                     (bloque.rango_show || bloque.rango).split(' – ')[0] + '? ' +
+                     (bloque.parte ? 'Se liberan todos los bloques del show.' : 'El bloque quedará libre.'))) return;
         const boton = $('f-cancelar');
         boton.disabled = true;
         try {
@@ -358,7 +373,7 @@ function sinTildes(texto) {
 function pintarPortafolio() {
     const filtro = sinTildes($('buscador').value.trim());
     const lista = (estado.estilos || []).filter((e) => !filtro ||
-        sinTildes(e.nombre_sesion + ' ' + e.requisitos).indexOf(filtro) >= 0);
+        sinTildes(e.nombre_sesion + ' ' + e.descripcion + ' ' + e.requisitos).indexOf(filtro) >= 0);
     if (!lista.length) {
         $('estilos').innerHTML = '<div class="vacio">' + (estado.estilos.length
             ? 'Ninguna sesión coincide con «' + escapar($('buscador').value.trim()) + '».'
@@ -369,48 +384,73 @@ function pintarPortafolio() {
         '<button class="estilo" data-id="' + escapar(e.id) + '">' +
             '<div class="icono">🎞️</div>' +
             '<div style="min-width:0"><div class="nombre">' + escapar(e.nombre_sesion) + '</div>' +
-            '<div class="resumen">' + escapar(e.requisitos) + '</div>' +
-            '<div class="resumen" style="margin-top:4px">📷 ' + e.cantidad_fotos +
-                (e.cantidad_fotos === 1 ? ' foto' : ' fotos') + '</div></div>' +
+            '<div class="resumen">' + escapar(e.descripcion || e.requisitos) + '</div>' +
+            '<div class="resumen" style="margin-top:4px">⏱ ' + escapar(e.duracion || '30 min') +
+                ' · 📷 ' + e.cantidad_fotos + (e.cantidad_fotos === 1 ? ' foto' : ' fotos') + '</div></div>' +
             '<span class="flecha">›</span></button>').join('');
     document.querySelectorAll('.estilo').forEach((boton) => {
         boton.onclick = () => abrirEstilo(estado.estilos.find((e) => e.id === boton.dataset.id));
     });
 }
 
+/* Las fotos de un estilo llegan de 6 en 6 (`siguiente`): se van pintando
+   según llegan, sin bajar un estilo de muchas fotos de golpe. */
+async function pintarFotosEstilo(ruta, estilo, galeria, aSrc, abrir) {
+    let desde = 0;
+    let pintadas = 0;
+    galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1"><span class="girando">◌</span> Cargando fotos…</div>';
+    try {
+        while (desde !== null && desde !== undefined) {
+            const datos = await pedir(ruta + encodeURIComponent(estilo.id) + '?desde=' + desde);
+            if (!galeria.isConnected) return;          // la cerró antes de que llegaran
+            if (!pintadas) galeria.innerHTML = '';
+            (datos.fotos || []).forEach((b64) => {
+                const img = document.createElement('img');
+                img.alt = estilo.nombre_sesion;
+                img.loading = 'lazy';
+                img.src = aSrc(b64);
+                img.onclick = () => abrir(img.src);
+                galeria.appendChild(img);
+                pintadas++;
+            });
+            desde = datos.siguiente;
+        }
+        if (!pintadas) galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">Este estilo no tiene fotos.</div>';
+    } catch (error) {
+        if (!galeria.isConnected) return;
+        if (!pintadas) galeria.innerHTML = '';
+        galeria.insertAdjacentHTML('beforeend', '<div class="vacio" style="grid-column:1/-1">' +
+            escapar(error.message) + '</div>');
+    }
+}
+
+function textoBloques(estilo) {
+    return estilo.bloques > 1 ? estilo.duracion + ' · ocupa ' + estilo.bloques + ' bloques'
+                              : (estilo.duracion || '30 min');
+}
+
 function abrirEstilo(estilo) {
     if (!estilo) return;
-    abrirHoja(estilo.nombre_sesion, 'Portafolio de fotografía',
-        '<div class="galeria" id="galeria">' + (estilo.cantidad_fotos
-            ? '<div class="vacio" style="grid-column:1/-1"><span class="girando">◌</span> Cargando fotos…</div>'
+    abrirHoja(estilo.nombre_sesion, 'Portafolio de fotografía · ⏱ ' + textoBloques(estilo),
+        (estilo.descripcion
+            ? '<div class="campo" style="margin-bottom:6px"><label>Descripción</label></div>' +
+              '<div class="requisitos">' + escapar(estilo.descripcion) + '</div>'
+            : '') +
+        '<div class="galeria" id="galeria">' + (estilo.cantidad_fotos ? ''
             : '<div class="vacio" style="grid-column:1/-1">Este estilo no tiene fotos.</div>') + '</div>' +
         '<div class="campo" style="margin-bottom:6px"><label>Requisitos</label></div>' +
         '<div class="requisitos">' + escapar(estilo.requisitos || 'Sin requisitos escritos.') + '</div>' +
         '<button class="boton-principal" id="f-agendar-estilo">Agendar a una modelo</button>');
 
     $('f-agendar-estilo').onclick = () => {
-        estado.pendiente = { id: estilo.id, nombre: estilo.nombre_sesion };
+        estado.pendiente = { id: estilo.id, nombre: estilo.nombre_sesion,
+                             duracion: estilo.duracion, bloques: estilo.bloques || 1 };
         cerrarHoja();
         cambiarVista('agenda');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     if (!estilo.cantidad_fotos) return;
-    pedir('/portafolio/' + encodeURIComponent(estilo.id)).then((datos) => {
-        const galeria = $('galeria');
-        if (!galeria) return;
-        const fotos = datos.fotos || [];
-        galeria.innerHTML = fotos.length ? '' : '<div class="vacio" style="grid-column:1/-1">Este estilo no tiene fotos.</div>';
-        fotos.forEach((b64) => {
-            const img = document.createElement('img');
-            img.alt = estilo.nombre_sesion;
-            img.src = P.aDataUrl(b64);
-            img.onclick = () => P.abrirVisor(img.src);
-            galeria.appendChild(img);
-        });
-    }).catch((error) => {
-        const galeria = $('galeria');
-        if (galeria) galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">' + escapar(error.message) + '</div>';
-    });
+    pintarFotosEstilo('/portafolio/', estilo, $('galeria'), P.aDataUrl, P.abrirVisor);
 }
 
 // =======================================================================

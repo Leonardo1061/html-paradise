@@ -40,7 +40,7 @@ const estado = {
     diaElegido: null,               // 'AAAA-MM-DD'
     mias: [],
     estilos: null,
-    pendiente: null,                // {id, nombre} si viene de «Agendar» del portafolio
+    pendiente: null,                // {id, nombre, duracion, bloques} si viene de «Agendar» del portafolio
     actualizada: 0,
     cargandoMalla: false,
 };
@@ -165,7 +165,8 @@ function pintarAgenda() {
         if (bloque.pasado) clases.push('pasado');
         let lado;
         if (bloque.estado === 'mia') {
-            lado = '<div style="text-align:right"><div class="estado">Tu sesión</div>' +
+            lado = '<div style="text-align:right"><div class="estado">' +
+                (bloque.parte ? 'Tu show · ' + escapar(bloque.parte) : 'Tu sesión') + '</div>' +
                 '<div class="asunto">' + escapar(bloque.asunto) + '</div></div>';
         } else if (bloque.estado === 'ocupado') {
             lado = '<span class="estado">Ocupado</span>';
@@ -208,7 +209,8 @@ function pintarMias() {
         '<button class="sesion" data-i="' + i + '">' +
             '<div class="icono">📸</div>' +
             '<div><div class="cuando">' + escapar(s.dia) + ' · ' + escapar(s.rango.split(' – ')[0]) + '</div>' +
-            '<div class="detalle">' + escapar(s.asunto) + ' · ' + escapar(sedeCorta(s.sede)) + '</div></div>' +
+            '<div class="detalle">' + escapar(s.asunto) + ' · ' + escapar(sedeCorta(s.sede)) +
+                (s.duracion ? ' · ' + escapar(s.duracion) : '') + '</div></div>' +
             '<span class="chapa ' + claseEstadoSesion(s.estado_sesion) + '">' +
                 escapar(s.estado_sesion) + '</span>' +
         '</button>').join('');
@@ -223,8 +225,12 @@ function pintarMias() {
 function pintarPendiente() {
     const caja = $('pendiente');
     if (!estado.pendiente) { caja.innerHTML = ''; return; }
+    const largo = estado.pendiente.bloques > 1
+        ? ' Dura ' + escapar(estado.pendiente.duracion) + ': toma ese bloque y los ' +
+          (estado.pendiente.bloques - 1 === 1 ? 'siguiente' : (estado.pendiente.bloques - 1) + ' siguientes') + '.'
+        : '';
     caja.innerHTML = '<div class="pendiente"><div>Elige un bloque libre para ' +
-        '<b>' + escapar(estado.pendiente.nombre) + '</b>.</div>' +
+        '<b>' + escapar(estado.pendiente.nombre) + '</b>.' + largo + '</div>' +
         '<button id="quitar-pendiente" title="Quitar">✕</button></div>';
     $('quitar-pendiente').onclick = () => { estado.pendiente = null; pintarPendiente(); };
 }
@@ -257,10 +263,16 @@ function abrirVisor(src) {
 function abrirAgendar(dia, bloque) {
     const fotos = [];        // data URLs ya comprimidas
     const asuntoInicial = estado.pendiente ? estado.pendiente.nombre : '';
+    const show = estado.pendiente && estado.pendiente.bloques > 1
+        ? '<div class="nota" style="margin:-4px 0 12px">⏱ ' + escapar(estado.pendiente.nombre) +
+          ' dura ' + escapar(estado.pendiente.duracion) + ': se agendan ' + estado.pendiente.bloques +
+          ' bloques seguidos desde este.</div>'
+        : '';
 
     abrirHoja('Agendar sesión de fotos',
         dia.nombre + ' ' + dia.fecha.slice(8, 10) + '/' + dia.fecha.slice(5, 7) + ' · ' +
         bloque.rango + ' · ' + bloque.sede,
+        show +
         '<div class="campo"><label>Asunto de las fotos</label>' +
             '<textarea id="f-asunto" maxlength="200" placeholder="Ej: Fotos para mi perfil de Stripchat">' +
             escapar(asuntoInicial) + '</textarea></div>' +
@@ -315,8 +327,13 @@ function abrirAgendar(dia, bloque) {
 function abrirMiSesion(dia, bloque) {
     const puedeCancelar = !bloque.pasado && bloque.estado_sesion === 'Programada';
     const fecha = dia.fecha.slice(8, 10) + '/' + dia.fecha.slice(5, 7);
-    abrirHoja('Tu sesión de fotos', (dia.nombre.indexOf('/') >= 0 ? dia.nombre : dia.nombre + ' ' + fecha),
-        '<div class="fila-dato"><span class="r">Hora</span><span>' + escapar(bloque.rango) + '</span></div>' +
+    const horaInicio = bloque.inicio_show || bloque.hora_inicio;
+    abrirHoja(bloque.parte ? 'Tu show de fotos' : 'Tu sesión de fotos',
+        (dia.nombre.indexOf('/') >= 0 ? dia.nombre : dia.nombre + ' ' + fecha),
+        '<div class="fila-dato"><span class="r">Hora</span><span>' +
+            escapar(bloque.rango_show || bloque.rango) + '</span></div>' +
+        (bloque.duracion ? '<div class="fila-dato"><span class="r">Dura</span><span>' +
+            escapar(bloque.duracion) + '</span></div>' : '') +
         '<div class="fila-dato"><span class="r">Sede</span><span>' + escapar(bloque.sede) + '</span></div>' +
         '<div class="fila-dato"><span class="r">Asunto</span><span>' + escapar(bloque.asunto) + '</span></div>' +
         '<div class="fila-dato"><span class="r">Estado</span><span class="chapa ' +
@@ -332,12 +349,14 @@ function abrirMiSesion(dia, bloque) {
     const cancelar = $('f-cancelar');
     if (!cancelar) return;
     cancelar.onclick = async () => {
-        if (!confirm('¿Cancelar tu sesión de fotos de las ' + bloque.rango.split(' – ')[0] +
-                     '? El bloque quedará libre para otra.')) return;
+        const desde = (bloque.rango_show || bloque.rango).split(' – ')[0];
+        if (!confirm(bloque.parte || bloque.duracion
+                ? '¿Cancelar tu show de las ' + desde + '? Todos sus bloques quedarán libres.'
+                : '¿Cancelar tu sesión de fotos de las ' + desde + '? El bloque quedará libre para otra.')) return;
         cancelar.disabled = true;
         try {
             const respuesta = await pedir('/api/fotografia/cancelar', 'POST',
-                                          { fecha: dia.fecha, hora_inicio: bloque.hora_inicio });
+                                          { fecha: dia.fecha, hora_inicio: horaInicio });
             cerrarHoja();
             avisar(respuesta.mensaje || 'Sesión cancelada.', 'bueno');
         } catch (error) {
@@ -428,7 +447,7 @@ function sinTildes(texto) {
 function pintarPortafolio() {
     const filtro = sinTildes($('buscador').value.trim());
     const lista = (estado.estilos || []).filter((e) => !filtro ||
-        sinTildes(e.nombre_sesion + ' ' + e.requisitos).indexOf(filtro) >= 0);
+        sinTildes(e.nombre_sesion + ' ' + e.descripcion + ' ' + e.requisitos).indexOf(filtro) >= 0);
 
     if (!lista.length) {
         $('estilos').innerHTML = '<div class="vacio">' + (estado.estilos.length
@@ -440,53 +459,77 @@ function pintarPortafolio() {
         '<button class="estilo" data-id="' + escapar(e.id) + '">' +
             '<div class="icono">🎞️</div>' +
             '<div style="min-width:0"><div class="nombre">' + escapar(e.nombre_sesion) + '</div>' +
-            '<div class="resumen">' + escapar(e.requisitos) + '</div>' +
-            '<div class="resumen" style="margin-top:4px">📷 ' + e.cantidad_fotos +
-                (e.cantidad_fotos === 1 ? ' foto' : ' fotos') + '</div></div>' +
+            '<div class="resumen">' + escapar(e.descripcion || e.requisitos) + '</div>' +
+            '<div class="resumen" style="margin-top:4px">⏱ ' + escapar(e.duracion || '30 min') +
+                ' · 📷 ' + e.cantidad_fotos + (e.cantidad_fotos === 1 ? ' foto' : ' fotos') + '</div></div>' +
             '<span class="flecha">›</span></button>').join('');
     document.querySelectorAll('.estilo').forEach((boton) => {
         boton.onclick = () => abrirEstilo(estado.estilos.find((e) => e.id === boton.dataset.id));
     });
 }
 
+/* Las fotos de un estilo llegan de 6 en 6 (`siguiente`): se van pintando
+   según llegan, sin bajar un estilo de muchas fotos de golpe. */
+async function pintarFotosEstilo(ruta, estilo, galeria, aSrc, abrir) {
+    let desde = 0;
+    let pintadas = 0;
+    galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1"><span class="girando">◌</span> Cargando fotos…</div>';
+    try {
+        while (desde !== null && desde !== undefined) {
+            const datos = await pedir(ruta + encodeURIComponent(estilo.id) + '?desde=' + desde);
+            if (!galeria.isConnected) return;          // la cerró antes de que llegaran
+            if (!pintadas) galeria.innerHTML = '';
+            (datos.fotos || []).forEach((b64) => {
+                const img = document.createElement('img');
+                img.alt = estilo.nombre_sesion;
+                img.loading = 'lazy';
+                img.src = aSrc(b64);
+                img.onclick = () => abrir(img.src);
+                galeria.appendChild(img);
+                pintadas++;
+            });
+            desde = datos.siguiente;
+        }
+        if (!pintadas) galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">Este estilo no tiene fotos.</div>';
+    } catch (error) {
+        if (!galeria.isConnected) return;
+        if (!pintadas) galeria.innerHTML = '';
+        galeria.insertAdjacentHTML('beforeend', '<div class="vacio" style="grid-column:1/-1">' +
+            escapar(error.message) + '</div>');
+    }
+}
+
+function textoBloques(estilo) {
+    return estilo.bloques > 1 ? estilo.duracion + ' · ocupa ' + estilo.bloques + ' bloques'
+                              : (estilo.duracion || '30 min');
+}
+
 function abrirEstilo(estilo) {
     if (!estilo) return;
-    abrirHoja(estilo.nombre_sesion, 'Portafolio de fotografía',
+    abrirHoja(estilo.nombre_sesion, 'Portafolio de fotografía · ⏱ ' + textoBloques(estilo),
+        (estilo.descripcion
+            ? '<div class="campo" style="margin-bottom:6px"><label>Descripción</label></div>' +
+              '<div class="requisitos">' + escapar(estilo.descripcion) + '</div>'
+            : '') +
         '<div class="galeria" id="galeria">' +
-            (estilo.cantidad_fotos
-                ? '<div class="vacio" style="grid-column:1/-1"><span class="girando">◌</span> Cargando fotos…</div>'
-                : '<div class="vacio" style="grid-column:1/-1">Este estilo no tiene fotos.</div>') +
+            (estilo.cantidad_fotos ? '' : '<div class="vacio" style="grid-column:1/-1">Este estilo no tiene fotos.</div>') +
         '</div>' +
         '<div class="campo" style="margin-bottom:6px"><label>Requisitos</label></div>' +
         '<div class="requisitos">' + escapar(estilo.requisitos || 'Sin requisitos escritos.') + '</div>' +
         '<button class="boton-principal" id="f-agendar-estilo">Agendar</button>');
 
     $('f-agendar-estilo').onclick = () => {
-        estado.pendiente = { id: estilo.id, nombre: estilo.nombre_sesion };
+        estado.pendiente = { id: estilo.id, nombre: estilo.nombre_sesion,
+                             duracion: estilo.duracion, bloques: estilo.bloques || 1 };
         cerrarHoja();
         cambiarVista('agenda');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     if (!estilo.cantidad_fotos) return;
-    // Las fotos se piden solo al abrir el estilo: cada uno puede pesar casi 1 MB.
-    pedir('/api/fotografia/portafolio/' + encodeURIComponent(estilo.id)).then((datos) => {
-        const galeria = $('galeria');
-        if (!galeria) return;          // la cerró antes de que llegaran
-        const fotos = datos.fotos || [];
-        galeria.innerHTML = fotos.length ? '' : '<div class="vacio" style="grid-column:1/-1">Este estilo no tiene fotos.</div>';
-        fotos.forEach((b64) => {
-            const img = document.createElement('img');
-            img.alt = estilo.nombre_sesion;
-            img.src = b64.indexOf('data:') === 0 ? b64 : 'data:image/jpeg;base64,' + b64;
-            img.onclick = () => abrirVisor(img.src);
-            galeria.appendChild(img);
-        });
-    }).catch((error) => {
-        const galeria = $('galeria');
-        if (galeria) galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">' +
-            escapar(error.message) + '</div>';
-    });
+    // Las fotos se piden solo al abrir el estilo, y de 6 en 6.
+    pintarFotosEstilo('/api/fotografia/portafolio/', estilo, $('galeria'),
+        (b64) => (b64.indexOf('data:') === 0 ? b64 : 'data:image/jpeg;base64,' + b64), abrirVisor);
 }
 
 // =======================================================================
