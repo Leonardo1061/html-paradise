@@ -37,6 +37,7 @@ const estado = {
     datos: null,            // la semana que devolvió la API
     catalogo: [],
     duraciones: [15, 30, 45, 60],
+    duracionesPorVibra: {}, // el Special Show va de 1 a 6 horas
     reemplazando: null,     // el bloque del monitor que se está sustituyendo
     elegidos: [],           // shows elegidos para ese reemplazo
     vigilando: null,        // temporizador que mira si el monitor cambió algo
@@ -53,6 +54,11 @@ function escapar(texto) {
     return String(texto == null ? '' : texto)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+// Las duraciones que admite un show de esa vibra (las manda la API).
+function duracionesDe(vibra) {
+    return estado.duracionesPorVibra[vibra] || estado.duraciones;
 }
 
 function textoMinutos(total) {
@@ -129,6 +135,7 @@ async function cargar() {
         estado.datos = semana;
         estado.catalogo = catalogo.shows || [];
         estado.duraciones = catalogo.duraciones || estado.duraciones;
+        estado.duracionesPorVibra = catalogo.duraciones_por_vibra || {};
         if (!estado.dia) estado.dia = semana.hoy || (semana.dias[0] || {}).dia;
         $('cargando').classList.add('oculto');
         $('dia').classList.remove('oculto');
@@ -236,7 +243,7 @@ function bienvenida(huboCambios) {
     }
     if (actual) {
         lineas.push(linea(actual.icono, (actual.en_curso ? 'En vivo ahora: ' : 'Lo siguiente: ') +
-            '<b>' + escapar(actual.nombre_show) + '</b> · ' + actual.duracion + ' min.'));
+            '<b>' + escapar(actual.nombre_show) + '</b> · ' + textoMinutos(actual.duracion) + '.'));
     }
 
     const principal = actual
@@ -386,7 +393,7 @@ function tarjetaBloque(bloque) {
 
     const etiquetas = [];
     etiquetas.push('<span class="chip ' + bloque.vibra + '">' + escapar(bloque.etiqueta_vibra) + '</span>');
-    etiquetas.push('<span class="chip">' + bloque.duracion + ' min</span>');
+    etiquetas.push('<span class="chip">' + textoMinutos(bloque.duracion) + '</span>');
     if (bloque.es_del_monitor) etiquetas.push('<span class="chip monitor">De tu monitor</span>');
     if (bloque.reemplaza) etiquetas.push('<span class="chip mia">Lo pusiste tú</span>');
     if (bloque.estado === 'completado') etiquetas.push('<span class="chip">✓ Hecho</span>');
@@ -444,7 +451,7 @@ function tarjetaEnVivo(bloque) {
     if (bloque.en_curso && bloque.fin_previsto) {
         cuerpo.push('<div class="cuenta" id="cuenta">' +
             '<div class="reloj"><div class="tiempo" id="tiempo">--:--</div>' +
-            '<div class="de">de ' + bloque.duracion + ' min</div></div>' +
+            '<div class="de">de ' + textoMinutos(bloque.duracion) + '</div></div>' +
             '<div class="riel"><div class="avance" id="avance"></div></div></div>');
     }
 
@@ -462,7 +469,7 @@ function tarjetaEnVivo(bloque) {
             '<div style="flex:1"><h3>' + escapar(bloque.nombre_show) + '</h3>' +
                 '<div class="meta" style="margin-top:6px">' +
                 '<span class="chip ' + bloque.vibra + '">' + escapar(bloque.etiqueta_vibra) + '</span>' +
-                '<span class="chip">' + bloque.duracion + ' min</span>' +
+                '<span class="chip">' + textoMinutos(bloque.duracion) + '</span>' +
                 (bloque.es_del_monitor ? '<span class="chip monitor">De tu monitor</span>' : '') +
                 (show.personalizado ? '<span class="chip mia">✏️ Mi versión</span>' : '') +
                 '</div></div>' +
@@ -686,7 +693,7 @@ function sonarAlarma(cuenta) {
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Se acabó «' + cuenta.nombre + '»', {
                 body: siguiente ? 'Sigue: ' + siguiente.nombre_show + ' · ' +
-                                  siguiente.duracion + ' min'
+                                  textoMinutos(siguiente.duracion)
                                 : 'Era tu último show programado.',
                 tag: 'paradise-plan',
             });
@@ -696,12 +703,12 @@ function sonarAlarma(cuenta) {
     capas.innerHTML = '<div class="centrado" id="velo-alarma"><div class="alarma">' +
         '<div class="campana">🔔</div>' +
         '<h3>Se acabó el tiempo</h3>' +
-        '<p>Terminaron los ' + Math.round(cuenta.total / 60) + ' min de <b>' +
+        '<p>Se cumplieron ' + textoMinutos(Math.round(cuenta.total / 60)) + ' de <b>' +
             escapar(cuenta.nombre) + '</b>.</p>' +
         (siguiente
             ? '<div class="proximo"><div class="icono-tile">' + escapar(siguiente.icono) + '</div>' +
               '<div><div class="rotulo">Ahora sigue</div><div class="nombre">' +
-              escapar(siguiente.nombre_show) + ' · ' + siguiente.duracion + ' min</div></div></div>' +
+              escapar(siguiente.nombre_show) + ' · ' + textoMinutos(siguiente.duracion) + '</div></div></div>' +
               '<button class="boton-principal ancho" id="a-siguiente">Listo · empezar el siguiente</button>'
             : '<div class="proximo"><div class="icono-tile">🏁</div><div>' +
               '<div class="rotulo">No queda nada pendiente</div>' +
@@ -747,7 +754,7 @@ async function sugerir(dia) {
         const show = respuesta.show;
         caja.innerHTML = '<div class="aviso-minutos">Te propongo empezar con ' +
             escapar(show.icono) + ' <b>' + escapar(show.nombre) + '</b> (' +
-            escapar(show.etiqueta_vibra) + ', ' + show.duracion_sugerida + ' min).</div>' +
+            escapar(show.etiqueta_vibra) + ', ' + textoMinutos(show.duracion_sugerida) + ').</div>' +
             '<button class="boton-icono" id="btn-sugerido">Añadirlo al turno</button>';
         $('btn-sugerido').onclick = () => accion('/api/plan/agregar',
             { dia: dia.dia, id_show: show.id }, show.nombre + ' añadido.');
@@ -810,7 +817,7 @@ function abrirCatalogo() {
 
     const aviso = reemplazo
         ? '<div class="aviso-minutos" id="contador">Tu monitor puso ' +
-          '<b>' + escapar(reemplazo.nombre_show) + '</b> (' + reemplazo.duracion + ' min). ' +
+          '<b>' + escapar(reemplazo.nombre_show) + '</b> (' + textoMinutos(reemplazo.duracion) + '). ' +
           'Elige uno o varios shows que sumen al menos esos minutos.</div>'
         : '';
 
@@ -823,7 +830,7 @@ function abrirCatalogo() {
 
     const botones = [
         ['todos', 'Todos'], ['tokens', '🪙 + Tokens'], ['cortos', '🕐 Cortos'],
-        ['soft', '❄ Soft'], ['mid', '👗 Mid'], ['high', '🔥 High'],
+        ['soft', '❄ Soft'], ['mid', '👗 Mid'], ['high', '🔥 High'], ['special', '⭐ Special'],
     ];
     $('filtros').innerHTML = botones.map(([clave, texto]) =>
         '<button class="filtro' + (clave === filtros.clave ? ' activo' : '') +
@@ -855,7 +862,7 @@ function showsFiltrados() {
         }
         if (filtros.clave === 'tokens') return show.es_rentable;
         if (filtros.clave === 'cortos') return show.es_corto;
-        if (['soft', 'mid', 'high'].indexOf(filtros.clave) >= 0) return show.vibra === filtros.clave;
+        if (['soft', 'mid', 'high', 'special'].indexOf(filtros.clave) >= 0) return show.vibra === filtros.clave;
         return true;
     });
 }
@@ -869,6 +876,7 @@ function pintarShows() {
     }
 
     const carriles = [
+        ['special', '⭐ Special Show · eventos de 1 a 6 horas'],
         ['high', '🔥 High Vibe · clímax y horas pico'],
         ['mid',  '👗 Mid Vibe · subir la temperatura'],
         ['soft', '❄ Soft Vibe · conectar y fidelizar'],
@@ -913,7 +921,7 @@ function filaShow(show) {
                 ? '<div class="descripcion">' + escapar(show.descripcion_corta) + '</div>' : '') +
             '<div class="meta" style="margin-top:6px">' +
                 '<span class="chip ' + show.vibra + '">' + escapar(show.etiqueta_vibra) + '</span>' +
-                '<span class="chip">' + show.duracion_sugerida + ' min</span>' +
+                '<span class="chip">' + textoMinutos(show.duracion_sugerida) + '</span>' +
                 (show.tokens_maximos ? '<span class="chip">🪙 hasta ' + show.tokens_maximos + '</span>' : '') +
             '</div>' +
         '</div>' +
@@ -937,7 +945,7 @@ function pintarContador() {
     const suma = estado.elegidos.reduce((total, e) => total + e.duracion, 0);
     const falta = Math.max(0, estado.reemplazando.duracion - suma);
     caja.innerHTML = 'Tu monitor puso <b>' + escapar(estado.reemplazando.nombre_show) +
-        '</b> (' + estado.reemplazando.duracion + ' min).<br>' +
+        '</b> (' + textoMinutos(estado.reemplazando.duracion) + ').<br>' +
         'Llevas <b>' + textoMinutos(suma) + '</b>' +
         (falta ? ' · te faltan <b>' + textoMinutos(falta) + '</b>' : ' · ya lo cubres ✓');
 }
@@ -961,7 +969,7 @@ function abrirFicha(show, idBloque) {
         '<div class="icono-tile">' + escapar(show.icono) + '</div>' +
         '<div><div class="meta">' +
             '<span class="chip ' + show.vibra + '">' + escapar(show.etiqueta_vibra) + '</span>' +
-            '<span class="chip">' + show.duracion_sugerida + ' min sugeridos</span>' +
+            '<span class="chip">' + textoMinutos(show.duracion_sugerida) + ' sugeridos</span>' +
             (show.personalizado ? '<span class="chip mia">✏️ Mi versión</span>' : '') +
         '</div>' +
         (show.descripcion_corta
@@ -990,21 +998,23 @@ function abrirFicha(show, idBloque) {
     if (show.playlist) partes.push('<div class="mindset">🎵 ' + escapar(show.playlist) + '</div>');
     if (show.video_referencia) partes.push('<div class="mindset">🎬 <a style="color:var(--mid)" target="_blank" rel="noopener" href="' +
         escapar(show.video_referencia) + '">Ver el video de referencia</a></div>');
+    if (show.video_explicacion) partes.push('<div class="mindset">🎓 <a style="color:var(--mid)" target="_blank" rel="noopener" href="' +
+        escapar(show.video_explicacion) + '">Ver el video explicación (cómo se hace)</a></div>');
 
     partes.push('<div id="imagenes" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"></div>');
 
     // Duración con la que se programa (píldoras, como en los PDF).
     if (!bloque) {
         partes.push('<div class="campo" style="margin-top:18px"><label>Duración del bloque</label>' +
-            '<div class="opciones" id="duraciones">' + estado.duraciones.map((minutos) =>
+            '<div class="opciones" id="duraciones">' + duracionesDe(show.vibra).map((minutos) =>
                 '<button class="opcion' + (minutos === show.duracion_sugerida ? ' activo' : '') +
-                '" data-duracion="' + minutos + '">' + minutos + ' min</button>').join('') +
+                '" data-duracion="' + minutos + '">' + textoMinutos(minutos) + '</button>').join('') +
             '</div></div>');
     } else if (bloque.abierto) {
         partes.push('<div class="campo" style="margin-top:18px"><label>Cambiar la duración de este bloque</label>' +
-            '<div class="opciones" id="duraciones-bloque">' + estado.duraciones.map((minutos) =>
+            '<div class="opciones" id="duraciones-bloque">' + duracionesDe(bloque.vibra).map((minutos) =>
                 '<button class="opcion' + (minutos === bloque.duracion ? ' activo' : '') +
-                '" data-duracion="' + minutos + '">' + minutos + ' min</button>').join('') +
+                '" data-duracion="' + minutos + '">' + textoMinutos(minutos) + '</button>').join('') +
             '</div></div>');
     }
 
@@ -1102,7 +1112,7 @@ async function cargarImagenes(show) {
 
 /* --- editor «solo para mí» -------------------------------------------- */
 function abrirEditor(show) {
-    const vibras = [['soft', 'Soft'], ['mid', 'Mid'], ['high', 'High']];
+    const vibras = [['soft', 'Soft'], ['mid', 'Mid'], ['high', 'High'], ['special', 'Special Show']];
     const tipos = [['pasos', 'Pasos'], ['mindset', 'Mindset'], ['goals', 'Menú de goals']];
 
     abrirHoja('Editar «' + escapar(show.nombre) + '» para mí',
@@ -1122,9 +1132,7 @@ function abrirEditor(show) {
             texto + '</button>').join('') + '</div></div>' +
 
         '<div class="campo"><label>Duración sugerida</label><div class="opciones" id="e-duracion">' +
-        estado.duraciones.map((minutos) => '<button class="opcion' +
-            (show.duracion_sugerida === minutos ? ' activo' : '') + '" data-valor="' + minutos + '">' +
-            minutos + ' min</button>').join('') + '</div></div>' +
+        '</div></div>' +
 
         '<div class="campo"><label>Cómo se presenta en vivo</label><div class="opciones" id="e-tipo">' +
         tipos.map(([clave, texto]) => '<button class="opcion' +
@@ -1163,13 +1171,31 @@ function abrirEditor(show) {
         duracion: show.duracion_sugerida,
         tipo: show.tipo_tarjeta,
     };
-    [['e-vibra', 'vibra'], ['e-duracion', 'duracion'], ['e-tipo', 'tipo']].forEach(([id, campo]) => {
+    // Las duraciones dependen de la vibra: el Special Show va en horas.
+    // Al cambiar de vibra se repintan y, si la elegida ya no vale, se
+    // toma la primera de la vibra nueva.
+    const pintarDuraciones = () => {
+        const permitidas = duracionesDe(elegidos.vibra);
+        if (permitidas.indexOf(elegidos.duracion) < 0) elegidos.duracion = permitidas[0];
+        $('e-duracion').innerHTML = permitidas.map((minutos) => '<button class="opcion' +
+            (elegidos.duracion === minutos ? ' activo' : '') + '" data-valor="' + minutos + '">' +
+            textoMinutos(minutos) + '</button>').join('');
+        $('e-duracion').querySelectorAll('[data-valor]').forEach((boton) => {
+            boton.onclick = () => {
+                elegidos.duracion = parseInt(boton.dataset.valor, 10);
+                $('e-duracion').querySelectorAll('.opcion').forEach((b) => b.classList.remove('activo'));
+                boton.classList.add('activo');
+            };
+        });
+    };
+    pintarDuraciones();
+    [['e-vibra', 'vibra'], ['e-tipo', 'tipo']].forEach(([id, campo]) => {
         $(id).querySelectorAll('[data-valor]').forEach((boton) => {
             boton.onclick = () => {
-                elegidos[campo] = campo === 'duracion'
-                    ? parseInt(boton.dataset.valor, 10) : boton.dataset.valor;
+                elegidos[campo] = boton.dataset.valor;
                 $(id).querySelectorAll('.opcion').forEach((b) => b.classList.remove('activo'));
                 boton.classList.add('activo');
+                if (campo === 'vibra') pintarDuraciones();
             };
         });
     });
