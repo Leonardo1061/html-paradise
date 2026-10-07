@@ -203,3 +203,34 @@ button { cursor: pointer; }
 .selector-modelos .opcion.elegida { background: var(--degradado); color: #fff; }
 .selector-modelos .opcion.elegida small { color: rgba(255, 255, 255, .85); }
 .hoja-cabecera .sub { font-size: 12px; color: var(--tenue); margin-top: 3px; font-weight: 400; }
+
+/* ------------------------------------- conversación de una tarea (personal.js) */
+.capa-conversacion .velo { z-index: 60; }
+.hoja.conversacion-tarea { z-index: 70; height: 92vh; }
+.mensajes-tarea { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.mensajes-tarea .ver-anteriores { align-self: center; }
+.burbuja-tarea {
+    max-width: 85%; align-self: flex-start; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 14px 14px 14px 4px; padding: 9px 12px; font-size: 14px; line-height: 1.45;
+}
+.burbuja-tarea.mia { align-self: flex-end; border-radius: 14px 14px 4px 14px; border-color: rgba(6, 182, 212, .45); }
+.burbuja-tarea .autor { font-size: 11.5px; color: var(--tenue); margin-bottom: 3px; }
+.burbuja-tarea .texto { white-space: pre-wrap; word-break: break-word; }
+.burbuja-tarea .archivo:not(:empty) { margin-top: 6px; }
+.burbuja-tarea .archivo img { max-width: 220px; max-height: 220px; border-radius: 10px; cursor: zoom-in; display: block; }
+.burbuja-tarea .archivo .boton-secundario { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fin-conversacion { text-align: center; color: var(--tenue); font-size: 13px; padding: 12px 6px; }
+.pie-conversacion:not(:empty) { border-top: 1px solid var(--borde); padding: 10px 12px 14px; }
+.pie-conversacion .fila-escribir { display: flex; gap: 8px; align-items: flex-end; }
+.pie-conversacion textarea {
+    flex: 1; min-width: 0; resize: none; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 9px 11px; color: var(--texto); font: inherit; font-size: 14px; outline: none;
+}
+.pie-conversacion textarea:focus { border-color: var(--cian); }
+.pie-conversacion .enviar { width: auto; padding-left: 16px; padding-right: 16px; }
+.pie-conversacion .archivo-elegido { font-size: 12.5px; color: var(--tenue); margin-bottom: 6px; }
+.pie-conversacion .archivo-elegido .cerrar { font-size: 15px; }
+.pie-conversacion .cerrar-tarea { width: 100%; margin-top: 10px; border-color: rgba(239, 68, 68, .45); }
+.tarea .boton-conversacion { width: auto; padding: 9px 13px; font-size: 13px; }
+.tarea .ultima-respuesta { color: var(--tenue); }
+.titulo-seccion { font-size: 12.5px; font-weight: 600; color: var(--cian); margin: 2px 0 8px; }

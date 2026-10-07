@@ -28,6 +28,17 @@
  * Los TICKET CEO de las modelos llegan aquí como una tarea más (al CEO), con
  * «🎫 Ticket de …», sus videos y PDF, y «💬 Responder» en lugar de «Hecha».
  * El aviso del teléfono abre la campana con personal_panel.html?tareas=1.
+ *
+ * LA CONVERSACIÓN DE CADA TAREA  (api/tareas_conversacion.py)
+ * -----------------------------------------------------------
+ * «💬 Conversación» abre, encima de la campana, los mensajes entre quien
+ * recibió la tarea y quien la asignó: texto y un archivo por mensaje (foto,
+ * video, PDF, Excel…), que van a Drive. Se leen de 20 en 20 («Ver
+ * anteriores») y, con la conversación abierta, cada 8 s se piden los nuevos.
+ * Quien la asignó tiene «🔒 Cerrar tarea»: cerrada ya no se retoma y queda
+ * en solo lectura. Lo que le contestan a quien asigna llega en `respuestas`
+ * de /tareas y también enciende el globo de la campana. El aviso del
+ * teléfono abre la conversación con ?tareas=1&tarea=ID.
  */
 
 (function () {
@@ -82,6 +93,21 @@ async function pedir(ruta, metodo, cuerpo) {
         error.codigo = respuesta.status;
         throw error;
     }
+    return datos;
+}
+
+/* Para subir archivos (multipart): sin Content-Type, lo pone el navegador. */
+async function pedirFormulario(ruta, formulario) {
+    const respuesta = await fetch(API + ruta, {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token() }, body: formulario,
+    });
+    let datos = {};
+    try { datos = await respuesta.json(); } catch (e) { datos = {}; }
+    if (respuesta.status === 401) {
+        salirPorSesion();
+        throw new Error(datos.detail || 'Tu sesión caducó. Entra otra vez.');
+    }
+    if (!respuesta.ok) throw new Error(datos.detail || 'No se pudo enviar.');
     return datos;
 }
 
@@ -166,6 +192,7 @@ function pitar() {
 // =======================================================================
 const campana = {
     tareas: [],
+    respuestas: [],                  // las que asignó y le contestaron sin que lo haya visto
     conocidas: null,                 // ids ya vistos (para pitar solo por las nuevas)
     reloj: null,
     abierta: null,                   // la hoja, si está abierta
@@ -174,7 +201,7 @@ const campana = {
 function pintarGlobo() {
     const globo = document.getElementById('globo-tareas');
     if (!globo) return;
-    const n = campana.tareas.filter((t) => !t.leida).length;
+    const n = campana.tareas.filter((t) => !t.leida).length + campana.respuestas.length;
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
     document.dispatchEvent(new CustomEvent('personal:tareas', { detail: campana.tareas }));
@@ -185,12 +212,19 @@ async function revisarTareas(forzar) {
     try {
         const datos = await pedir('/api/personal/tareas');
         campana.tareas = datos.tareas || [];
-        const ids = new Set(campana.tareas.map((t) => t.id));
+        campana.respuestas = datos.respuestas || [];
+        // «Nueva» es una tarea que no estaba o que tiene un mensaje o un
+        // estado distinto desde la última vuelta.
+        const clave = (t) => t.id + '·' + (t.num_respuestas || 0) + '·' + t.estado;
+        const pendientes = campana.tareas.filter((t) => !t.leida).concat(campana.respuestas);
+        const ids = new Set(campana.tareas.concat(campana.respuestas).map(clave));
         if (campana.conocidas) {
-            const nuevas = campana.tareas.filter((t) => !campana.conocidas.has(t.id) && !t.leida);
+            const nuevas = pendientes.filter((t) => !campana.conocidas.has(clave(t)));
             if (nuevas.length) {
                 pitar();
-                avisar('🔔 Tarea nueva: ' + nuevas[0].titulo);
+                const t = nuevas[0];
+                avisar(t.num_respuestas && t.ultima_de && t.ultima_de !== ficha().monitor
+                    ? '💬 ' + t.ultima_de + ': ' + t.titulo : '🔔 Tarea nueva: ' + t.titulo);
             }
         }
         campana.conocidas = ids;
@@ -202,12 +236,13 @@ async function revisarTareas(forzar) {
 }
 
 function claseEstado(estado) {
-    return estado === 'hecha' ? 'bien' : estado === 'en curso' ? 'cian' : '';
+    return estado === 'hecha' || estado === 'cerrada' ? 'bien' : estado === 'en curso' ? 'cian' : '';
 }
 
 function tarjetaTarea(t, recibida, alCambiar) {
     const caja = document.createElement('div');
-    caja.className = 'tarea' + (recibida && !t.leida ? ' nueva' : '');
+    const porVer = recibida ? !t.leida : t.leida_creador === false;
+    caja.className = 'tarea' + (porVer ? ' nueva' : '');
     const prioridad = t.prioridad === 'Urgente' ? 'urgente' : t.prioridad === 'Alta' ? 'alta' : '';
     caja.innerHTML =
         '<div class="cabeza"><div class="t">' + escapar(t.titulo) + '</div>' +
@@ -264,10 +299,29 @@ function tarjetaTarea(t, recibida, alCambiar) {
         r.textContent = '💬 ' + (t.respondida_por || '') + ': ' + t.respuesta;
         caja.insertBefore(r, caja.querySelector('.miniaturas'));
     }
+    if (!t.ticket && t.num_respuestas && t.ultima_de) {
+        const r = document.createElement('div');
+        r.className = 'desc ultima-respuesta';
+        r.textContent = '💬 ' + t.ultima_de + ': ' + (t.ultima_texto || '');
+        caja.insertBefore(r, caja.querySelector('.miniaturas'));
+    }
+    if (!t.ticket && t.estado === 'cerrada') {
+        const r = document.createElement('div');
+        r.className = 'meta';
+        r.textContent = '🔒 Cerrada por ' + (t.cerrada_por || '¿?') + (t.cerrada ? ' · ' + t.cerrada : '');
+        caja.insertBefore(r, caja.querySelector('.miniaturas'));
+    }
+    if (!t.ticket) {
+        const b = document.createElement('button');
+        b.className = 'boton-principal boton-conversacion';
+        b.textContent = '💬 Conversación' + (t.num_respuestas ? ' (' + t.num_respuestas + ')' : '');
+        b.onclick = () => abrirConversacion(t, alCambiar);
+        botones.appendChild(b);
+    }
     if (recibida && t.abierta) {
         if (t.estado !== 'en curso') boton('▶ En curso', () => cambiar('en curso'));
         if (t.ticket) boton('💬 Responder', async () => responderTicket(caja, t, alCambiar));
-        else boton('✓ Hecha', () => cambiar('hecha'));
+        else if (t.estado !== 'hecha') boton('✓ Hecha', () => cambiar('hecha'));
     }
     if (!recibida && t.abierta) boton('✕ Cancelar', () => cambiar('cancelada'));
     return caja;
@@ -302,6 +356,239 @@ function responderTicket(caja, t, alCambiar) {
     caja.querySelectorAll('.botones button').forEach((b) => { b.disabled = false; });
 }
 
+// =======================================================================
+// LA CONVERSACIÓN DE UNA TAREA
+// =======================================================================
+const CADA_MS_CONVERSACION = 8000;
+const ACEPTA_ARCHIVOS = 'image/*,video/*,.pdf,.xlsx,.xls,.xlsm,.csv,.doc,.docx,.txt,.ppt,.pptx,.zip';
+
+function pesoLegible(bytes) {
+    const n = Number(bytes || 0);
+    return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+}
+
+function abrirConversacion(t, alSalir) {
+    const ruta = '/api/personal/tareas/' + encodeURIComponent(t.id) + '/conversacion';
+    const capa = document.createElement('div');
+    capa.className = 'capa-conversacion';
+    capa.innerHTML =
+        '<div class="velo"></div><div class="hoja conversacion-tarea">' +
+        '  <div class="hoja-cabecera"><button class="cerrar volver" title="Volver">←</button>' +
+        '    <div style="flex:1"><h3></h3><div class="sub"></div></div>' +
+        '    <button class="cerrar salir" title="Cerrar">✕</button></div>' +
+        '  <div class="hoja-cuerpo mensajes-tarea">' +
+        '    <div class="cargando"><span class="girando">◌</span></div></div>' +
+        '  <div class="pie-conversacion"></div>' +
+        '</div>';
+    capa.querySelector('h3').textContent = t.titulo || 'Tarea';
+    document.getElementById('capas-personal').appendChild(capa);
+    const lista = capa.querySelector('.mensajes-tarea');
+    const pie = capa.querySelector('.pie-conversacion');
+    const estado = { mensajes: [], hayMas: false, reloj: null, vivo: true, info: null };
+
+    const salir = () => {
+        estado.vivo = false;
+        clearInterval(estado.reloj);
+        capa.remove();
+        if (alSalir) alSalir();
+        revisarTareas(true);
+    };
+    capa.querySelector('.velo').onclick = salir;
+    capa.querySelector('.volver').onclick = salir;
+    capa.querySelector('.salir').onclick = () => {
+        salir();
+        document.getElementById('capas-personal').innerHTML = '';
+        campana.abierta = null;
+    };
+
+    function burbuja(m) {
+        const b = document.createElement('div');
+        b.className = 'burbuja-tarea' + (m.mio ? ' mia' : '');
+        b.innerHTML = '<div class="autor">' + escapar(m.mio ? 'Tú' : m.de) + ' · ' + escapar(m.cuando) + '</div>' +
+            (m.texto ? '<div class="texto"></div>' : '') + '<div class="archivo"></div>';
+        if (m.texto) b.querySelector('.texto').textContent = m.texto;
+        const a = m.adjunto;
+        if (!a) return b;
+        const zona = b.querySelector('.archivo');
+        const rutaArchivo = ruta + '/' + encodeURIComponent(m.id) + '/adjunto';
+        if (a.tipo === 'imagen') {
+            const img = document.createElement('img');
+            img.alt = a.titulo || 'Foto';
+            zona.appendChild(img);
+            pedirArchivo(rutaArchivo).then((url) => {
+                img.src = url;
+                img.onclick = () => abrirVisor(url);
+            }).catch(() => { zona.textContent = '🖼️ La foto no se pudo cargar.'; });
+            return b;
+        }
+        const boton = document.createElement('button');
+        boton.className = 'boton-secundario';
+        const icono = a.tipo === 'video' ? '🎬 ' : a.tipo === 'pdf' ? '📄 ' : '📎 ';
+        boton.textContent = icono + (a.titulo || a.nombre || 'Archivo') + ' · ' + pesoLegible(a.bytes);
+        boton.onclick = async () => {
+            // Video y PDF en otra pestaña (que se abre en el toque, o el navegador
+            // la bloquea); Excel y demás se descargan con su nombre.
+            const ventana = a.tipo === 'archivo' ? null : window.open('', '_blank');
+            boton.disabled = true;
+            try {
+                const url = await pedirArchivo(rutaArchivo);
+                if (ventana) ventana.location.href = url;
+                else {
+                    const enlace = document.createElement('a');
+                    enlace.href = url;
+                    enlace.download = a.titulo || a.nombre || 'archivo';
+                    document.body.appendChild(enlace);
+                    enlace.click();
+                    enlace.remove();
+                }
+            } catch (error) {
+                if (ventana) ventana.close();
+                avisar(error.message, 'malo');
+            }
+            boton.disabled = false;
+        };
+        zona.appendChild(boton);
+        return b;
+    }
+
+    function pintar(alFinal) {
+        const info = estado.info;
+        lista.innerHTML = '';
+        if (estado.hayMas) {
+            const mas = document.createElement('button');
+            mas.className = 'boton-secundario ver-anteriores';
+            mas.textContent = '⬆ Ver anteriores';
+            mas.onclick = anteriores;
+            lista.appendChild(mas);
+        } else {
+            // El principio de la conversación: la tarea tal como se asignó.
+            const cabeza = document.createElement('div');
+            cabeza.className = 'tarea';
+            cabeza.innerHTML = '<div class="meta"></div>' + (info.tarea.descripcion ? '<div class="desc"></div>' : '');
+            cabeza.querySelector('.meta').textContent = (info.tarea.creada_por || '') + ' → ' +
+                (info.tarea.asignada_a || '') + (info.tarea.creada ? ' · ' + info.tarea.creada : '');
+            if (info.tarea.descripcion) cabeza.querySelector('.desc').textContent = info.tarea.descripcion;
+            lista.appendChild(cabeza);
+        }
+        if (!estado.mensajes.length) {
+            const vacio = document.createElement('div');
+            vacio.className = 'vacio';
+            vacio.textContent = info.puede_escribir ? 'Todavía no hay mensajes. Escribe el primero.' : 'Sin mensajes.';
+            lista.appendChild(vacio);
+        }
+        estado.mensajes.forEach((m) => lista.appendChild(burbuja(m)));
+        if (!info.puede_escribir) {
+            const fin = document.createElement('div');
+            fin.className = 'fin-conversacion';
+            fin.textContent = '🔒 Tarea cerrada' + (info.tarea.cerrada_por ? ' por ' + info.tarea.cerrada_por : '') +
+                (info.tarea.cerrada ? ' · ' + info.tarea.cerrada : '') + '. Ya no se puede retomar.';
+            lista.appendChild(fin);
+        }
+        if (alFinal) lista.scrollTop = lista.scrollHeight;
+    }
+
+    function pintarPie() {
+        const info = estado.info;
+        capa.querySelector('h3').textContent = info.tarea.titulo || t.titulo || 'Tarea';
+        capa.querySelector('.sub').textContent = 'Con ' + (info.con || '¿?') + ' · ' + info.tarea.estado;
+        if (!info.puede_escribir) { pie.innerHTML = ''; return; }
+        if (pie.querySelector('textarea')) {
+            pie.querySelector('.cerrar-tarea').classList.toggle('oculto', !info.puede_cerrar);
+            return;
+        }
+        pie.innerHTML =
+            '<div class="archivo-elegido oculto"></div>' +
+            '<div class="fila-escribir">' +
+            '  <button class="boton-secundario adjuntar" title="Adjuntar foto, video, PDF o Excel">📎</button>' +
+            '  <textarea maxlength="4000" rows="2" placeholder="Escribe tu respuesta"></textarea>' +
+            '  <button class="boton-principal enviar">Enviar</button>' +
+            '</div>' +
+            '<input type="file" class="oculto" accept="' + ACEPTA_ARCHIVOS + '">' +
+            '<button class="boton-secundario cerrar-tarea' + (info.puede_cerrar ? '' : ' oculto') + '">🔒 Cerrar tarea</button>';
+        const entrada = pie.querySelector('input[type=file]');
+        const elegido = pie.querySelector('.archivo-elegido');
+        const texto = pie.querySelector('textarea');
+        const enviar = pie.querySelector('.enviar');
+        let archivo = null;
+        const pintarArchivo = () => {
+            elegido.classList.toggle('oculto', !archivo);
+            elegido.innerHTML = archivo ? '📎 ' + escapar(archivo.name) + ' · ' + pesoLegible(archivo.size) +
+                ' <button class="cerrar" title="Quitar">✕</button>' : '';
+            if (archivo) elegido.querySelector('button').onclick = () => { archivo = null; pintarArchivo(); };
+        };
+        pie.querySelector('.adjuntar').onclick = () => entrada.click();
+        entrada.onchange = () => { archivo = entrada.files[0] || null; entrada.value = ''; pintarArchivo(); };
+        enviar.onclick = async () => {
+            if (!texto.value.trim() && !archivo) { avisar('Escribe un mensaje o adjunta un archivo.', 'malo'); return; }
+            enviar.disabled = true;
+            enviar.textContent = archivo ? 'Subiendo…' : 'Enviando…';
+            try {
+                const formulario = new FormData();
+                formulario.append('texto', texto.value);
+                if (archivo) formulario.append('archivo', archivo, archivo.name);
+                const r = await pedirFormulario(ruta, formulario);
+                texto.value = '';
+                archivo = null;
+                pintarArchivo();
+                if (!estado.mensajes.some((m) => m.id === r.mensaje.id)) estado.mensajes.push(r.mensaje);
+                pintar(true);
+            } catch (error) { avisar(error.message, 'malo'); }
+            enviar.disabled = false;
+            enviar.textContent = 'Enviar';
+        };
+        pie.querySelector('.cerrar-tarea').onclick = async (e) => {
+            if (!confirm('¿Cerrar la tarea? Ya no se podrá retomar ni escribir en ella.')) return;
+            e.target.disabled = true;
+            try {
+                const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/cerrar', 'POST');
+                avisar(r.mensaje, 'bueno');
+                await cargar(true);
+            } catch (error) { avisar(error.message, 'malo'); e.target.disabled = false; }
+        };
+    }
+
+    /* Los 20 últimos. Lo de «Ver anteriores» que ya estaba se conserva. */
+    async function cargar(forzar) {
+        const datos = await pedir(ruta);
+        if (!estado.vivo) return;
+        const primero = datos.mensajes.length ? datos.mensajes[0].ts : '';
+        const antiguos = primero ? estado.mensajes.filter((m) => m.ts && m.ts < primero) : [];
+        const antes = estado.mensajes.map((m) => m.id).join(',');
+        const mensajes = antiguos.concat(datos.mensajes);
+        const cambio = forzar === true || !estado.info || antes !== mensajes.map((m) => m.id).join(',') ||
+            datos.puede_escribir !== estado.info.puede_escribir;
+        const abajo = !estado.info || lista.scrollHeight - lista.scrollTop - lista.clientHeight < 80;
+        estado.mensajes = mensajes;
+        if (!antiguos.length) estado.hayMas = datos.hay_mas;
+        estado.info = datos;
+        pintarPie();
+        if (cambio) pintar(abajo);
+    }
+
+    async function anteriores() {
+        const primero = estado.mensajes[0];
+        if (!primero) return;
+        try {
+            const datos = await pedir(ruta + '?antes=' + encodeURIComponent(primero.ts));
+            const alto = lista.scrollHeight;
+            estado.mensajes = datos.mensajes.concat(estado.mensajes);
+            estado.hayMas = datos.hay_mas;
+            pintar(false);
+            lista.scrollTop = lista.scrollHeight - alto;
+        } catch (error) { avisar(error.message, 'malo'); }
+    }
+
+    cargar().catch((error) => {
+        lista.innerHTML = '<div class="vacio"></div>';
+        lista.firstChild.textContent = error.message;
+    });
+    estado.reloj = setInterval(() => {
+        if (document.visibilityState === 'visible' && estado.info && estado.info.puede_escribir) {
+            cargar().catch(() => {});
+        }
+    }, CADA_MS_CONVERSACION);
+}
+
 function abrirCampana() {
     const yo = ficha();
     const capas = document.getElementById('capas-personal');
@@ -334,8 +621,15 @@ function abrirCampana() {
 
     function pintarRecibidas() {
         cuerpo.innerHTML = '';
+        if (campana.respuestas.length) {
+            const titulo = document.createElement('div');
+            titulo.className = 'titulo-seccion';
+            titulo.textContent = '💬 Te respondieron en tareas que asignaste';
+            cuerpo.appendChild(titulo);
+            campana.respuestas.forEach((t) => cuerpo.appendChild(tarjetaTarea(t, false, () => revisarTareas(true))));
+        }
         if (!campana.tareas.length) {
-            cuerpo.innerHTML = '<div class="vacio">No tienes tareas pendientes. 🎉</div>';
+            cuerpo.insertAdjacentHTML('beforeend', '<div class="vacio">No tienes tareas pendientes. 🎉</div>');
             return;
         }
         campana.tareas.forEach((t) => cuerpo.appendChild(tarjetaTarea(t, true, () => revisarTareas(true))));
@@ -534,6 +828,11 @@ async function iniciar(actual) {
         if (parametros.get('tareas')) {
             history.replaceState(null, '', window.location.pathname);
             abrirCampana();
+            // El aviso de un mensaje en una tarea abre directo su conversación.
+            const id = parametros.get('tarea');
+            const t = id && campana.tareas.concat(campana.respuestas).find((x) => x.id === id);
+            if (id) abrirConversacion(t || { id: id, titulo: 'Tarea' },
+                                      () => { if (campana.abierta) campana.abierta.pintar(); });
         }
     });
     campana.reloj = setInterval(revisarTareas, CADA_MS_TAREAS);
@@ -574,7 +873,7 @@ function selectorModelos(contenedor, modelos, alElegir) {
 window.Personal = {
     selectorModelos: selectorModelos,
     iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, avisar: avisar,
-    escapar: escapar, abrirVisor: abrirVisor, aDataUrl: aDataUrl, comprimir: comprimir,
+    escapar: escapar, abrirVisor: abrirVisor, abrirConversacion: abrirConversacion, aDataUrl: aDataUrl, comprimir: comprimir,
     abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha, ficha: ficha,
     tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas,
     tareas: () => campana.tareas, CLAVE_TOKEN: CLAVE_TOKEN,
