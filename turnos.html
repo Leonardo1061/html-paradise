@@ -955,7 +955,7 @@ function abrirAvisos() {
         item.className = 'aviso-item';
         item.style.cursor = 'pointer';
         item.innerHTML = ticketsEnCampana
-            ? `🎫 Tienes <b>${ticketsEnCampana}</b> ticket(s) al CEO por revisar. <u>Verlos</u>`
+            ? `🎫 El CEO respondió <b>${ticketsEnCampana}</b> ticket(s). <u>Verlos</u>`
             : `🎫 Tus tickets al CEO. <u>Verlos</u>`;
         item.onclick = () => { cerrarAvisos(); PARADISE_BARRA.abrirCampana(); };
         lista.insertBefore(item, lista.firstChild);

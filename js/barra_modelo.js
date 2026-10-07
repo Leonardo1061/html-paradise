@@ -15,8 +15,9 @@
  *                                    de este teléfono si aún no lo están)
  *        ⏻  Cerrar sesión
  *
- *   🔔 La campana: los tickets al CEO. Uno PENDIENTE se queda ahí hasta que
- *      el CEO lo responda; la respuesta cuenta hasta que la modelo la abre.
+ *   🔔 La campana: los tickets al CEO. Uno PENDIENTE se queda en la lista
+ *      hasta que el CEO lo responda, pero sin globo rojo: el número sale solo
+ *      con las respuestas que la modelo todavía no ha abierto.
  *      Si la página ya tiene su campana (panel.html, turnos.html) se usa esa:
  *      la página escucha el evento `paradise:tickets` y llama a
  *      PARADISE_BARRA.abrirCampana().
@@ -327,7 +328,9 @@ async function salir() {
 // =======================================================================
 // 🔔 LA CAMPANA: los tickets
 // =======================================================================
-function cuenta() { return estado.pendientes + estado.nuevas; }
+// El globo rojo sale SOLO cuando el CEO ya respondió y ella no lo ha visto.
+// Los pendientes se ven al abrir la campana, sin número encima.
+function cuenta() { return estado.nuevas; }
 
 async function revisar(forzar) {
     if (!token() || (forzar !== true && document.visibilityState !== 'visible')) return;

@@ -230,8 +230,8 @@ function conectarGrafica() {
 let ticketsEnCampana = 0;
 
 function pintarGlobo() {
-    const espera = (estado.datos && estado.datos.turnos.en_espera) || 0;
-    const total = espera + ticketsEnCampana;
+    // Solo las respuestas del CEO sin ver; la lista de espera va dentro.
+    const total = ticketsEnCampana;
     $('globo-avisos').textContent = total > 99 ? '99+' : String(total);
     $('globo-avisos').classList.toggle('oculto', !total);
 }
