@@ -309,7 +309,7 @@ function abrirSesion(dia, bloque) {
             (r.fotos || []).forEach((f) => {
                 const img = document.createElement('img');
                 img.src = P.aDataUrl(f);
-                img.onclick = () => P.abrirVisor(img.src);
+                img.onclick = () => abrirSlider(galeria, img, bloque.nombre || 'Fotos de referencia');
                 galeria.appendChild(img);
             });
             $('f-refs').replaceWith(galeria);
@@ -395,6 +395,14 @@ function pintarPortafolio() {
 
 /* Las fotos de un estilo llegan de 6 en 6 (`siguiente`): se van pintando
    según llegan, sin bajar un estilo de muchas fotos de golpe. */
+/* Tocar una foto abre el slider (js/slider_fotos.js) con TODAS las fotos de
+   la galería, empezando por esa. Se leen al tocar: si siguen llegando tandas,
+   entran las que ya están pintadas. */
+function abrirSlider(galeria, img, titulo) {
+    const todas = Array.from(galeria.querySelectorAll('img'));
+    window.SliderFotos.abrir(todas.map((i) => i.src), Math.max(0, todas.indexOf(img)), titulo);
+}
+
 async function pintarFotosEstilo(ruta, estilo, galeria, aSrc, abrir) {
     let desde = 0;
     let pintadas = 0;
@@ -409,7 +417,7 @@ async function pintarFotosEstilo(ruta, estilo, galeria, aSrc, abrir) {
                 img.alt = estilo.nombre_sesion;
                 img.loading = 'lazy';
                 img.src = aSrc(b64);
-                img.onclick = () => abrir(img.src);
+                img.onclick = () => abrirSlider(galeria, img, estilo.nombre_sesion);
                 galeria.appendChild(img);
                 pintadas++;
             });
