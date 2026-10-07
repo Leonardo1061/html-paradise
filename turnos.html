@@ -901,6 +901,9 @@ async function guardarCambios() {
    ya descarga cada minuto.
    ==================================================================== */
 let avisos = [];
+// Los tickets al CEO (js/barra_modelo.js) también suenan en esta campana.
+let ticketsEnCampana = 0;
+document.addEventListener('paradise:tickets', (e) => { ticketsEnCampana = e.detail.total; calcularAvisos(); });
 
 function calcularAvisos() {
     avisos = [];
@@ -927,7 +930,7 @@ function calcularAvisos() {
         });
     });
 
-    const nuevos = avisos.filter(a => a.nuevo).length;
+    const nuevos = avisos.filter(a => a.nuevo).length + ticketsEnCampana;
     const punto = document.getElementById('punto-campana');
     const campana = document.getElementById('btn-campana');
     if (nuevos > 0) {
@@ -946,6 +949,16 @@ function abrirAvisos() {
         lista.innerHTML = `<div class="aviso-item">No tienes avisos. Si quedas en lista de espera y se desocupa un cupo, aparecerá aquí.</div>`;
     } else {
         lista.innerHTML = avisos.map(a => `<div class="aviso-item">${a.texto}</div>`).join('');
+    }
+    if (window.PARADISE_BARRA) {
+        const item = document.createElement('div');
+        item.className = 'aviso-item';
+        item.style.cursor = 'pointer';
+        item.innerHTML = ticketsEnCampana
+            ? `🎫 Tienes <b>${ticketsEnCampana}</b> ticket(s) al CEO por revisar. <u>Verlos</u>`
+            : `🎫 Tus tickets al CEO. <u>Verlos</u>`;
+        item.onclick = () => { cerrarAvisos(); PARADISE_BARRA.abrirCampana(); };
+        lista.insertBefore(item, lista.firstChild);
     }
     document.getElementById('modal-avisos').style.display = 'flex';
 }
@@ -1082,7 +1095,7 @@ setInterval(cargarDatos, 60000);
         <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
         <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
         <button class="activo" id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
-        <button id="nav-perfil"><span class="simbolo">👤</span>PERFIL</button>
+        <button id="nav-ticket"><span class="simbolo">🎫</span>TICKET CEO</button>
     </nav>
 
     <script>
@@ -1091,7 +1104,9 @@ setInterval(cargarDatos, 60000);
     document.getElementById('nav-programador').onclick = () => location.href = 'plan.html';
     document.getElementById('nav-status').onclick      = () => window.scrollTo({ top: 0, behavior: 'smooth' });
     document.getElementById('nav-fotografia').onclick  = () => location.href = 'fotografia.html';
-    document.getElementById('nav-perfil').onclick      = () => location.href = 'panel.html#perfil';
     </script>
+    <!-- ⚙️ tuerca, 🎫 TICKET CEO y los tickets en esta campana 🔔 -->
+    <script src="js/adjuntos.js"></script>
+    <script src="js/barra_modelo.js"></script>
 </body>
 </html>

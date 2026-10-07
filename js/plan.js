@@ -1219,7 +1219,6 @@ $('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
 $('nav-chat').onclick = () => { window.location.href = 'chat.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
-$('nav-perfil').onclick = () => { window.location.href = 'panel.html#perfil'; };
 $('nav-programador').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 $('btn-salir').onclick = async () => {
     if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(false);

@@ -24,6 +24,10 @@
  * Cada 30 s, solo con la página a la vista, se pregunta por las tareas
  * abiertas. Si hay alguna nueva suena un pitido corto y se enciende el globo.
  * Solo CEO y Gerencia ven «Asignar»: la API lo vuelve a comprobar.
+ *
+ * Los TICKET CEO de las modelos llegan aquí como una tarea más (al CEO), con
+ * «🎫 Ticket de …», sus videos y PDF, y «💬 Responder» en lugar de «Hecha».
+ * El aviso del teléfono abre la campana con personal_panel.html?tareas=1.
  */
 
 (function () {
@@ -189,7 +193,9 @@ async function revisarTareas(forzar) {
         }
         campana.conocidas = ids;
         pintarGlobo();
-        if (campana.abierta && campana.abierta.pestana === 'recibidas') campana.abierta.pintar();
+        // No se repinta mientras se escribe la respuesta a un ticket: se perdería.
+        if (campana.abierta && campana.abierta.pestana === 'recibidas' &&
+            !document.querySelector('.respuesta-ticket')) campana.abierta.pintar();
     } catch (error) { /* sin red un momento: se intenta en la siguiente vuelta */ }
 }
 
@@ -205,7 +211,8 @@ function tarjetaTarea(t, recibida, alCambiar) {
         '<div class="cabeza"><div class="t">' + escapar(t.titulo) + '</div>' +
         (t.prioridad !== 'Normal' ? '<span class="pildora ' + prioridad + '">' + escapar(t.prioridad) + '</span>' : '') +
         '<span class="pildora ' + claseEstado(t.estado) + '">' + escapar(t.estado) + '</span></div>' +
-        '<div class="meta">' + (recibida ? 'De ' + escapar(t.creada_por || '¿?') : 'Para ' + escapar(t.asignada_a || '¿?')) +
+        '<div class="meta">' + (t.ticket ? '🎫 Ticket de ' + escapar(t.modelo || t.creada_por || '¿?') :
+            recibida ? 'De ' + escapar(t.creada_por || '¿?') : 'Para ' + escapar(t.asignada_a || '¿?')) +
         (t.creada ? ' · ' + escapar(t.creada) : '') + '</div>' +
         (t.descripcion ? '<div class="desc">' + escapar(t.descripcion) + '</div>' : '') +
         '<div class="miniaturas"></div><div class="botones"></div>';
@@ -238,12 +245,59 @@ function tarjetaTarea(t, recibida, alCambiar) {
             });
         });
     }
+    (t.adjuntos || []).forEach((a, i) => {
+        boton(a.tipo === 'pdf' ? '📄 ' + (a.titulo || 'Documento') : '🎬 Video', async () => {
+            // La ventana se abre en el toque; si no, el navegador la bloquea.
+            const ventana = window.open('', '_blank');
+            try {
+                const url = await pedirArchivo('/api/personal/tareas/' + encodeURIComponent(t.id) + '/adjunto/' + i);
+                if (ventana) ventana.location.href = url; else window.location.href = url;
+            } catch (error) { if (ventana) ventana.close(); throw error; }
+            botones.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+        });
+    });
+    if (t.ticket && t.respuesta) {
+        const r = document.createElement('div');
+        r.className = 'desc';
+        r.textContent = '💬 ' + (t.respondida_por || '') + ': ' + t.respuesta;
+        caja.insertBefore(r, caja.querySelector('.miniaturas'));
+    }
     if (recibida && t.abierta) {
         if (t.estado !== 'en curso') boton('▶ En curso', () => cambiar('en curso'));
-        boton('✓ Hecha', () => cambiar('hecha'));
+        if (t.ticket) boton('💬 Responder', async () => responderTicket(caja, t, alCambiar));
+        else boton('✓ Hecha', () => cambiar('hecha'));
     }
     if (!recibida && t.abierta) boton('✕ Cancelar', () => cambiar('cancelada'));
     return caja;
+}
+
+/* Debajo del ticket: la respuesta, que cierra el ticket y le avisa a la modelo. */
+function responderTicket(caja, t, alCambiar) {
+    if (caja.querySelector('.respuesta-ticket')) return;
+    const zona = document.createElement('div');
+    zona.className = 'respuesta-ticket campo';
+    zona.style.marginTop = '10px';
+    zona.innerHTML = '<label>Respuesta para ' + escapar(t.modelo || 'la modelo') + '</label>' +
+        '<textarea maxlength="4000" placeholder="Le llega en su campana y en el teléfono"></textarea>' +
+        '<button class="boton-principal" style="margin-top:8px">Enviar respuesta</button>';
+    caja.appendChild(zona);
+    const texto = zona.querySelector('textarea');
+    const enviar = zona.querySelector('button');
+    texto.focus();
+    enviar.onclick = async () => {
+        if (!texto.value.trim()) { avisar('Escribe la respuesta.', 'malo'); return; }
+        enviar.disabled = true;
+        try {
+            const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/responder', 'POST',
+                                  { respuesta: texto.value });
+            avisar(r.mensaje, 'bueno');
+            alCambiar();
+        } catch (error) {
+            avisar(error.message, 'malo');
+            enviar.disabled = false;
+        }
+    };
+    caja.querySelectorAll('.botones button').forEach((b) => { b.disabled = false; });
 }
 
 function abrirCampana() {
@@ -472,7 +526,14 @@ async function iniciar(actual) {
         window.location.href = 'personal_panel.html';
         return new Promise(() => {});
     }
-    revisarTareas(true);
+    revisarTareas(true).then(() => {
+        // El aviso de un ticket nuevo abre aquí con ?tareas=1.
+        const parametros = new URLSearchParams(window.location.search);
+        if (parametros.get('tareas')) {
+            history.replaceState(null, '', window.location.pathname);
+            abrirCampana();
+        }
+    });
     campana.reloj = setInterval(revisarTareas, CADA_MS_TAREAS);
     document.addEventListener('visibilitychange', revisarTareas);
     return yo;

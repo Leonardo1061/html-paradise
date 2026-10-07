@@ -8,7 +8,9 @@
  * decir cosas distintas.
  *
  * La barra de abajo lleva a las pantallas de verdad: TUS SHOWS (plan.html),
- * STATUS ROOM (turnos.html) y FOTOGRAFÍA (fotografia.html).
+ * STATUS ROOM (turnos.html) y FOTOGRAFÍA (fotografia.html). La contraseña,
+ * la alerta de prueba y salir están en la ⚙️ tuerca, y los tickets al CEO en
+ * la 🔔 campana: los dos los pone js/barra_modelo.js.
  */
 
 (function () {
@@ -89,10 +91,7 @@ function pintar() {
     $('nombre-barra').textContent = datos.nombre || '';
     $('jornada-barra').textContent = localStorage.getItem('jornada_actual') || 'PARADISE';
 
-    if (turnos.en_espera) {
-        $('globo-avisos').textContent = turnos.en_espera;
-        $('globo-avisos').classList.remove('oculto');
-    }
+    pintarGlobo();
 
     const partes = [];
 
@@ -150,7 +149,7 @@ function pintar() {
     const irPlan = $('btn-ir-plan');
     if (irPlan) irPlan.onclick = () => { window.location.href = 'plan.html'; };
     const cambiarYa = $('btn-cambiar-ya');
-    if (cambiarYa) cambiarYa.onclick = abrirPerfil;
+    if (cambiarYa) cambiarYa.onclick = () => PARADISE_BARRA.cambiarClave();
 
     conectarGrafica();
 }
@@ -226,124 +225,27 @@ function conectarGrafica() {
 }
 
 // =======================================================================
-// PERFIL · CAMBIAR CONTRASEÑA
+// LA CAMPANA: lista de espera + tickets al CEO (js/barra_modelo.js)
 // =======================================================================
-function cerrarHoja() { capas.innerHTML = ''; }
+let ticketsEnCampana = 0;
 
-function abrirPerfil() {
-    capas.innerHTML =
-        '<div class="velo" id="velo"></div>' +
-        '<div class="hoja"><div class="hoja-cabecera"><h3>Mi contraseña</h3>' +
-            '<button class="cerrar" id="cerrar-hoja">✕</button></div>' +
-        '<div class="hoja-cuerpo">' +
-            '<div class="campo"><label>Contraseña actual</label>' +
-                '<input type="password" id="p-actual" autocomplete="current-password"></div>' +
-            '<div class="campo"><label>Contraseña nueva</label>' +
-                '<input type="password" id="p-nueva" autocomplete="new-password"></div>' +
-            '<div class="campo"><label>Repite la nueva</label>' +
-                '<input type="password" id="p-repetida" autocomplete="new-password"></div>' +
-            '<button class="boton-principal" id="btn-guardar-clave">Guardar</button>' +
-            '<div style="border-top:1px solid var(--borde);margin:18px 0 14px"></div>' +
-            '<div style="font-size:13px;color:var(--tenue);line-height:1.5;margin-bottom:10px">' +
-                '<b style="color:var(--texto)">Avisos del teléfono</b><br>' +
-                'Para que te avise cuando se acabe un show aunque tengas la ' +
-                'aplicación cerrada. <span id="estado-avisos"></span></div>' +
-            '<button class="boton-secundario" id="btn-avisos-on" style="margin-top:0">' +
-                'Activar avisos en este teléfono</button>' +
-            '<button class="boton-secundario" id="btn-avisos-probar">Mandarme uno de prueba</button>' +
-            '<div style="border-top:1px solid var(--borde);margin:18px 0 14px"></div>' +
-            '<button class="boton-secundario" id="btn-cerrar-sesion" style="margin-top:0">Cerrar sesión</button>' +
-            '<p style="font-size:12px;color:var(--apagado);line-height:1.5;margin-top:14px">' +
-            'Si la olvidas, tu monitor puede devolvértela a los últimos 4 dígitos de tu cédula. ' +
-            'Es la misma contraseña del programa de escritorio.</p>' +
-        '</div></div>';
-
-    $('velo').onclick = cerrarHoja;
-    $('cerrar-hoja').onclick = cerrarHoja;
-    $('btn-cerrar-sesion').onclick = salir;
-    conectarAvisos();
-
-    $('btn-guardar-clave').onclick = async () => {
-        try {
-            await pedir('/api/acceso/password', 'POST', {
-                actual: $('p-actual').value.trim(),
-                nueva: $('p-nueva').value.trim(),
-                repetida: $('p-repetida').value.trim(),
-            });
-            localStorage.removeItem('password_por_defecto');
-            cerrarHoja();
-            avisar('Contraseña actualizada. Úsala también en el programa de escritorio.', 'bueno');
-            pintar();
-        } catch (error) {
-            avisar(error.message, 'malo');
-        }
-    };
+function pintarGlobo() {
+    const espera = (estado.datos && estado.datos.turnos.en_espera) || 0;
+    const total = espera + ticketsEnCampana;
+    $('globo-avisos').textContent = total > 99 ? '99+' : String(total);
+    $('globo-avisos').classList.toggle('oculto', !total);
 }
 
-/* --- avisos del teléfono (ver js/push.js) ---------------------------- */
-async function conectarAvisos() {
-    const rotulo = $('estado-avisos');
-    const encender = $('btn-avisos-on');
-    const probar = $('btn-avisos-probar');
-    if (!rotulo || !window.PARADISE_PUSH) {
-        if (rotulo) rotulo.textContent = 'Tu navegador no admite estos avisos.';
-        return;
-    }
-    if (!PARADISE_PUSH.soportado()) {
-        rotulo.textContent = 'Tu navegador no admite estos avisos.';
-        encender.disabled = probar.disabled = true;
-        return;
-    }
+document.addEventListener('paradise:tickets', (e) => {
+    ticketsEnCampana = e.detail.total;
+    pintarGlobo();
+});
 
-    const pintarEstado = async () => {
-        const activo = await PARADISE_PUSH.estaActivo();
-        rotulo.innerHTML = activo
-            ? '<span style="color:#6ee7b7">Activados en este teléfono.</span>'
-            : '<span style="color:#fbbf24">Todavía no están activados aquí.</span>';
-        encender.textContent = activo ? 'Desactivarlos en este teléfono'
-                                      : 'Activar avisos en este teléfono';
-        return activo;
-    };
-
-    let activo = await pintarEstado();
-
-    encender.onclick = async () => {
-        encender.disabled = true;
-        try {
-            if (activo) {
-                await PARADISE_PUSH.desactivar(estado.token);
-                avisar('Listo: ya no te avisaré en este teléfono.', 'bueno');
-            } else {
-                const listo = await PARADISE_PUSH.activar(estado.token);
-                avisar(listo ? 'Listo: te avisaré aunque cierres la aplicación.'
-                             : 'No se pudieron activar. Revisa que el navegador ' +
-                               'tenga permiso para enviarte notificaciones.',
-                       listo ? 'bueno' : 'malo');
-            }
-        } catch (error) {
-            avisar('No se pudo cambiar el ajuste de avisos.', 'malo');
-        }
-        activo = await pintarEstado();
-        encender.disabled = false;
-    };
-
-    probar.onclick = async () => {
-        try {
-            await pedir('/api/push/prueba', 'POST', {});
-            avisar('Te lo acabo de mandar. Debería llegarte en unos segundos.', 'bueno');
-        } catch (error) {
-            avisar(error.message, 'malo');
-        }
-    };
-}
-
-async function salir() {
-    // La sesión ya no caduca: solo «Salir» la cierra (y deja de avisar aquí).
-    if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(false);
-    ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto']
-        .forEach((clave) => localStorage.removeItem(clave));
-    window.location.href = PARADISE.URL_LOGIN;
-}
+PARADISE_BARRA.ponerExtra(() => {
+    const espera = (estado.datos && estado.datos.turnos.en_espera) || 0;
+    return espera ? '⏳ Tienes <b>' + espera + '</b> turno(s) en lista de espera. Míralos en STATUS ROOM.'
+                  : '';
+});
 
 // =======================================================================
 // ARRANQUE
@@ -352,23 +254,18 @@ $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
 $('nav-chat').onclick = () => { window.location.href = 'chat.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
-$('nav-perfil').onclick = abrirPerfil;
 $('nav-inicio').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-$('btn-salir').onclick = salir;
-$('btn-avisos').onclick = () => {
-    const espera = (estado.datos && estado.datos.turnos.en_espera) || 0;
-    avisar(espera ? 'Tienes ' + espera + ' turno(s) en lista de espera. Míralos en STATUS ROOM.'
-                  : 'No tienes turnos en lista de espera.', espera ? 'malo' : 'bueno');
-};
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarHoja(); });
+$('btn-salir').onclick = () => PARADISE_BARRA.salir();
+$('btn-avisos').onclick = () => PARADISE_BARRA.abrirCampana();
+// Al cambiar la contraseña desaparece el consejo de cambiarla.
+document.addEventListener('paradise:clave', () => { if (estado.datos) pintar(); });
 
 cargar();
 
-// turnos.html y plan.html mandan aquí con #perfil para abrir la contraseña
-// sin tener que duplicar el formulario en cada página.
+// Enlaces viejos a panel.html#perfil: abren el cambio de contraseña.
 if (window.location.hash === '#perfil') {
     history.replaceState(null, '', window.location.pathname);
-    abrirPerfil();
+    PARADISE_BARRA.cambiarClave();
 }
 
 })();
