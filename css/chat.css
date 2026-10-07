@@ -168,3 +168,6 @@
 
 /* Los avisos suben para no tapar la caja de texto. */
 .aviso { bottom: 160px !important; }
+
+/* «Visto por» (debajo de lo que escribió la modelo) y el visto del chat privado */
+.chat-meta .chat-visto { color: var(--soft); font-weight: 600; }

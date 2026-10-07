@@ -33,6 +33,13 @@
  * los chats de las modelos (`/api/personal/privado`) y solo la leen los dos.
  * En la misma vuelta de 5 s se pregunta por el buzón (una lectura); sus no
  * leídos suman al globo de la barra.
+ *
+ * «VISTO POR» (2026-10-07): abrir la conversación de una modelo la deja vista
+ * por él (lo hace la API) y lo que llega con ella abierta y a la vista se
+ * marca con `/visto`. Debajo de cada mensaje de la modelo sale quién lo vio.
+ * Lo que vio CUALQUIERA deja de estar pendiente para todos: `/chat/nuevos`
+ * trae también los vistos nuevos y apagan el punto de esa conversación.
+ * En el chat privado, solo el visto del otro: «✓✓ Visto» en lo suyo.
  */
 
 (function () {
@@ -53,6 +60,10 @@ function etiquetaDia(fecha) {
     if (fecha === iso(new Date(hoy.getTime() - 86400000))) return 'Ayer';
     const [a, m, d] = fecha.split('-');
     return d + '/' + m + '/' + a;
+}
+
+function textoVistos(nombres) {
+    return nombres && nombres.length ? '✓✓ Visto por ' + nombres.join(', ') : '';
 }
 
 function resumenDe(m) {
@@ -286,6 +297,9 @@ function montar(raiz) {
                 mensajes: datos.mensajes || [], canales: datos.canales || [],
             };
             (datos.mensajes || []).forEach((m) => estado.vistos.add(m.id));
+            // Abrirla la dejó vista (la API ya puso su nombre): el punto se apaga.
+            aplicarVistos((datos.mensajes || []).map((m) => ({ id: m.id, cedula: cedula, vistos: m.vistos })));
+            actualizarGlobo();
             if (!estado.cursor) estado.cursor = datos.cursor;
             el('.quien-conv .nombre').textContent = datos.nombre;
             el('.quien-conv .jornada').textContent = datos.jornada || '';
@@ -326,6 +340,7 @@ function montar(raiz) {
             conv.persona = conv.nombre = datos.nombre;
             conv.mensajes = datos.mensajes || [];
             conv.cursor = datos.cursor;
+            conv.visto = datos.visto || (persona ? persona.visto : '') || '';
             conv.mensajes.forEach((m) => estado.vistos.add(m.id));
             el('.quien-conv .nombre').textContent = datos.nombre;
             const leida = personaDel(datos.nombre);
@@ -342,6 +357,10 @@ function montar(raiz) {
     async function traerPrivado() {
         const conv = estado.abierta;
         const persona = personaDel(conv.persona);
+        if (persona && (persona.visto || '') !== (conv.visto || '')) {
+            conv.visto = persona.visto || '';           // el otro leyó lo mío
+            pintarConversacion(false);
+        }
         if (!persona || !conv.cursor || persona.ts === conv.ts) return;
         const datos = await P.pedir('/api/personal/privado/' + encodeURIComponent(conv.persona) +
                                     '?desde=' + encodeURIComponent(conv.cursor));
@@ -411,6 +430,14 @@ function montar(raiz) {
         const meta = document.createElement('div');
         meta.className = 'chat-meta';
         meta.textContent = m.enviando ? 'Enviando…' : (m.hora || '');
+        const visto = privado ? (m.mio && m.ts && estado.abierta.visto && m.ts <= estado.abierta.visto ? '✓✓ Visto' : '')
+            : (m.de_modelo ? textoVistos(m.vistos) : '');
+        if (visto && !m.enviando) {
+            const marca = document.createElement('span');
+            marca.className = 'chat-visto';
+            marca.textContent = ' · ' + visto;
+            meta.appendChild(marca);
+        }
         fila.appendChild(meta);
         return fila;
     }
@@ -454,11 +481,49 @@ function montar(raiz) {
         if (!previa || (m.ts || '9') >= (previa.ultimo.ts || '')) {
             estado.conversaciones[m.cedula] = {
                 cedula: m.cedula, nombre: m.nombre, jornada: previa ? previa.jornada : '',
-                ultimo: m, esperando: m.de_modelo,
+                ultimo: m, esperando: m.de_modelo && !(m.vistos || []).length,
             };
         }
         if (estado.abierta && estado.abierta.cedula === m.cedula) estado.abierta.mensajes.push(m);
         return true;
+    }
+
+    /* Vistos nuevos: [{id, cedula, vistos}]. Apagan el punto y se pintan. */
+    function aplicarVistos(vistos) {
+        let repintar = false;
+        (vistos || []).forEach((v) => {
+            // Primero la abierta: la última línea de la lista puede ser el MISMO
+            // objeto, y si se cambiara antes ya no se notaría la diferencia.
+            const abierta = estado.abierta;
+            if (abierta && !abierta.privado && abierta.cedula === v.cedula) {
+                const m = abierta.mensajes.find((x) => x.id === v.id);
+                if (m && (m.vistos || []).join('|') !== (v.vistos || []).join('|')) {
+                    m.vistos = v.vistos;
+                    repintar = true;
+                }
+            }
+            const conv = estado.conversaciones[v.cedula];
+            if (conv && conv.ultimo.id === v.id) {
+                conv.ultimo.vistos = v.vistos;
+                conv.esperando = conv.ultimo.de_modelo && !(v.vistos || []).length;
+            }
+        });
+        if (repintar) pintarConversacion(false);
+    }
+
+    /* Lo de la modelo que llegó con su chat abierto y a la vista: él lo vio. */
+    async function marcarVistos(mensajes) {
+        const yo = (P.ficha() || {}).monitor || '';
+        const ids = mensajes.filter((m) => m.de_modelo && (m.vistos || []).indexOf(yo) < 0).map((m) => m.id);
+        const conv = estado.abierta;
+        if (!ids.length || !conv || conv.privado) return;
+        try {
+            const datos = await P.pedir('/api/personal/chat/' + encodeURIComponent(conv.cedula) + '/visto',
+                                        'POST', { ids: ids });
+            aplicarVistos(datos.vistos);
+        } catch (error) {
+            // Se queda sin marcar; al volver a abrir el chat se marca.
+        }
     }
 
     async function preguntar() {
@@ -479,18 +544,28 @@ function montar(raiz) {
 
             const datos = await P.pedir('/api/personal/chat/nuevos?desde=' + encodeURIComponent(estado.cursor));
             estado.cursor = datos.cursor || estado.cursor;
-            let aqui = false, otros = false;
+            let otros = false;
+            const aqui = [];
             (datos.mensajes || []).forEach((m) => {
                 if (!registrar(m)) return;
-                if (estado.abierta && estado.abierta.cedula === m.cedula) aqui = true;
+                if (estado.abierta && estado.abierta.cedula === m.cedula) aqui.push(m);
                 else if (m.de_modelo) otros = true;
             });
-            if (aqui) {
+            aplicarVistos(datos.vistos);
+            if (aqui.length) {
                 const cerca = window.innerHeight + window.scrollY >= document.body.scrollHeight - 160;
                 pintarConversacion(cerca);
+                marcarVistos(aqui);
             }
             if (!estado.abierta) pintarLista();
             else actualizarGlobo();
+            if (estado.abierta && estado.abierta.privado) {
+                const p = personaDel(estado.abierta.persona);
+                if (p && (p.visto || '') !== (estado.abierta.visto || '')) {
+                    estado.abierta.visto = p.visto || '';
+                    pintarConversacion(false);
+                }
+            }
             if (otros && estado.abierta) P.avisar('💬 Mensaje nuevo en otro chat.');
         } catch (error) {
             // Sin red un momento: se intenta en la siguiente vuelta.

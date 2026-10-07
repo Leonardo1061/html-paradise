@@ -84,6 +84,11 @@ Studio solo lo ve quien está asignado a Tropic, el CEO y Gerencia, y el
 asignado a Tropic no tiene Status Room. La página solo pinta lo que la API le
 manda.
 
+**Visto por**: abrir el chat de una modelo deja su nombre en lo que ella
+escribió; ella lo ve debajo de su mensaje («✓✓ Visto por …») y ese chat deja
+de estar pendiente para todo el personal. En el chat privado, «✓✓ Visto» en
+lo tuyo cuando el otro lo leyó.
+
 La sesión es `token_personal`, aparte del `token_sesion` de las modelos.
 
 ## La configuración está en un solo sitio

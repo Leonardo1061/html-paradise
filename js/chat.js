@@ -25,6 +25,10 @@
  * después de la última vez (`/api/chat/nuevos`). Si no llegó nada cuesta
  * una lectura. Lo que llega a otro canal enciende su contador.
  *
+ * «VISTO POR» (2026-10-07): debajo de cada mensaje suyo sale quién del
+ * personal lo vio («✓✓ Visto por Alejandro Gomez»). La misma vuelta de 4 s
+ * trae los vistos nuevos (`vistos` en `/api/chat/nuevos`).
+ *
  * LO QUE SE ADJUNTA (js/adjuntos.js, el mismo menú del chat del personal)
  * ------------------------------------------------------------------------
  * 📎 Galería (fotos y videos), Cámara (una foto) y Documento (PDF), y 🎤 la
@@ -271,6 +275,12 @@ function montar(raiz, opciones) {
         const meta = document.createElement('div');
         meta.className = 'chat-meta';
         meta.textContent = m.enviando ? 'Enviando…' : (m.hora || '');
+        if (m.de_modelo && !m.enviando && (m.vistos || []).length) {
+            const visto = document.createElement('span');
+            visto.className = 'chat-visto';
+            visto.textContent = ' · ✓✓ Visto por ' + m.vistos.join(', ');
+            meta.appendChild(visto);
+        }
         fila.appendChild(meta);
         return fila;
     }
@@ -326,6 +336,12 @@ function montar(raiz, opciones) {
                 if (!agregar(m)) return;
                 if (canal === estado.canal) aqui = true;
                 else if (!m.de_modelo) estado.sinLeer[canal] = (estado.sinLeer[canal] || 0) + 1;
+            });
+            (datos.vistos || []).forEach((v) => {
+                const m = (estado.porCanal[v.canal_id || 'soporte'] || []).find((x) => x.id === v.id);
+                if (!m || (m.vistos || []).join('|') === (v.vistos || []).join('|')) return;
+                m.vistos = v.vistos;
+                if ((v.canal_id || 'soporte') === estado.canal) aqui = true;
             });
             if (aqui) { const bajar = cercaDelFinal(); pintarLista(bajar); }
             pintarCanales();

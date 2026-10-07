@@ -575,7 +575,7 @@ window.Personal = {
     selectorModelos: selectorModelos,
     iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, avisar: avisar,
     escapar: escapar, abrirVisor: abrirVisor, aDataUrl: aDataUrl, comprimir: comprimir,
-    abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha,
+    abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha, ficha: ficha,
     tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas,
     tareas: () => campana.tareas, CLAVE_TOKEN: CLAVE_TOKEN,
 };
