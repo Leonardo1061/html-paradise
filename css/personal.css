@@ -243,3 +243,8 @@ button { cursor: pointer; }
 }
 .filtro-tarea.activo { border-color: var(--cian); color: var(--cian); background: rgba(6, 182, 212, .1); }
 .mostrar-mas { display: block; margin: 4px auto 12px; }
+.filtro-persona {
+    flex: none; max-width: 190px; background: var(--panel-alto); border: 1px solid var(--borde);
+    color: var(--texto); border-radius: 999px; padding: 5px 10px; font-size: 12.5px; font-weight: 600;
+}
+.pie-conversacion .no-realizada { width: 100%; margin-top: 8px; border-color: rgba(251, 191, 36, .45); }

@@ -47,6 +47,12 @@
  * filtro encima: Todas · Pendientes · En curso · Hechas · Cerradas. Las
  * cerradas de «Para mí» no vienen en la campana: se piden aparte
  * (/tareas/historial) solo al verlas, de 20 en 20 con «Mostrar más».
+ *
+ * «NO REALIZADA» Y FILTRO POR PERSONA  (Leonardo, 2026-10-08)
+ * -----------------------------------------------------------
+ * Quien asignó una tarea la puede marcar «⛔ No realizada» (no se hizo en el
+ * plazo): es final, como cerrarla, y tiene su propio filtro. En «Enviadas»,
+ * a la derecha de los filtros, un desplegable deja ver las de una persona.
  */
 
 (function () {
@@ -64,6 +70,7 @@ const FILTROS_TAREA = [
     { id: 'en_curso', texto: 'En curso', estados: ['en curso'] },
     { id: 'hechas', texto: 'Hechas', estados: ['hecha'] },
     { id: 'cerradas', texto: 'Cerradas', estados: ['cerrada', 'cancelada'] },
+    { id: 'no_realizadas', texto: 'No realizadas', estados: ['no realizada'] },
 ];
 
 const MODULOS = [
@@ -251,7 +258,17 @@ async function revisarTareas(forzar) {
 }
 
 function claseEstado(estado) {
-    return estado === 'hecha' || estado === 'cerrada' ? 'bien' : estado === 'en curso' ? 'cian' : '';
+    return estado === 'hecha' || estado === 'cerrada' ? 'bien' : estado === 'en curso' ? 'cian' :
+        estado === 'no realizada' ? 'urgente' : '';
+}
+
+/* «No realizada»: la pone quien asignó la tarea y ya no se retoma. */
+async function marcarNoRealizada(t) {
+    if (!confirm('¿Marcar «' + (t.titulo || 'la tarea') + '» como NO REALIZADA? ' +
+                 'Queda cerrada y ya no se podrá retomar.')) return false;
+    const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/no_realizada', 'POST');
+    avisar(r.mensaje, 'bueno');
+    return true;
 }
 
 function tarjetaTarea(t, recibida, alCambiar) {
@@ -320,10 +337,11 @@ function tarjetaTarea(t, recibida, alCambiar) {
         r.textContent = '💬 ' + t.ultima_de + ': ' + (t.ultima_texto || '');
         caja.insertBefore(r, caja.querySelector('.miniaturas'));
     }
-    if (!t.ticket && t.estado === 'cerrada') {
+    if (!t.ticket && (t.estado === 'cerrada' || t.estado === 'no realizada')) {
         const r = document.createElement('div');
         r.className = 'meta';
-        r.textContent = '🔒 Cerrada por ' + (t.cerrada_por || '¿?') + (t.cerrada ? ' · ' + t.cerrada : '');
+        r.textContent = (t.estado === 'cerrada' ? '🔒 Cerrada por ' : '⛔ No realizada · la marcó ') +
+            (t.cerrada_por || '¿?') + (t.cerrada ? ' · ' + t.cerrada : '');
         caja.insertBefore(r, caja.querySelector('.miniaturas'));
     }
     if (!t.ticket) {
@@ -337,6 +355,13 @@ function tarjetaTarea(t, recibida, alCambiar) {
         if (t.estado !== 'en curso') boton('▶ En curso', () => cambiar('en curso'));
         if (t.ticket) boton('💬 Responder', async () => responderTicket(caja, t, alCambiar));
         else if (t.estado !== 'hecha') boton('✓ Hecha', () => cambiar('hecha'));
+    }
+    if (!recibida && t.abierta && !t.ticket) {
+        // Si se arrepiente en la confirmación, el botón vuelve a quedar activo.
+        boton('⛔ No realizada', async () => {
+            if (await marcarNoRealizada(t)) alCambiar();
+            else throw new Error('No se marcó.');
+        });
     }
     if (!recibida && t.abierta) boton('✕ Cancelar', () => cambiar('cancelada'));
     return caja;
@@ -495,7 +520,8 @@ function abrirConversacion(t, alSalir) {
         if (!info.puede_escribir) {
             const fin = document.createElement('div');
             fin.className = 'fin-conversacion';
-            fin.textContent = '🔒 Tarea cerrada' + (info.tarea.cerrada_por ? ' por ' + info.tarea.cerrada_por : '') +
+            fin.textContent = (info.tarea.estado === 'no realizada' ? '⛔ Marcada como NO REALIZADA' : '🔒 Tarea cerrada') +
+                (info.tarea.cerrada_por ? ' por ' + info.tarea.cerrada_por : '') +
                 (info.tarea.cerrada ? ' · ' + info.tarea.cerrada : '') + '. Ya no se puede retomar.';
             lista.appendChild(fin);
         }
@@ -509,6 +535,7 @@ function abrirConversacion(t, alSalir) {
         if (!info.puede_escribir) { pie.innerHTML = ''; return; }
         if (pie.querySelector('textarea')) {
             pie.querySelector('.cerrar-tarea').classList.toggle('oculto', !info.puede_cerrar);
+            pie.querySelector('.no-realizada').classList.toggle('oculto', !info.puede_cerrar);
             return;
         }
         pie.innerHTML =
@@ -519,7 +546,8 @@ function abrirConversacion(t, alSalir) {
             '  <button class="boton-principal enviar">Enviar</button>' +
             '</div>' +
             '<input type="file" class="oculto" accept="' + ACEPTA_ARCHIVOS + '">' +
-            '<button class="boton-secundario cerrar-tarea' + (info.puede_cerrar ? '' : ' oculto') + '">🔒 Cerrar tarea</button>';
+            '<button class="boton-secundario cerrar-tarea' + (info.puede_cerrar ? '' : ' oculto') + '">🔒 Cerrar tarea</button>' +
+            '<button class="boton-secundario no-realizada' + (info.puede_cerrar ? '' : ' oculto') + '">⛔ No realizada</button>';
         const entrada = pie.querySelector('input[type=file]');
         const elegido = pie.querySelector('.archivo-elegido');
         const texto = pie.querySelector('textarea');
@@ -550,6 +578,11 @@ function abrirConversacion(t, alSalir) {
             } catch (error) { avisar(error.message, 'malo'); }
             enviar.disabled = false;
             enviar.textContent = 'Enviar';
+        };
+        pie.querySelector('.no-realizada').onclick = async (e) => {
+            e.target.disabled = true;
+            try { if (await marcarNoRealizada(info.tarea)) await cargar(true); } catch (error) { avisar(error.message, 'malo'); }
+            e.target.disabled = false;
         };
         pie.querySelector('.cerrar-tarea').onclick = async (e) => {
             if (!confirm('¿Cerrar la tarea? Ya no se podrá retomar ni escribir en ella.')) return;
@@ -625,6 +658,8 @@ function abrirCampana() {
     const hoja = {
         pestana: 'recibidas',
         filtro: '',
+        persona: '',                 // «Enviadas»: solo las de esta persona
+        personas: [],
         historial: null,             // {filtro, tareas, hay_mas}: las cerradas de «Para mí»
         pintar() {
             capas.querySelectorAll('.pestana').forEach((b) => b.classList.toggle('activa', b.dataset.p === hoja.pestana));
@@ -691,7 +726,7 @@ function abrirCampana() {
         const abiertas = campana.tareas.filter(pasaFiltro);
         abiertas.forEach((t) => cuerpo.appendChild(tarjetaTarea(t, true, () => revisarTareas(true))));
         // Al fondo, las ya cerradas (no vienen en la campana: se piden aparte).
-        const conHistorial = ['', 'hechas', 'cerradas'].indexOf(hoja.filtro) >= 0;
+        const conHistorial = ['', 'hechas', 'cerradas', 'no_realizadas'].indexOf(hoja.filtro) >= 0;
         const historial = hoja.historial && hoja.historial.filtro === hoja.filtro ? hoja.historial : null;
         if (conHistorial && !historial) {
             cuerpo.insertAdjacentHTML('beforeend', '<div class="cargando"><span class="girando">◌</span></div>');
@@ -719,20 +754,36 @@ function abrirCampana() {
     async function pintarEnviadas() {
         cuerpo.innerHTML = '';
         barraFiltros();
+        // A la derecha de los filtros: las de una sola persona.
+        const selector = document.createElement('select');
+        selector.className = 'filtro-persona';
+        const pintarPersonas = () => {
+            selector.innerHTML = '<option value="">👤 Todas las personas</option>' +
+                (hoja.personas || []).map((n) => '<option value="' + escapar(n) + '">' + escapar(n) + '</option>').join('');
+            selector.value = hoja.persona || '';
+        };
+        pintarPersonas();
+        selector.onchange = () => { hoja.persona = selector.value; pintarEnviadas(); };
+        cuerpo.querySelector('.filtros-tareas').appendChild(selector);
         const lista = document.createElement('div');
         lista.innerHTML = '<div class="cargando"><span class="girando">◌</span></div>';
         cuerpo.appendChild(lista);
         const filtro = hoja.filtro;
+        const persona = hoja.persona || '';
         const recargar = () => { if (hoja.pestana === 'enviadas') pintarEnviadas(); };
         const pagina = async (desde) => {
             const datos = await pedir('/api/personal/tareas/enviadas?filtro=' + encodeURIComponent(filtro) +
-                                      '&desde=' + desde);
-            if (hoja.pestana !== 'enviadas' || hoja.filtro !== filtro) return;
+                                      '&persona=' + encodeURIComponent(persona) + '&desde=' + desde);
+            if (hoja.pestana !== 'enviadas' || hoja.filtro !== filtro || (hoja.persona || '') !== persona) return;
+            if (JSON.stringify(datos.personas || []) !== JSON.stringify(hoja.personas || [])) {
+                hoja.personas = datos.personas || [];
+                pintarPersonas();
+            }
             if (!desde) lista.innerHTML = '';
             const viejo = lista.querySelector('.mostrar-mas');
             if (viejo) viejo.remove();
             if (!desde && !(datos.tareas || []).length) {
-                lista.innerHTML = '<div class="vacio">' + (filtro ? 'No hay tareas con ese filtro.' :
+                lista.innerHTML = '<div class="vacio">' + (filtro || persona ? 'No hay tareas con ese filtro.' :
                     'Todavía no has asignado tareas.') + '</div>';
                 return;
             }
