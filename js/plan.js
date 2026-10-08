@@ -1240,18 +1240,9 @@ async function recargarCatalogo() {
 // =======================================================================
 // ARRANQUE
 // =======================================================================
-$('btn-turnos').onclick = () => { window.location.href = 'panel.html'; };
-$('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
-$('nav-chat').onclick = () => { window.location.href = 'chat.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
 $('nav-programador').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-$('btn-salir').onclick = async () => {
-    if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(false);
-    ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto']
-        .forEach((clave) => localStorage.removeItem(clave));
-    window.location.href = PARADISE.URL_LOGIN;
-};
 $('semana-atras').onclick = () => cambiarSemana(estado.semana + 1);
 $('semana-adelante').onclick = () => cambiarSemana(estado.semana - 1);
 

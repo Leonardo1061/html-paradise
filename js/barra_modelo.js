@@ -1,5 +1,6 @@
 /* ===========================================================================
- * PARADISE · La barra de la modelo: ⚙️ tuerca, 🔔 campana, 🎫 TICKET CEO y 📤 SUBIR CONTENIDO
+ * PARADISE · La barra de la modelo: cabecera fija, 💬 burbuja del chat,
+ *            🎫 TICKET CEO y 📤 SUBIR CONTENIDO
  * ===========================================================================
  *
  * Va en TODAS las páginas de la modelo (panel, chat, plan, fotografía y
@@ -7,7 +8,17 @@
  *
  *     <script src="js/barra_modelo.js"></script>
  *
- * Pone arriba a la derecha, junto a la campana:
+ * CABECERA FIJA (2026-10-08): una franja arriba que no se va con el scroll,
+ * igual en las cinco páginas. A la izquierda ▦ INICIO (panel.html); a la
+ * derecha 🔔 campana, ⚙️ tuerca y ⏻ salir. Respeta la muesca del iPhone
+ * instalado como app (safe-area). Su alto queda en `--bm-arriba`: lo que la
+ * página tenga pegado arriba (sticky) usa `top: var(--bm-arriba, 0px)`.
+ * INICIO y CHAT ya no van en la barra de abajo.
+ *
+ * 💬 BURBUJA DEL CHAT: flotante abajo a la derecha, encima de la barra, en
+ * todas las páginas menos chat.html. Lleva cuántos mensajes le escribieron
+ * desde la última vez que abrió el chat (`chat_visto_hasta`, lo guarda
+ * js/chat.js) y lleva al canal del último.
  *
  *   ⚙️ La tuerca (lo que antes era PERFIL en la barra de abajo):
  *        🔑 Cambiar contraseña       /api/acceso/password
@@ -20,7 +31,7 @@
  *      con las respuestas que la modelo todavía no ha abierto.
  *      Si la página ya tiene su campana (panel.html, turnos.html) se usa esa:
  *      la página escucha el evento `paradise:tickets` y llama a
- *      PARADISE_BARRA.abrirCampana().
+ *      PARADISE_BARRA.abrirCampana(). Esa campana se muda a la cabecera fija.
  *
  * Y el botón 🎫 TICKET CEO de la barra de abajo (id `nav-ticket`) abre el
  * formulario: asunto, detalle, fotos, videos y PDF. Los archivos se escogen
@@ -46,6 +57,8 @@ const MAX_FOTOS = 6;                 // los de tickets.py
 const MAX_ARCHIVOS = 4;
 const TOPE_VISTA = 880000;           // base64; la API acepta 900 000
 const CADA_MS = 60000;
+const CHAT_CADA_MS = 30000;
+const ES_CHAT = /(^|\/)chat(\.html)?$/.test(window.location.pathname);
 
 const estado = {
     tickets: [],
@@ -54,6 +67,9 @@ const estado = {
     extra: null,                     // función -> html que la página pone arriba de la campana
     hoja: null,                      // la hoja abierta: {tipo, pintar, cerrar}
     globo: null,                     // el globo de la campana inyectada (si la hay)
+    burbuja: null,                   // la 💬 flotante (no en chat.html)
+    chatSinLeer: 0,
+    chatCanal: '',                   // canal del último que le escribieron
 };
 
 function escapar(texto) {
@@ -134,9 +150,39 @@ function estilos() {
     display: grid; place-items: center; padding: 0 5px; border: 2px solid #0a0a0b;
 }
 .bm-oculto { display: none !important; }
-/* Siete botones abajo: los nombres largos (STATUS ROOM, SUBIR CONTENIDO)
-   bajan a dos renglones en vez de montarse sobre el vecino. */
+/* Los nombres largos de abajo (STATUS ROOM, SUBIR CONTENIDO) bajan a dos
+   renglones en vez de montarse sobre el vecino. */
 .navegacion button { white-space: normal !important; line-height: 1.1; text-align: center; }
+:root { --bm-arriba: calc(56px + env(safe-area-inset-top)); }
+body.bm-con-arriba { padding-top: var(--bm-arriba); }
+/* Que lo último de la página pueda subir por encima de la burbuja. */
+body.bm-con-burbuja { padding-bottom: calc(165px + env(safe-area-inset-bottom)) !important; }
+.bm-arriba {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 35; height: var(--bm-arriba);
+    padding: env(safe-area-inset-top) max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(10,10,11,.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid #2a2932; font-family: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
+}
+.bm-arriba .bm-derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.bm-inicio {
+    height: 40px; border-radius: 13px; border: 0; padding: 0 13px; display: flex; align-items: center; gap: 7px;
+    background: #1b1a22; box-shadow: inset 0 0 0 1px #2a2932; color: #f4f4f5;
+    font: 600 12px/1 'Poppins', -apple-system, 'Segoe UI', sans-serif; letter-spacing: .3px; cursor: pointer;
+}
+.bm-inicio span { font-size: 17px; }
+.bm-inicio.activo { background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%); box-shadow: 0 8px 20px rgba(168,85,247,.3); }
+.bm-burbuja {
+    position: fixed; z-index: 34; right: max(16px, env(safe-area-inset-right));
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    width: 54px; height: 54px; border-radius: 50%; border: 0; display: grid; place-items: center;
+    background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%); color: #fff; font-size: 24px;
+    box-shadow: 0 12px 28px rgba(139,92,246,.5); cursor: pointer; padding: 0;
+}
+.bm-burbuja .bm-globo { top: -3px; right: -3px; }
+@media (min-width: 760px) { .bm-burbuja { right: calc(50% - 250px); } }
+/* Donde ya hay una caja de chat abajo o manda la barra de guardar, estorba. */
+body.guardando .bm-burbuja, body:has(#vista-chat:not(.oculto)) .bm-burbuja { display: none; }
 .bm-velo { position: fixed; inset: 0; background: rgba(0,0,0,.66); backdrop-filter: blur(3px); z-index: 2000; }
 .bm-hoja {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 2001; background: #141318; color: #f4f4f5;
@@ -855,6 +901,104 @@ function abrirSubir() {
 }
 
 // =======================================================================
+// 💬 LA BURBUJA DEL CHAT
+// =======================================================================
+// Cuenta lo que el estudio le escribió después de `chat_visto_hasta` (el
+// cursor que guarda js/chat.js con el chat abierto). El cursor no avanza
+// aquí: el número sube hasta que ella abre el chat. La primera vez, sin
+// cursor, se toma la hora del servidor y se empieza en cero.
+async function revisarChat() {
+    if (!estado.burbuja || !token() || document.visibilityState !== 'visible') return;
+    let desde = '';
+    try { desde = localStorage.getItem('chat_visto_hasta') || ''; } catch (e) { /* sin almacenamiento */ }
+    try {
+        const datos = await pedir('/api/chat/nuevos?desde=' + encodeURIComponent(desde || new Date().toISOString()));
+        if (!desde) {
+            try { localStorage.setItem('chat_visto_hasta', datos.cursor); } catch (e) { /* da igual */ }
+            return;
+        }
+        const suyos = (datos.mensajes || []).filter((m) => !m.de_modelo);
+        estado.chatSinLeer = suyos.length;
+        estado.chatCanal = suyos.length ? (suyos[suyos.length - 1].canal_id || '') : '';
+        pintarBurbuja();
+    } catch (error) { /* sin red un momento: en la siguiente vuelta */ }
+}
+
+function pintarBurbuja() {
+    const b = estado.burbuja;
+    if (!b) return;
+    const n = estado.chatSinLeer;
+    const globo = b.querySelector('.bm-globo');
+    globo.textContent = n > 99 ? '99+' : String(n);
+    globo.classList.toggle('bm-oculto', !n);
+    b.title = n ? 'Chat: ' + n + (n === 1 ? ' mensaje nuevo' : ' mensajes nuevos') : 'Chat';
+}
+
+function montarBurbuja() {
+    if (ES_CHAT) return;
+    const b = document.createElement('button');
+    b.className = 'bm-burbuja';
+    b.setAttribute('aria-label', 'Abrir el chat');
+    b.innerHTML = '💬<span class="bm-globo bm-oculto"></span>';
+    b.onclick = () => {
+        const canal = estado.chatSinLeer && estado.chatCanal;
+        window.location.href = 'chat.html' + (canal ? '?canal=' + encodeURIComponent(canal) : '');
+    };
+    document.body.appendChild(b);
+    document.body.classList.add('bm-con-burbuja');
+    estado.burbuja = b;
+    pintarBurbuja();
+    revisarChat();
+    setInterval(revisarChat, CHAT_CADA_MS);
+    document.addEventListener('visibilitychange', revisarChat);
+}
+
+// =======================================================================
+// LA CABECERA FIJA
+// =======================================================================
+function montarCabecera() {
+    const arriba = document.createElement('div');
+    arriba.className = 'bm-arriba';
+    const enInicio = /(^|\/)(panel(\.html)?)?$/.test(window.location.pathname);
+    const inicio = document.createElement('button');
+    inicio.className = 'bm-inicio' + (enInicio ? ' activo' : '');
+    inicio.title = 'Inicio';
+    inicio.innerHTML = '<span>▦</span>INICIO';
+    inicio.onclick = () => {
+        if (enInicio) window.scrollTo({ top: 0, behavior: 'smooth' });
+        else window.location.href = 'panel.html';
+    };
+    const derecha = document.createElement('div');
+    derecha.className = 'bm-derecha';
+    arriba.appendChild(inicio);
+    arriba.appendChild(derecha);
+
+    // La campana de la página (panel, turnos) se muda aquí con lo suyo.
+    const campanaPropia = document.getElementById('btn-avisos') || document.getElementById('btn-campana');
+    if (campanaPropia) {
+        derecha.appendChild(campanaPropia);
+    } else {
+        const campana = boton_redondo('🔔', 'Avisos y tickets');
+        estado.globo = document.createElement('span');
+        estado.globo.className = 'bm-globo bm-oculto';
+        campana.appendChild(estado.globo);
+        campana.onclick = abrirCampana;
+        derecha.appendChild(campana);
+    }
+    const tuerca = boton_redondo('⚙️', 'Ajustes');
+    tuerca.id = 'btn-tuerca';
+    tuerca.onclick = abrirTuerca;
+    derecha.appendChild(tuerca);
+    const fuera = boton_redondo('🚪', 'Cerrar sesión');
+    fuera.id = 'btn-salir';
+    fuera.onclick = salir;
+    derecha.appendChild(fuera);
+
+    document.body.insertBefore(arriba, document.body.firstChild);
+    document.body.classList.add('bm-con-arriba');
+}
+
+// =======================================================================
 // MONTAJE
 // =======================================================================
 function boton_redondo(simbolo, titulo) {
@@ -867,34 +1011,8 @@ function boton_redondo(simbolo, titulo) {
 
 function montar() {
     estilos();
-    // Donde van los botones de arriba a la derecha, según la página.
-    let caja = document.querySelector('.barra .derecha, .cabecera .derecha, .header-actions');
-    if (!caja) {
-        const barra = document.querySelector('.barra');
-        if (barra) {
-            caja = document.createElement('div');
-            caja.className = 'derecha';
-            caja.style.cssText = 'margin-left:auto;display:flex;gap:8px;align-items:center';
-            barra.appendChild(caja);
-        }
-    }
-    if (caja) {
-        caja.style.alignItems = 'center';
-        const antes = caja.querySelector('#btn-salir');
-        const campanaPropia = document.getElementById('btn-avisos') || document.getElementById('btn-campana');
-        if (!campanaPropia) {
-            const campana = boton_redondo('🔔', 'Avisos y tickets');
-            estado.globo = document.createElement('span');
-            estado.globo.className = 'bm-globo bm-oculto';
-            campana.appendChild(estado.globo);
-            campana.onclick = abrirCampana;
-            caja.insertBefore(campana, antes);
-        }
-        const tuerca = boton_redondo('⚙️', 'Ajustes');
-        tuerca.id = 'btn-tuerca';
-        tuerca.onclick = abrirTuerca;
-        caja.insertBefore(tuerca, antes);
-    }
+    montarCabecera();
+    montarBurbuja();
 
     const nav = document.getElementById('nav-ticket');
     if (nav) nav.onclick = abrirNuevo;

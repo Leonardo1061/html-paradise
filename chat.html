@@ -118,8 +118,6 @@ button { font-family: inherit; cursor: pointer; }
 <main class="contenido" id="chat"></main>
 
 <nav class="navegacion">
-    <button id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
-    <button class="activo" id="nav-chat"><span class="simbolo">💬</span>CHAT</button>
     <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
     <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
     <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
@@ -150,8 +148,6 @@ button { font-family: inherit; cursor: pointer; }
     }
     ChatParadise.montar($('chat'), { avisar: avisar }).activar();
 
-    $('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
-    $('nav-chat').onclick = () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
     $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
     $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };

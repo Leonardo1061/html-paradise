@@ -251,11 +251,8 @@ PARADISE_BARRA.ponerExtra(() => {
 // ARRANQUE
 // =======================================================================
 $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
-$('nav-chat').onclick = () => { window.location.href = 'chat.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
-$('nav-inicio').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-$('btn-salir').onclick = () => PARADISE_BARRA.salir();
 $('btn-avisos').onclick = () => PARADISE_BARRA.abrirCampana();
 // Al cambiar la contraseña desaparece el consejo de cambiarla.
 document.addEventListener('paradise:clave', () => { if (estado.datos) pintar(); });

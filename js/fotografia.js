@@ -593,8 +593,6 @@ $('btn-recargar').onclick = () => {
     else if (estado.vista === 'portafolio') { estado.estilos = null; cargarPortafolio(); }
 };
 
-$('nav-inicio').onclick = () => { window.location.href = 'panel.html'; };
-$('nav-chat').onclick = () => { window.location.href = 'chat.html'; };
 $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
 $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
 $('nav-fotografia').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });

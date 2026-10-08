@@ -29,6 +29,10 @@
  * personal lo vio («✓✓ Visto por Alejandro Gomez»). La misma vuelta de 4 s
  * trae los vistos nuevos (`vistos` en `/api/chat/nuevos`).
  *
+ * LA BURBUJA 💬 (js/barra_modelo.js): en las demás páginas cuenta lo que le
+ * escribieron después de `chat_visto_hasta`. Con el chat completo abierto
+ * (sin `canalFijo`) ese cursor se guarda en cada vuelta: lo que ve ya no cuenta.
+ *
  * LO QUE SE ADJUNTA (js/adjuntos.js, el mismo menú del chat del personal)
  * ------------------------------------------------------------------------
  * 📎 Galería (fotos y videos), Cámara (una foto) y Documento (PDF), y 🎤 la
@@ -216,6 +220,7 @@ function montar(raiz, opciones) {
             (datos.mensajes || []).forEach(agregar);
             estado.cargados[id] = true;
             if (!estado.cursor) estado.cursor = datos.cursor;
+            marcarVisto();
             if (estado.canal === id) pintarLista(true);
         } catch (error) {
             if (estado.canal === id) {
@@ -223,6 +228,11 @@ function montar(raiz, opciones) {
                     escapar(error.message) + '</small></div>';
             }
         }
+    }
+
+    function marcarVisto() {
+        if (fijo || !estado.activo || !estado.cursor) return;
+        try { localStorage.setItem('chat_visto_hasta', estado.cursor); } catch (e) { /* da igual */ }
     }
 
     function cercaDelFinal() {
@@ -345,6 +355,7 @@ function montar(raiz, opciones) {
             });
             if (aqui) { const bajar = cercaDelFinal(); pintarLista(bajar); }
             pintarCanales();
+            marcarVisto();
         } catch (error) {
             // Sin red un momento: se vuelve a intentar en la siguiente vuelta.
         } finally {

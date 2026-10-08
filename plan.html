@@ -80,7 +80,7 @@ button { font-family: inherit; cursor: pointer; }
 /* CABECERA                                                              */
 /* ===================================================================== */
 .cabecera {
-    position: sticky; top: 0; z-index: 30;
+    position: sticky; top: var(--bm-arriba, 0px); z-index: 30;
     background: rgba(10, 10, 11, .92);
     backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--borde);
@@ -471,10 +471,6 @@ button.goal:active { transform: scale(.98); }
             <h1>Mi plan de trabajo</h1>
             <div class="quien" id="quien">—</div>
         </div>
-        <div class="derecha">
-            <button class="boton-icono" id="btn-turnos" title="Volver al inicio">← Inicio</button>
-            <button class="boton-icono" id="btn-salir" title="Cerrar sesión">Salir</button>
-        </div>
     </div>
 
     <div class="semana">
@@ -492,8 +488,6 @@ button.goal:active { transform: scale(.98); }
 </main>
 
 <nav class="navegacion">
-    <button id="nav-inicio"><span class="simbolo">▦</span>INICIO</button>
-    <button id="nav-chat"><span class="simbolo">💬</span>CHAT</button>
     <button class="activo" id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
     <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
     <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>

@@ -8,7 +8,7 @@
 
 .chat-canales {
     display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none;
-    position: sticky; top: 0; z-index: 5; background: var(--fondo);
+    position: sticky; top: var(--bm-arriba, 0px); z-index: 5; background: var(--fondo);
 }
 .chat-canales::-webkit-scrollbar { display: none; }
 .chat-canal {
