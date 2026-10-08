@@ -551,6 +551,14 @@ function alternarSemana() {
     }
     actualizarRangoFechas();
     renderizarTodo();
+    // Al abrir el agendamiento la página baja sola hasta él, justo debajo de
+    // la cabecera pegada arriba (la fija de barra_modelo.js y la de esta página).
+    if (viendoProxima) requestAnimationFrame(() => {
+        const destino = document.getElementById('pre-agendamiento');
+        const cabecera = document.querySelector('header');
+        const tope = cabecera ? cabecera.getBoundingClientRect().bottom : 0;
+        window.scrollTo({ top: window.scrollY + destino.getBoundingClientRect().top - tope - 12, behavior: 'smooth' });
+    });
 }
 
 function renderizarBloquesJornadas() {
