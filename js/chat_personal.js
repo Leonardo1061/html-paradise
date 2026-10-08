@@ -40,6 +40,12 @@
  * Lo que vio CUALQUIERA deja de estar pendiente para todos: `/chat/nuevos`
  * trae también los vistos nuevos y apagan el punto de esa conversación.
  * En el chat privado, solo el visto del otro: «✓✓ Visto» en lo suyo.
+ *
+ * GRUPO «TODO EL PERSONAL» (2026-10-08): el primero de la fila del personal.
+ * Escribe todo el personal, sin mirar rol ni jornada (api/grupo_personal.py).
+ * Usa la misma pantalla que el chat privado (`privado` y `grupo`), con el
+ * nombre de quien escribe en cada burbuja, «✓✓ Visto por …» en lo suyo y los
+ * mensajes de 20 en 20 con «Mostrar más». Su resumen viaja en /privado.
  */
 
 (function () {
@@ -101,7 +107,9 @@ function montar(raiz) {
         conversaciones: {},          // cedula -> {cedula, nombre, jornada, ultimo, esperando}
         abierta: null,               // {cedula, nombre, jornada, mensajes, canales, canal}
                                      // o {privado: true, persona, nombre, mensajes, cursor, ts}
+                                     // o {privado: true, grupo: true, nombre, mensajes, cursor, ts, mas, vistos}
         equipo: null,                // [{nombre, roles, sin_leer, ultimo, ultimo_de, ts}]
+        grupo: null,                 // {nombre, sin_leer, ultimo, ultimo_de, ts, vistos: {nombre: ts}}
         vistos: new Set(),
         cursor: '',
         preguntando: false,
@@ -150,7 +158,8 @@ function montar(raiz) {
     // ------------------------------------------------------------- el globo
     function actualizarGlobo() {
         P.globoChat(Object.values(estado.conversaciones).filter((c) => c.esperando).length +
-                    (estado.equipo || []).filter((p) => p.sin_leer).length);
+                    (estado.equipo || []).filter((p) => p.sin_leer).length +
+                    (estado.grupo && estado.grupo.sin_leer ? 1 : 0));
     }
 
     // ------------------------------------------------- la fila del personal
@@ -159,31 +168,47 @@ function montar(raiz) {
         return ((partes[0] || '')[0] || '?').toUpperCase() + ((partes[1] || '')[0] || '').toUpperCase();
     }
 
+    function globo(n) {
+        return n ? '<span class="globo">' + (n > 9 ? '9+' : n) + '</span>' : '';
+    }
+
     function pintarEquipo() {
         const fila = el('.fila-equipo');
         if (!estado.equipo) return;
+        // El grupo de todo el personal, siempre el primero.
+        const g = estado.grupo;
+        const enGrupo = !!(estado.abierta && estado.abierta.grupo);
+        const grupo = g ? '<button class="persona grupo' + (enGrupo ? ' activa' : '') +
+            '" title="Todo el personal: escribe todo el equipo">' +
+            '<span class="avatar">👥' + globo(g.sin_leer) + '</span>' +
+            '<span class="nombre-persona">Todos</span></button>' : '';
         if (!estado.equipo.length) {
-            fila.innerHTML = '<span class="equipo-vacio">No hay más personas en el personal.</span>';
+            fila.innerHTML = grupo + '<span class="equipo-vacio">No hay más personas en el personal.</span>';
+            if (g) fila.querySelector('.grupo').onclick = () => abrirGrupo(true);
             return;
         }
         // Los que tienen algo sin leer, primero; luego por nombre.
         const lista = estado.equipo.slice().sort((a, b) =>
             (b.sin_leer ? 1 : 0) - (a.sin_leer ? 1 : 0) || a.nombre.localeCompare(b.nombre, 'es'));
-        const abierta = estado.abierta && estado.abierta.privado ? estado.abierta.persona : '';
-        fila.innerHTML = lista.map((p) =>
+        const abierta = estado.abierta && estado.abierta.privado && !estado.abierta.grupo
+            ? estado.abierta.persona : '';
+        fila.innerHTML = grupo + lista.map((p) =>
             '<button class="persona' + (p.nombre === abierta ? ' activa' : '') + '" data-nombre="' + esc(p.nombre) +
             '" title="' + esc(p.nombre + ' · ' + p.roles) + '">' +
-            '<span class="avatar">' + esc(iniciales(p.nombre)) +
-            (p.sin_leer ? '<span class="globo">' + (p.sin_leer > 9 ? '9+' : p.sin_leer) + '</span>' : '') + '</span>' +
+            '<span class="avatar">' + esc(iniciales(p.nombre)) + globo(p.sin_leer) + '</span>' +
             '<span class="nombre-persona">' + esc(p.nombre.split(' ')[0]) + '</span></button>'
         ).join('');
-        fila.querySelectorAll('.persona').forEach((b) => { b.onclick = () => abrirPrivado(b.dataset.nombre, true); });
+        fila.querySelectorAll('.persona').forEach((b) => {
+            b.onclick = b.classList.contains('grupo') ? () => abrirGrupo(true) : () => abrirPrivado(b.dataset.nombre, true);
+        });
     }
 
     async function cargarEquipo() {
         try {
             const datos = await P.pedir('/api/personal/privado');
             estado.equipo = datos.personas || [];
+            estado.grupo = datos.grupo || null;
+            if (estado.grupo && estado.abierta && estado.abierta.grupo) estado.grupo.sin_leer = 0;
             pintarEquipo();
             actualizarGlobo();
         } catch (error) {
@@ -353,6 +378,99 @@ function montar(raiz) {
         }
     }
 
+    /* La ruta de la API del chat privado o del grupo abierto. */
+    function rutaDe(conv) {
+        return conv.grupo ? '/api/personal/grupo' : '/api/personal/privado/' + encodeURIComponent(conv.persona);
+    }
+
+    async function abrirGrupo(guardarHistorial) {
+        if (guardarHistorial) history.pushState({ grupo: true }, '', '?grupo=1');
+        estado.desdeLista = !!guardarHistorial;
+        quitarPrevia();
+        const g = estado.grupo || {};
+        const conv = { privado: true, grupo: true, persona: '', nombre: 'Todo el personal', mensajes: [],
+                       cursor: '', ts: g.ts || '', mas: false, vistos: g.vistos || {} };
+        estado.abierta = conv;
+        el('.quien-conv .nombre').textContent = '👥 Todo el personal';
+        el('.quien-conv .jornada').textContent = 'Lo lee todo el personal administrativo';
+        el('.vista-conv .chat-lista').innerHTML = '<div class="chat-vacio">Cargando…</div>';
+        el('.fila-canal').classList.add('oculto');
+        el('.chat-barra').classList.remove('oculto');
+        mostrar('conv');
+        pintarEquipo();
+        try {
+            const datos = await P.pedir('/api/personal/grupo');
+            if (estado.abierta !== conv) return;
+            conv.mensajes = datos.mensajes || [];
+            conv.cursor = datos.cursor;
+            conv.mas = !!datos.mas;
+            if (datos.grupo) { conv.vistos = datos.grupo.vistos || {}; conv.ts = datos.grupo.ts || conv.ts; }
+            conv.mensajes.forEach((m) => estado.vistos.add(m.id));
+            if (estado.grupo) { estado.grupo.sin_leer = 0; actualizarGlobo(); }
+            pintarConversacion(true);
+        } catch (error) {
+            if (estado.abierta === conv) {
+                el('.vista-conv .chat-lista').innerHTML = '<div class="chat-vacio">' + esc(error.message) + '</div>';
+            }
+        }
+    }
+
+    /* «Mostrar más»: los 20 anteriores al más viejo que se ve. */
+    async function masDelGrupo(boton) {
+        const conv = estado.abierta;
+        const viejo = conv.mensajes.filter((m) => m.ts).map((m) => m.ts).sort()[0];
+        if (!viejo) return;
+        boton.disabled = true;
+        boton.textContent = 'Cargando…';
+        try {
+            const datos = await P.pedir('/api/personal/grupo?antes=' + encodeURIComponent(viejo));
+            if (estado.abierta !== conv) return;
+            conv.mas = !!datos.mas;
+            (datos.mensajes || []).forEach((m) => {
+                if (estado.vistos.has(m.id)) return;
+                estado.vistos.add(m.id);
+                conv.mensajes.push(m);
+            });
+            // Que no salte: se conserva la distancia al final de la página.
+            const alFinal = document.body.scrollHeight - window.scrollY;
+            pintarConversacion(false);
+            window.scrollTo({ top: document.body.scrollHeight - alFinal });
+        } catch (error) {
+            boton.disabled = false;
+            boton.textContent = 'Mostrar más';
+            P.avisar(error.message, 'malo');
+        }
+    }
+
+    /* Lo nuevo del grupo abierto, si su resumen dice que cambió. */
+    async function traerGrupo() {
+        const conv = estado.abierta;
+        const g = estado.grupo;
+        if (!g) return;
+        if (JSON.stringify(g.vistos || {}) !== JSON.stringify(conv.vistos || {})) {
+            conv.vistos = g.vistos || {};
+            pintarConversacion(false);
+        }
+        if (!conv.cursor || g.ts === conv.ts) return;
+        const datos = await P.pedir('/api/personal/grupo?desde=' + encodeURIComponent(conv.cursor));
+        if (estado.abierta !== conv) return;
+        conv.ts = g.ts;
+        conv.cursor = datos.cursor || conv.cursor;
+        if (datos.grupo) conv.vistos = datos.grupo.vistos || conv.vistos;
+        g.sin_leer = 0;
+        let hay = false;
+        (datos.mensajes || []).forEach((m) => {
+            if (estado.vistos.has(m.id)) return;
+            estado.vistos.add(m.id);
+            conv.mensajes.push(m);
+            hay = true;
+        });
+        if (hay) {
+            const cerca = window.innerHeight + window.scrollY >= document.body.scrollHeight - 160;
+            pintarConversacion(cerca);
+        }
+    }
+
     /* Lo nuevo del chat privado abierto, si su buzón dice que cambió. */
     async function traerPrivado() {
         const conv = estado.abierta;
@@ -385,13 +503,22 @@ function montar(raiz) {
         const lista = el('.vista-conv .chat-lista');
         const mensajes = estado.abierta.mensajes.slice().sort((a, b) => (a.ts || '9') < (b.ts || '9') ? -1 : 1);
         if (!mensajes.length) {
-            lista.innerHTML = '<div class="chat-vacio">' + (estado.abierta.privado
+            lista.innerHTML = '<div class="chat-vacio">' + (estado.abierta.grupo
+                ? 'Todavía no hay mensajes. Lo que escribas aquí lo lee todo el personal.'
+                : estado.abierta.privado
                 ? 'Todavía no se han escrito. Lo que escribas aquí solo lo ven tú y ' + esc(estado.abierta.nombre) + '.'
                 : 'Todavía no hay mensajes que te toquen con ' + esc(estado.abierta.nombre) +
                   '. Escribe y le llega en su chat.') + '</div>';
             return;
         }
         lista.innerHTML = '';
+        if (estado.abierta.grupo && estado.abierta.mas) {
+            const mas = document.createElement('button');
+            mas.className = 'boton-secundario chat-mas';
+            mas.textContent = 'Mostrar más';
+            mas.onclick = () => masDelGrupo(mas);
+            lista.appendChild(mas);
+        }
         let dia = '';
         mensajes.forEach((m) => {
             if (m.fecha && m.fecha !== dia) {
@@ -411,11 +538,12 @@ function montar(raiz) {
         // La modelo a la izquierda; el personal (quien sea) a la derecha.
         // En el chat privado: el otro a la izquierda, él a la derecha.
         const privado = !!(estado.abierta && estado.abierta.privado);
+        const grupo = !!(estado.abierta && estado.abierta.grupo);
         const izquierda = privado ? !m.mio : m.de_modelo;
         fila.className = 'chat-msg ' + (izquierda ? 'suyo' : 'mio') + (m.enviando ? ' enviando' : '');
         const globo = document.createElement('div');
         globo.className = 'chat-burbuja';
-        const cabeza = privado ? '' : m.de_modelo ? (m.canal !== 'Soporte' ? 'Para ' + m.canal : '')
+        const cabeza = grupo ? (m.mio ? '' : m.de) : privado ? '' : m.de_modelo ? (m.canal !== 'Soporte' ? 'Para ' + m.canal : '')
             : (m.mio ? '' : (m.autor || 'Monitor')) + (m.canal !== 'Soporte' ? (m.mio ? '' : ' · ') + m.canal : '');
         if (cabeza) {
             const autor = document.createElement('div');
@@ -430,7 +558,8 @@ function montar(raiz) {
         const meta = document.createElement('div');
         meta.className = 'chat-meta';
         meta.textContent = m.enviando ? 'Enviando…' : (m.hora || '');
-        const visto = privado ? (m.mio && m.ts && estado.abierta.visto && m.ts <= estado.abierta.visto ? '✓✓ Visto' : '')
+        const visto = grupo ? (m.mio ? textoVistos(vistosDelGrupo(m)) : '')
+            : privado ? (m.mio && m.ts && estado.abierta.visto && m.ts <= estado.abierta.visto ? '✓✓ Visto' : '')
             : (m.de_modelo ? textoVistos(m.vistos) : '');
         if (visto && !m.enviando) {
             const marca = document.createElement('span');
@@ -440,6 +569,16 @@ function montar(raiz) {
         }
         fila.appendChild(meta);
         return fila;
+    }
+
+    /* Quiénes del grupo ya leyeron hasta la hora de este mensaje. */
+    function vistosDelGrupo(m) {
+        const vistos = (estado.abierta && estado.abierta.vistos) || {};
+        if (!m.ts) return [];
+        const nombres = Object.keys(vistos).filter((n) => vistos[n] >= m.ts)
+            .sort((a, b) => a.localeCompare(b, 'es'));
+        const otros = (estado.equipo || []).length;
+        return otros && nombres.length >= otros ? ['todos'] : nombres;
     }
 
     function foto(m) {
@@ -454,6 +593,7 @@ function montar(raiz) {
         const hueco = document.createElement('div');
         hueco.className = 'chat-foto-cargando';
         const ruta = m.cedula ? '/api/personal/chat/' + encodeURIComponent(m.cedula)
+            : m.grupo ? '/api/personal/grupo'
             : '/api/personal/privado/' + encodeURIComponent(m.persona || estado.abierta.persona);
         P.pedir(ruta + '/imagen/' + encodeURIComponent(m.id))
             .then((datos) => {
@@ -466,6 +606,7 @@ function montar(raiz) {
 
     function medio(m) {
         const ruta = m.cedula ? '/api/personal/chat/' + encodeURIComponent(m.cedula)
+            : m.grupo ? '/api/personal/grupo'
             : '/api/personal/privado/' + encodeURIComponent(m.persona || estado.abierta.persona);
         return A.pintar(m, {
             ruta: ruta + '/adjunto/' + encodeURIComponent(m.id), bajar: P.pedirArchivo,
@@ -533,13 +674,18 @@ function montar(raiz) {
             // El chat privado: el buzón (una lectura) y, si cambió el abierto, lo suyo.
             const antes = {};
             (estado.equipo || []).forEach((p) => { antes[p.nombre] = p.sin_leer; });
+            const antesGrupo = estado.grupo ? estado.grupo.sin_leer : 0;
             await cargarEquipo();
             if (estado.abierta && estado.abierta.privado) {
-                await traerPrivado().catch(() => {});
+                await (estado.abierta.grupo ? traerGrupo() : traerPrivado()).catch(() => {});
                 actualizarGlobo();
             }
+            if (estado.grupo && estado.grupo.sin_leer > antesGrupo && estado.abierta && !estado.abierta.grupo) {
+                P.avisar('👥 Mensaje nuevo en «Todo el personal».');
+            }
             const otroPrivado = (estado.equipo || []).some((p) => p.sin_leer > (antes[p.nombre] || 0) &&
-                !(estado.abierta && estado.abierta.privado && estado.abierta.persona === p.nombre));
+                !(estado.abierta && estado.abierta.privado && !estado.abierta.grupo &&
+                  estado.abierta.persona === p.nombre));
             if (otroPrivado && estado.abierta) P.avisar('🔒 Mensaje privado nuevo.');
 
             const datos = await P.pedir('/api/personal/chat/nuevos?desde=' + encodeURIComponent(estado.cursor));
@@ -559,7 +705,7 @@ function montar(raiz) {
             }
             if (!estado.abierta) pintarLista();
             else actualizarGlobo();
-            if (estado.abierta && estado.abierta.privado) {
+            if (estado.abierta && estado.abierta.privado && !estado.abierta.grupo) {
                 const p = personaDel(estado.abierta.persona);
                 if (p && (p.visto || '') !== (estado.abierta.visto || '')) {
                     estado.abierta.visto = p.visto || '';
@@ -641,7 +787,7 @@ function montar(raiz) {
         formulario.append('texto', texto);
         if (segundos) formulario.append('segundos', String(segundos));
         formulario.append('archivo', archivo, nombre || archivo.name || (tipo + '.bin'));
-        const ruta = conv.privado ? '/api/personal/privado/' + encodeURIComponent(conv.persona) + '/adjunto'
+        const ruta = conv.privado ? rutaDe(conv) + '/adjunto'
             : '/api/personal/chat/' + encodeURIComponent(conv.cedula) + '/adjunto';
 
         const previa = el('.chat-previa');
@@ -681,8 +827,7 @@ function montar(raiz) {
         conv.mensajes.push(provisional);
         pintarConversacion(true);
         try {
-            const datos = await P.pedir('/api/personal/privado/' + encodeURIComponent(conv.persona) + '/enviar',
-                                        'POST', { texto: texto });
+            const datos = await P.pedir(rutaDe(conv) + '/enviar', 'POST', { texto: texto });
             confirmar(conv, provisional, datos.mensaje);
         } catch (error) {
             descartar(conv, provisional);
@@ -780,7 +925,8 @@ function montar(raiz) {
     window.addEventListener('popstate', (e) => {
         const cedula = e.state && e.state.cedula;
         const persona = e.state && e.state.persona;
-        if (cedula) abrir(cedula, false); else if (persona) abrirPrivado(persona, false); else volver();
+        if (cedula) abrir(cedula, false); else if (persona) abrirPrivado(persona, false);
+        else if (e.state && e.state.grupo) abrirGrupo(false); else volver();
     });
     document.addEventListener('visibilitychange', preguntar);
 
@@ -796,6 +942,9 @@ function montar(raiz) {
         } else if (persona) {
             history.replaceState({ persona: persona }, '', '?persona=' + encodeURIComponent(persona));
             abrirPrivado(persona, false);
+        } else if (parametros.get('grupo')) {
+            history.replaceState({ grupo: true }, '', '?grupo=1');
+            abrirGrupo(false);
         } else {
             history.replaceState({}, '', window.location.pathname);
         }

@@ -14,7 +14,8 @@
   monitores de jornada, el chat de cada rol para quien tiene ese rol, y
   Tropic Studio solo para quien le toca. Arriba, el chat privado uno a uno
   con cada persona del personal (aparte, solo lo leen los dos; es el mismo
-  del botón 🔒 Personal del escritorio). El componente vive en
+  del botón 🔒 Personal del escritorio) y, la primera, el grupo «👥 Todo el
+  personal» donde escribe todo el personal. El componente vive en
   js/chat_personal.js; las burbujas usan css/chat.css, como el de las modelos.
 -->
 
@@ -60,6 +61,7 @@ body { padding-bottom: 120px; }
 }
 .persona:hover .avatar, .persona.activa .avatar { border-color: var(--cian); }
 .persona .globo { position: absolute; top: -3px; right: -5px; }
+.persona.grupo .avatar { background: var(--degradado); color: #fff; border-color: transparent; font-size: 20px; }
 .persona .nombre-persona {
     font-size: 11.5px; max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -82,6 +84,7 @@ body { padding-bottom: 120px; }
     border-radius: 9px; padding: 6px 8px; font-size: 13px;
 }
 .chat-barra .chat-enviar { background: var(--degradado); color: #fff; }
+.chat-mas { display: block; margin: 4px auto 12px; }
 </style>
 </head>
 
