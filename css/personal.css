@@ -234,3 +234,12 @@ button { cursor: pointer; }
 .tarea .boton-conversacion { width: auto; padding: 9px 13px; font-size: 13px; }
 .tarea .ultima-respuesta { color: var(--tenue); }
 .titulo-seccion { font-size: 12.5px; font-weight: 600; color: var(--cian); margin: 2px 0 8px; }
+
+/* ----------------------------------- filtro de la campana (personal.js) */
+.filtros-tareas { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+.filtro-tarea {
+    flex: none; background: none; border: 1px solid var(--borde); color: var(--tenue);
+    border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600;
+}
+.filtro-tarea.activo { border-color: var(--cian); color: var(--cian); background: rgba(6, 182, 212, .1); }
+.mostrar-mas { display: block; margin: 4px auto 12px; }
