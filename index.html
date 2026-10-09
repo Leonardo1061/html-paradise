@@ -189,6 +189,15 @@ document.getElementById('formulario').addEventListener('submit', async function 
 
             boton.textContent = "¡Bienvenida!";
 
+            // Creada en la Admin solo con cédula y jornada: primero sus datos
+            // (datos.html). js/barra_modelo.js no la deja ir a otra página.
+            if (datos.datos_completos === false) {
+                localStorage.setItem('datos_pendientes', '1');
+                setTimeout(() => { window.location.href = "datos.html"; }, 600);
+                return;
+            }
+            localStorage.removeItem('datos_pendientes');
+
             if (datos.aviso) {
                 document.getElementById('texto-aviso').textContent = datos.aviso;
                 document.getElementById('velo-aviso').style.display = 'flex';

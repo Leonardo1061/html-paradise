@@ -21,6 +21,7 @@
  * js/chat.js) y lleva al canal del último.
  *
  *   ⚙️ La tuerca (lo que antes era PERFIL en la barra de abajo):
+ *        📝 Actualiza tus datos      datos.html (/api/datos)
  *        🔑 Cambiar contraseña       /api/acceso/password
  *        📳 Enviar alerta de prueba  /api/push/prueba (activa los avisos
  *                                    de este teléfono si aún no lo están)
@@ -47,7 +48,16 @@
  *
  * Todo el aspecto vive aquí (clases `bm-`), para verse igual en las cinco
  * páginas aunque cada una tenga su hoja de estilos.
+ *
+ * DATOS PENDIENTES (2026-10-09): la modelo que la Admin creó solo con cédula
+ * y jornada entra con `datos_pendientes = '1'` (lo guarda index.html) y
+ * cualquier página de la modelo la manda a datos.html hasta que los llene.
+ * Así no alcanza a agendarse con la cédula como nombre.
  */
+
+if (localStorage.getItem('token_sesion') && localStorage.getItem('datos_pendientes') === '1') {
+    window.location.replace('datos.html');
+}
 
 window.PARADISE_BARRA = (function () {
 'use strict';
@@ -329,11 +339,14 @@ function abrirVisor(src) {
 function abrirTuerca() {
     const hoja = abrirHoja('tuerca', '⚙️ Ajustes');
     hoja.cuerpo.innerHTML =
+        '<button class="bm-opcion" data-op="datos"><span class="icono">📝</span>' +
+            '<span>Actualiza tus datos<small>Nombre, correo, celular, foto y cédula</small></span></button>' +
         '<button class="bm-opcion" data-op="clave"><span class="icono">🔑</span>' +
             '<span>Cambiar contraseña<small>La misma del programa de escritorio</small></span></button>' +
         '<button class="bm-opcion" data-op="prueba"><span class="icono">📳</span>' +
             '<span>Enviar alerta de prueba<small>Para comprobar que los avisos llegan a este teléfono</small></span></button>' +
         '<button class="bm-opcion" data-op="salir"><span class="icono">⏻</span><span>Cerrar sesión</span></button>';
+    hoja.cuerpo.querySelector('[data-op="datos"]').onclick = () => { window.location.href = 'datos.html'; };
     hoja.cuerpo.querySelector('[data-op="clave"]').onclick = cambiarClave;
     hoja.cuerpo.querySelector('[data-op="prueba"]').onclick = alertaDePrueba;
     hoja.cuerpo.querySelector('[data-op="salir"]').onclick = salir;
@@ -394,7 +407,7 @@ async function alertaDePrueba() {
 async function salir() {
     // La sesión no caduca: solo esto la cierra (y deja de avisar aquí).
     if (window.PARADISE_PUSH) { try { await PARADISE_PUSH.salir(false); } catch (e) { /* da igual */ } }
-    ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto']
+    ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto', 'datos_pendientes']
         .forEach((clave) => localStorage.removeItem(clave));
     window.location.href = PARADISE.URL_LOGIN;
 }

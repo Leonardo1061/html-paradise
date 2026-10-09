@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Tus datos · PARADISE</title>
+
+<!--
+  📝 ACTUALIZA TUS DATOS
+  ======================
+  La modelo creada en la Admin solo con cédula y jornada llega aquí nada más
+  entrar, y no sale (js/barra_modelo.js la devuelve) hasta llenar lo
+  obligatorio: nombres, apellidos, correo, celular y una contraseña nueva.
+  Las de antes llegan desde la ⚙️ tuerca, y para ellas la contraseña no se
+  pide aquí (la cambian con «Cambiar contraseña»).
+
+  Opcional, para todas: las fotos de la cédula (frente, reverso, cara + ID) y
+  la foto de perfil, desde la galería o la cámara. Cada foto se sube sola en
+  cuanto se elige.
+
+  API: /api/datos (datos_modelo.py).
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141318;
+    --panel-alto: #1b1a22;
+    --borde:      #2a2932;
+    --texto:      #f4f4f5;
+    --tenue:      #9b9ba3;
+    --violeta:    #8b5cf6;
+    --verde:      #34d399;
+    --rojo:       #ef4444;
+    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --radio: 18px;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: env(safe-area-inset-top) 0 40px;
+}
+button, input { font-family: inherit; }
+button { cursor: pointer; }
+.oculto { display: none !important; }
+
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 6px; max-width: 640px; margin: 0 auto; }
+.marca {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--degradado); font-size: 19px; font-weight: 700; color: #fff;
+}
+.barra .enlace {
+    margin-left: auto; background: var(--panel-alto); border: 1px solid var(--borde);
+    color: var(--texto); border-radius: 12px; padding: 9px 14px; font-size: 13px; text-decoration: none;
+}
+
+.contenido { padding: 6px 18px 0; max-width: 640px; margin: 0 auto; }
+h1 { margin: 10px 0 4px; font-size: 22px; letter-spacing: -.3px; }
+.intro { margin: 0 0 16px; font-size: 13px; color: var(--tenue); line-height: 1.5; }
+
+.tarjeta {
+    background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 16px; margin-bottom: 14px;
+}
+.tarjeta h2 { margin: 0 0 4px; font-size: 16px; }
+.tarjeta .sub { margin: 0 0 14px; font-size: 12px; color: var(--tenue); }
+
+.campo { margin-bottom: 12px; }
+.campo label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 5px; }
+.campo label b { color: #f472b6; }
+.campo input {
+    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--borde);
+    background: var(--panel-alto); color: var(--texto); font-size: 15px; outline: none;
+}
+.campo input:focus { border-color: var(--violeta); }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 420px) { .dos { grid-template-columns: 1fr; } }
+
+.principal {
+    width: 100%; padding: 14px; border: 0; border-radius: 14px; background: var(--degradado);
+    color: #fff; font-size: 15px; font-weight: 600;
+}
+.principal:disabled { opacity: .55; cursor: default; }
+
+.foto {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 0;
+    border-top: 1px solid var(--borde);
+}
+.foto:first-of-type { border-top: 0; padding-top: 0; }
+.foto .texto { flex: 1; min-width: 0; }
+.foto .titulo { font-size: 14px; font-weight: 600; }
+.foto .estado { font-size: 12px; color: var(--tenue); }
+.foto .estado.listo { color: var(--verde); }
+.foto .botones { display: flex; gap: 8px; width: 100%; }
+.foto .botones button {
+    flex: 1;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 11px; padding: 10px; font-size: 13px; white-space: nowrap;
+}
+.foto .botones button:disabled { opacity: .5; }
+.barrita { height: 4px; border-radius: 4px; background: var(--borde); margin-top: 6px; overflow: hidden; }
+.barrita div { height: 100%; width: 0; background: var(--degradado); transition: width .2s; }
+
+.avatar {
+    width: 64px; height: 64px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    background: var(--panel-alto); border: 1px solid var(--borde); font-size: 26px; overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.aviso {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90;
+    max-width: calc(100% - 32px); padding: 12px 16px; border-radius: 14px; font-size: 14px;
+    background: #1f2937; border: 1px solid var(--borde); box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+.aviso.bueno { border-color: var(--verde); }
+.aviso.malo { border-color: var(--rojo); }
+
+.chat-camara {
+    position: fixed; inset: 0; z-index: 85; background: #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px;
+}
+.chat-camara video { max-width: 100%; max-height: calc(100% - 110px); border-radius: 12px; background: #111; }
+.botones-camara { display: flex; align-items: center; gap: 28px; }
+.botones-camara .cancelar {
+    width: 46px; height: 46px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .15);
+    color: #fff; font-size: 18px;
+}
+.botones-camara .disparar {
+    width: 70px; height: 70px; border-radius: 50%; border: 5px solid #fff; background: rgba(255, 255, 255, .25);
+}
+</style>
+</head>
+<body>
+
+<div class="barra">
+    <div class="marca">P</div>
+    <a class="enlace oculto" id="volver" href="panel.html">← Volver</a>
+    <a class="enlace oculto" id="salir" href="#">Cerrar sesión</a>
+</div>
+
+<main class="contenido">
+    <h1>📝 Actualiza tus datos</h1>
+    <p class="intro" id="intro">Cargando…</p>
+
+    <form class="tarjeta oculto" id="formulario" novalidate>
+        <h2>Tus datos</h2>
+        <p class="sub">Todos son obligatorios.</p>
+        <div class="dos">
+            <div class="campo"><label for="nombres">Nombres <b>*</b></label>
+                <input id="nombres" autocomplete="given-name" maxlength="40"></div>
+            <div class="campo"><label for="apellidos">Apellidos <b>*</b></label>
+                <input id="apellidos" autocomplete="family-name" maxlength="40"></div>
+        </div>
+        <div class="campo"><label for="correo">Correo electrónico <b>*</b></label>
+            <input id="correo" type="email" autocomplete="email" inputmode="email"></div>
+        <div class="campo"><label for="celular">Número celular <b>*</b></label>
+            <input id="celular" type="tel" autocomplete="tel" inputmode="tel"></div>
+        <div id="claves" class="oculto">
+            <div class="dos">
+                <div class="campo"><label for="password">Contraseña nueva <b>*</b></label>
+                    <input id="password" type="password" autocomplete="new-password"></div>
+                <div class="campo"><label for="repetida">Repite la contraseña <b>*</b></label>
+                    <input id="repetida" type="password" autocomplete="new-password"></div>
+            </div>
+            <p class="sub">No puede ser la de los últimos 4 dígitos de tu cédula. Es la misma
+                del programa de escritorio.</p>
+        </div>
+        <button class="principal" id="guardar" type="submit">Guardar mis datos</button>
+    </form>
+
+    <section class="tarjeta oculto" id="fotos">
+        <h2>Foto de perfil y cédula</h2>
+        <p class="sub">No son obligatorias. Cada foto se guarda en cuanto la eliges.</p>
+        <div id="lista-fotos"></div>
+    </section>
+
+    <button class="principal oculto" id="continuar">Ir a mi panel</button>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/adjuntos.js"></script>
+<script>
+(function () {
+'use strict';
+
+const API = PARADISE.API_URL;
+const FOTOS = [
+    { lado: 'perfil', titulo: 'Foto de perfil', camara: 'user' },
+    { lado: 'frente', titulo: 'Cédula · frente', camara: 'environment' },
+    { lado: 'reverso', titulo: 'Cédula · reverso', camara: 'environment' },
+    { lado: 'cara_id', titulo: 'Cara + ID', ayuda: 'Tú sosteniendo tu cédula junto a tu cara', camara: 'user' },
+];
+const TOPE = 15 * 1024 * 1024;       // BYTES_MAX_FOTO_DRIVE de la API
+
+const $ = (id) => document.getElementById(id);
+const token = () => localStorage.getItem('token_sesion') || '';
+let ficha = null;
+
+if (!token()) { window.location.replace(PARADISE.URL_LOGIN); return; }
+
+let avisoActual = null;
+function avisar(texto, tipo) {
+    if (avisoActual) avisoActual.remove();
+    const caja = document.createElement('div');
+    caja.className = 'aviso ' + (tipo || '');
+    caja.textContent = texto;
+    document.body.appendChild(caja);
+    avisoActual = caja;
+    setTimeout(() => { if (caja === avisoActual) { caja.remove(); avisoActual = null; } },
+               tipo === 'malo' ? 6000 : 3500);
+}
+
+function fueraDeSesion() {
+    ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto', 'datos_pendientes']
+        .forEach((clave) => localStorage.removeItem(clave));
+    window.location.replace(PARADISE.URL_LOGIN);
+}
+
+async function pedir(ruta, metodo, cuerpo) {
+    const respuesta = await fetch(API + ruta, {
+        method: metodo || 'GET',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+        cache: 'no-store',
+        body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+    });
+    let datos = {};
+    try { datos = await respuesta.json(); } catch (e) { datos = {}; }
+    if (respuesta.status === 401) { fueraDeSesion(); throw new Error('Tu sesión caducó.'); }
+    if (!respuesta.ok) throw new Error(datos.detail || 'No se pudo completar la acción.');
+    return datos;
+}
+
+function subir(lado, archivo, alAvanzar) {
+    return new Promise((resolver, rechazar) => {
+        const formulario = new FormData();
+        formulario.append('archivo', archivo, archivo.name || 'foto.jpg');
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/datos/foto/' + lado);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token());
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) alAvanzar(e.loaded / e.total); };
+        xhr.onload = () => {
+            let datos = {};
+            try { datos = JSON.parse(xhr.responseText); } catch (e) { datos = {}; }
+            if (xhr.status === 401) { fueraDeSesion(); rechazar(new Error('Tu sesión caducó.')); return; }
+            if (xhr.status >= 200 && xhr.status < 300) resolver(datos);
+            else rechazar(new Error(datos.detail || 'No se pudo subir la foto. Inténtalo otra vez.'));
+        };
+        xhr.onerror = () => rechazar(new Error('Se cortó la conexión. Inténtalo otra vez.'));
+        xhr.send(formulario);
+    });
+}
+
+const esTactil = () => 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
+
+// =======================================================================
+// LAS FOTOS
+// =======================================================================
+function pintarFotos() {
+    const lista = $('lista-fotos');
+    lista.innerHTML = '';
+    FOTOS.forEach((f) => {
+        const fila = document.createElement('div');
+        fila.className = 'foto';
+        fila.innerHTML =
+            (f.lado === 'perfil' ? '<div class="avatar">👤</div>' : '') +
+            '<div class="texto"><div class="titulo"></div><div class="estado"></div>' +
+            '<div class="barrita oculto"><div></div></div></div>' +
+            '<div class="botones"><button type="button" data-op="galeria">🖼️ Galería</button>' +
+            '<button type="button" data-op="camara">📷 Cámara</button></div>';
+        fila.querySelector('.titulo').textContent = f.titulo;
+        lista.appendChild(fila);
+
+        const galeria = document.createElement('input');
+        galeria.type = 'file'; galeria.accept = 'image/*'; galeria.className = 'oculto';
+        const camara = document.createElement('input');
+        camara.type = 'file'; camara.accept = 'image/*'; camara.className = 'oculto';
+        camara.setAttribute('capture', f.camara);
+        fila.append(galeria, camara);
+        [galeria, camara].forEach((input) => {
+            input.onchange = () => {
+                const archivo = input.files && input.files[0];
+                input.value = '';
+                if (archivo) enviar(f, fila, archivo);
+            };
+        });
+        fila.querySelector('[data-op="galeria"]').onclick = () => galeria.click();
+        fila.querySelector('[data-op="camara"]').onclick = async () => {
+            // En el ordenador `capture` no hace nada: se abre la cámara del navegador.
+            if (!esTactil() && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                const foto = await Adjuntos.camara();
+                if (foto) enviar(f, fila, foto);
+                return;
+            }
+            camara.click();
+        };
+        estadoFoto(f, fila);
+    });
+}
+
+function estadoFoto(f, fila) {
+    const estado = fila.querySelector('.estado');
+    if (f.lado === 'perfil') {
+        const avatar = fila.querySelector('.avatar');
+        if (ficha.foto_perfil) {
+            avatar.innerHTML = '<img alt="">';
+            avatar.querySelector('img').src = 'data:image/png;base64,' + ficha.foto_perfil;
+            estado.textContent = '✓ Guardada';
+            estado.className = 'estado listo';
+        } else {
+            estado.textContent = 'Sin foto';
+            estado.className = 'estado';
+        }
+        return;
+    }
+    const subida = ficha.cedula_fotos[f.lado];
+    estado.textContent = subida ? '✓ Subida' : (f.ayuda || 'Sin subir');
+    estado.className = 'estado' + (subida ? ' listo' : '');
+}
+
+async function enviar(f, fila, archivo) {
+    if (Adjuntos.tipoDe(archivo) !== 'imagen') { avisar('Elige una foto.', 'malo'); return; }
+    const botones = fila.querySelectorAll('.botones button');
+    const barrita = fila.querySelector('.barrita');
+    const estado = fila.querySelector('.estado');
+    botones.forEach((b) => { b.disabled = true; });
+    barrita.classList.remove('oculto');
+    estado.className = 'estado';
+    estado.textContent = 'Preparando…';
+    try {
+        // Una foto de 5 MB del teléfono queda en unos 300 KB y se sigue leyendo bien.
+        const lista = await Adjuntos.fotoParaDrive(archivo);
+        if (lista.size > TOPE) throw new Error('La foto pesa más de 15 MB.');
+        estado.textContent = 'Subiendo…';
+        const r = await subir(f.lado, lista, (p) => { barrita.firstChild.style.width = Math.round(p * 100) + '%'; });
+        if (f.lado === 'perfil') ficha.foto_perfil = r.foto_perfil || '';
+        else ficha.cedula_fotos[f.lado] = { nombre: r.nombre || '' };
+        avisar(f.titulo + ': guardada.', 'bueno');
+    } catch (error) {
+        avisar(error.message, 'malo');
+    }
+    barrita.classList.add('oculto');
+    barrita.firstChild.style.width = '0';
+    botones.forEach((b) => { b.disabled = false; });
+    estadoFoto(f, fila);
+}
+
+// =======================================================================
+// LOS DATOS
+// =======================================================================
+function pintarModo() {
+    const pendiente = !ficha.datos_completos;
+    $('claves').classList.toggle('oculto', !pendiente);
+    $('volver').classList.toggle('oculto', pendiente);
+    $('salir').classList.toggle('oculto', !pendiente);
+    $('continuar').classList.toggle('oculto', pendiente || !ficha.recien);
+    $('intro').textContent = pendiente
+        ? '¡Bienvenida a PARADISE! Antes de empezar, llena tus datos y elige tu propia contraseña. ' +
+          'Después podrás subir tu foto de perfil y las fotos de tu cédula.'
+        : (ficha.recien
+            ? '¡Listo, ' + ficha.nombres + '! Tus datos quedaron guardados. Si quieres, sube ahora tu ' +
+              'foto de perfil y las fotos de tu cédula.'
+            : 'Revisa que tus datos estén al día. Así el estudio puede contactarte.');
+}
+
+async function cargar() {
+    try {
+        ficha = await pedir('/api/datos');
+    } catch (error) {
+        $('intro').textContent = error.message;
+        return;
+    }
+    ['nombres', 'apellidos', 'correo', 'celular'].forEach((c) => { $(c).value = ficha[c] || ''; });
+    if (ficha.datos_completos) localStorage.removeItem('datos_pendientes');
+    else localStorage.setItem('datos_pendientes', '1');
+    pintarModo();
+    pintarFotos();
+    $('formulario').classList.remove('oculto');
+    $('fotos').classList.remove('oculto');
+}
+
+$('formulario').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const pendiente = !ficha.datos_completos;
+    const cuerpo = {
+        nombres: $('nombres').value, apellidos: $('apellidos').value,
+        correo: $('correo').value, celular: $('celular').value,
+        password: pendiente ? $('password').value.trim() : '',
+        repetida: pendiente ? $('repetida').value.trim() : '',
+    };
+    const falta = ['nombres', 'apellidos', 'correo', 'celular'].concat(pendiente ? ['password', 'repetida'] : [])
+        .find((c) => !String(cuerpo[c] || '').trim());
+    if (falta) { avisar('Llena todos los campos obligatorios.', 'malo'); $(falta).focus(); return; }
+
+    $('guardar').disabled = true;
+    try {
+        const r = await pedir('/api/datos', 'POST', cuerpo);
+        if (pendiente) {
+            // turnos.html y reuniones.html trabajan por NOMBRE: ya no es la cédula.
+            localStorage.setItem('modelo_actual', r.nombre);
+            localStorage.removeItem('datos_pendientes');
+            localStorage.removeItem('password_por_defecto');
+            ficha.recien = true;
+        }
+        ficha.datos_completos = true;
+        ficha.nombres = String(r.nombres || cuerpo.nombres).trim().split(/\s+/)[0];
+        $('password').value = '';
+        $('repetida').value = '';
+        pintarModo();
+        avisar(r.aviso || 'Tus datos quedaron guardados.', r.aviso ? '' : 'bueno');
+        if (pendiente) $('fotos').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+        avisar(error.message, 'malo');
+    }
+    $('guardar').disabled = false;
+});
+
+$('continuar').onclick = () => { window.location.href = 'panel.html'; };
+$('salir').onclick = async (evento) => {
+    evento.preventDefault();
+    try { await pedir('/api/acceso/salir', 'POST', {}); } catch (e) { /* da igual */ }
+    fueraDeSesion();
+};
+
+cargar();
+})();
+</script>
+</body>
+</html>
