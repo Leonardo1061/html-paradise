@@ -70,6 +70,13 @@
  * les sale en curso con «La está haciendo X», sin botones ni conversación.
  * En «Enviadas», «📊 Por persona» enseña cuántas hizo y cuántas no realizó
  * cada uno (este mes, el pasado o todo); tocar a alguien filtra sus tareas.
+ *
+ * EL DESCANSO DE LA SEMANA  (Leonardo, 2026-10-11; api/cronograma.py)
+ * -------------------------------------------------------------------
+ * De miércoles a viernes 11:59 pm, a Julian, Leonardo, Alexander y Mayra la
+ * campana les enseña arriba de «Para mí» los días de la semana siguiente para
+ * elegir su descanso. Mientras no elijan suma uno al globo. Viaja en
+ * `descanso` de /tareas; la malla está en personal_cronograma.html.
  */
 
 (function () {
@@ -94,6 +101,7 @@ const MODULOS = [
     { id: 'chat', texto: 'CHAT', simbolo: '💬', pagina: 'personal_chat.html' },
     { id: 'fotografia', texto: 'FOTOGRAFÍA', simbolo: '📷', pagina: 'personal_fotografia.html' },
     { id: 'status', texto: 'STATUS ROOM', simbolo: '📋', pagina: 'personal_status.html' },
+    { id: 'cronograma', texto: 'CRONOGRAMA', simbolo: '🗓️', pagina: 'personal_cronograma.html' },
     // Solo el CEO: la API se lo añade a sus módulos (personal.es_ceo).
     { id: 'tickets', texto: 'MIS TICKETS', simbolo: '🎫', pagina: 'personal_tickets.html' },
 ];
@@ -231,6 +239,7 @@ function pitar() {
 const campana = {
     tareas: [],
     respuestas: [],                  // las que asignó y le contestaron sin que lo haya visto
+    descanso: null,                  // la elección del descanso abierta (cronograma)
     conocidas: null,                 // ids ya vistos (para pitar solo por las nuevas)
     reloj: null,
     abierta: null,                   // la hoja, si está abierta
@@ -247,7 +256,8 @@ function cuentaEnCampana(t) {
 function pintarGlobo() {
     const globo = document.getElementById('globo-tareas');
     if (!globo) return;
-    const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length;
+    const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length +
+        (campana.descanso && campana.descanso.pendiente ? 1 : 0);
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
     document.dispatchEvent(new CustomEvent('personal:tareas', { detail: campana.tareas }));
@@ -259,6 +269,13 @@ async function revisarTareas(forzar) {
         const datos = await pedir('/api/personal/tareas');
         campana.tareas = datos.tareas || [];
         campana.respuestas = datos.respuestas || [];
+        const antes = campana.descanso;
+        campana.descanso = datos.descanso || null;
+        if (campana.descanso && campana.descanso.pendiente && campana.conocidas &&
+            !(antes && antes.pendiente)) {
+            pitar();
+            avisar('🗓️ Ya puedes elegir tu día de descanso de la semana ' + campana.descanso.etiqueta);
+        }
         // «Nueva» es una tarea que no estaba o que tiene un mensaje o un
         // estado distinto desde la última vuelta.
         const clave = (t) => t.id + '·' + (t.num_respuestas || 0) + '·' + t.estado;
@@ -756,6 +773,7 @@ function abrirCampana() {
 
     function pintarRecibidas() {
         cuerpo.innerHTML = '';
+        if (campana.descanso) cuerpo.appendChild(tarjetaDescanso(campana.descanso, () => revisarTareas(true)));
         barraFiltros();
         if (campana.respuestas.length) {
             const titulo = document.createElement('div');
@@ -966,6 +984,42 @@ function abrirCampana() {
 }
 
 // =======================================================================
+// EL DESCANSO DE LA SEMANA (cronograma)
+// =======================================================================
+/* Los siete días de la semana que se elige. info = `descanso` de /tareas
+ * (o `eleccion` de /cronograma). alCambiar() se llama tras elegir. */
+function tarjetaDescanso(info, alCambiar) {
+    const caja = document.createElement('div');
+    caja.className = 'tarea tarjeta-descanso' + (info.elegido == null ? ' por-elegir' : '');
+    const nombre = (d) => (info.dias[d] || {}).nombre || '';
+    const pie = info.elegido != null
+        ? 'Descansas el <b>' + escapar(nombre(info.elegido).toLowerCase()) + '</b>. Puedes cambiarlo hasta ' + escapar(info.cierra_texto) + '.'
+        : 'Si no eliges antes de ' + escapar(info.cierra_texto) + ' se queda el de esta semana' +
+          (info.anterior != null ? ' (' + escapar(nombre(info.anterior).toLowerCase()) + ')' : '') + '.';
+    caja.innerHTML =
+        '<div class="titulo-seccion">🗓️ Tu día de descanso · semana ' + escapar(info.etiqueta) + '</div>' +
+        '<div class="dias-descanso">' + info.dias.map((d) =>
+            '<button type="button" class="dia-descanso' + (d.dia === info.elegido ? ' elegido' : '') + '"' +
+            (d.libre ? '' : ' disabled title="' + escapar(d.motivo) + '"') + ' data-dia="' + d.dia + '">' +
+            '<span>' + escapar(d.nombre.slice(0, 3)) + '</span><small>' + escapar(d.fecha || '') + '</small></button>').join('') +
+        '</div><div class="pie-descanso">' + pie + '</div>';
+    caja.querySelectorAll('.dia-descanso').forEach((b) => {
+        b.onclick = async () => {
+            const dia = Number(b.dataset.dia);
+            if (dia === info.elegido) return;
+            if (!confirm('¿Descansar el ' + nombre(dia).toLowerCase() + ' (' + (info.dias[dia].fecha || '') + ')?')) return;
+            caja.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+            try {
+                const r = await pedir('/api/personal/cronograma/elegir', 'POST', { dia: dia });
+                avisar(r.mensaje, 'bueno');
+            } catch (error) { avisar(error.message, 'malo'); }
+            if (alCambiar) alCambiar();
+        };
+    });
+    return caja;
+}
+
+// =======================================================================
 // BARRAS
 // =======================================================================
 function ficha() {
@@ -1111,7 +1165,7 @@ window.Personal = {
     iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, avisar: avisar,
     escapar: escapar, abrirVisor: abrirVisor, abrirConversacion: abrirConversacion, aDataUrl: aDataUrl, comprimir: comprimir,
     abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha, ficha: ficha,
-    tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas,
+    tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas, tarjetaDescanso: tarjetaDescanso,
     tareas: () => campana.tareas, CLAVE_TOKEN: CLAVE_TOKEN,
 };
 })();

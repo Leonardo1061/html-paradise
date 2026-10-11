@@ -18,6 +18,7 @@
   "shortcuts": [
     { "name": "Chat", "url": "personal_chat.html", "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }] },
     { "name": "Fotografía", "url": "personal_fotografia.html", "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }] },
-    { "name": "Status Room", "url": "personal_status.html", "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }] }
+    { "name": "Status Room", "url": "personal_status.html", "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }] },
+    { "name": "Cronograma", "url": "personal_cronograma.html", "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }] }
   ]
 }
