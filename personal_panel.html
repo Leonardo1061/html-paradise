@@ -38,6 +38,7 @@
     <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
     <div id="tablero" class="oculto">
         <div class="rejilla" id="datos"></div>
+        <div class="seccion tarjeta oculto" id="sec-actividades"><h2>🗓️ Próximas actividades</h2><div id="lista-actividades"></div></div>
         <div class="seccion tarjeta" id="sec-tareas"><h2>🔔 Tus tareas</h2><div id="lista-tareas"></div></div>
         <div class="seccion tarjeta oculto" id="sec-fotos"><h2>📷 Fotos de hoy</h2><div id="lista-fotos"></div></div>
     </div>
@@ -77,6 +78,13 @@
     P.iniciar('inicio').then(async (yo) => {
         // La campana llega por su lado (personal.js): se escucha desde ya.
         document.addEventListener('personal:tareas', (e) => pintarTareas(e.detail || []));
+        // Las actividades del cronograma que le tocan (capacitaciones, reuniones).
+        document.addEventListener('personal:actividades', (e) => {
+            const lista = (e.detail || []).slice(0, 6);
+            $('sec-actividades').classList.toggle('oculto', !lista.length);
+            $('lista-actividades').innerHTML = '';
+            lista.forEach((a) => $('lista-actividades').appendChild(P.tarjetaActividad(a)));
+        });
         $('saludo').textContent = 'Hola, ' + (yo.monitor || '').split(' ')[0];
         $('subtitulo').textContent = (yo.texto_roles || 'Sin rol') +
             (yo.jornada && yo.jornada !== 'Todas' ? ' · Jornada ' + yo.jornada : '');

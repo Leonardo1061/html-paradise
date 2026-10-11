@@ -27,7 +27,12 @@
  *                                    de este teléfono si aún no lo están)
  *        ⏻  Cerrar sesión
  *
- *   🔔 La campana: los tickets al CEO. Uno PENDIENTE se queda en la lista
+ *   🔔 La campana: las CAPACITACIONES y REUNIONES GENERALES del cronograma
+ *      (api/actividades.py: /api/cronograma/modelo). Le llegan a TODAS las
+ *      modelos; ir es opcional. Suman al globo al programarlas y otra vez 15
+ *      minutos antes; abrir la campana las da por vistas. El INICIO las
+ *      escucha con el evento `paradise:actividades`.
+ *   🔔 Y los tickets al CEO. Uno PENDIENTE se queda en la lista
  *      hasta que el CEO lo responda, pero sin globo rojo: el número sale solo
  *      con las respuestas que la modelo todavía no ha abierto.
  *      Si la página ya tiene su campana (panel.html, turnos.html) se usa esa:
@@ -74,6 +79,7 @@ const estado = {
     tickets: [],
     pendientes: 0,
     nuevas: 0,
+    actividades: [],                 // capacitaciones y reuniones que vienen
     extra: null,                     // función -> html que la página pone arriba de la campana
     hoja: null,                      // la hoja abierta: {tipo, pintar, cerrar}
     globo: null,                     // el globo de la campana inyectada (si la hay)
@@ -417,7 +423,39 @@ async function salir() {
 // =======================================================================
 // El globo rojo sale SOLO cuando el CEO ya respondió y ella no lo ha visto.
 // Los pendientes se ven al abrir la campana, sin número encima.
-function cuenta() { return estado.nuevas; }
+function actividadSuena(a) { return a.nuevo || a.pronto; }
+function cuenta() { return estado.nuevas + estado.actividades.filter(actividadSuena).length; }
+
+async function revisarActividades(forzar) {
+    try {
+        const datos = await pedir('/api/cronograma/modelo');
+        const antes = new Set(estado.actividades.filter(actividadSuena).map((a) => a.id + (a.pronto ? 'p' : '')));
+        estado.actividades = datos.actividades || [];
+        const recien = estado.actividades.filter(actividadSuena).filter((a) => !antes.has(a.id + (a.pronto ? 'p' : '')));
+        if (recien.length && forzar !== true) {
+            const a = recien[0];
+            avisar((a.pronto ? '⏰ En 15 min: ' : a.icono + ' ') + a.titulo, 'bueno');
+        }
+        document.dispatchEvent(new CustomEvent('paradise:actividades', { detail: estado.actividades }));
+        pintarGlobo();
+        if (estado.hoja && estado.hoja.tipo === 'campana') estado.hoja.pintar();
+    } catch (error) { /* sin red: en la siguiente vuelta */ }
+}
+
+/* Una capacitación o reunión (campana e INICIO). */
+function tarjetaActividad(a) {
+    const sello = a.pronto ? 'Empieza pronto' : a.nuevo ? 'Nueva' : '';
+    return '<div class="bm-ticket' + (actividadSuena(a) ? ' nuevo' : '') + '" style="border-left:4px solid ' + escapar(a.color) + '">' +
+        '<div class="cabeza"><div class="asunto">' + escapar(a.icono + ' ' + a.titulo) + '</div>' +
+        (sello ? '<span class="bm-pildora respondido">' + sello + '</span>' : '') + '</div>' +
+        '<div class="meta">' + escapar(a.cuando) + '</div>' +
+        (a.tipo === 'modelos' ? '<div class="meta">Capacitación con <b>' + escapar(a.responsable) + '</b>' +
+            (a.para_mi ? ' · es para ti' : ' · puedes ir de refuerzo') + '</div>'
+            : '<div class="meta">Reunión general: todas las modelos y el personal</div>') +
+        (a.descripcion ? '<div class="detalle">' + escapar(a.descripcion) + '</div>' : '') +
+        (a.meet ? '<div class="bm-fila" style="margin-top:8px"><a class="bm-secundario" target="_blank" rel="noopener" href="' +
+            escapar(a.meet) + '">🎥 Entrar a la reunión</a></div>' : '') + '</div>';
+}
 
 async function revisar(forzar) {
     if (!token() || (forzar !== true && document.visibilityState !== 'visible')) return;
@@ -432,6 +470,7 @@ async function revisar(forzar) {
         pintarGlobo();
         if (estado.hoja && estado.hoja.tipo === 'campana') estado.hoja.pintar();
     } catch (error) { /* sin red un momento: en la siguiente vuelta */ }
+    revisarActividades(forzar);
 }
 
 function pintarGlobo() {
@@ -520,11 +559,22 @@ function abrirCampana() {
     const hoja = abrirHoja('campana', '🔔 Avisos');
     hoja.pintar = () => {
         const extra = estado.extra ? estado.extra() : '';
-        hoja.cuerpo.innerHTML = (extra ? '<div class="bm-extra">' + extra + '</div>' : '') +
+        const agenda = estado.actividades.length
+            ? '<b style="display:block;font-size:15px;margin-bottom:10px">🗓️ Capacitaciones y reuniones</b>' +
+              estado.actividades.map(tarjetaActividad).join('') + '<div style="height:10px"></div>' : '';
+        hoja.cuerpo.innerHTML = (extra ? '<div class="bm-extra">' + extra + '</div>' : '') + agenda +
             '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">' +
             '<b style="flex:1;font-size:15px">🎫 Tus tickets al CEO</b>' +
             '<button class="bm-secundario t-nuevo">＋ Nuevo</button></div><div class="t-lista"></div>';
         hoja.cuerpo.querySelector('.t-nuevo').onclick = abrirNuevo;
+        // Abrir la campana da por vistas las capacitaciones y reuniones.
+        const vistas = estado.actividades.filter(actividadSuena).map((a) => a.id);
+        if (vistas.length) {
+            pedir('/api/cronograma/modelo/vistas', 'POST', { ids: vistas }).then(() => {
+                estado.actividades.forEach((a) => { if (vistas.indexOf(a.id) >= 0) { a.nuevo = false; a.pronto = false; } });
+                pintarGlobo();
+            }).catch(() => {});
+        }
         const lista = hoja.cuerpo.querySelector('.t-lista');
         if (!estado.tickets.length) {
             lista.innerHTML = '<div class="bm-vacio">No has mandado tickets. Usa 🎫 TICKET CEO ' +
@@ -1056,5 +1106,7 @@ return {
     /* La página pone algo arriba de la lista de tickets (panel: la lista de espera). */
     ponerExtra: (funcion) => { estado.extra = funcion; },
     cuenta: cuenta,
+    /* Las capacitaciones y reuniones que vienen, y cómo se pintan (INICIO). */
+    actividades: () => estado.actividades, tarjetaActividad: tarjetaActividad,
 };
 })();

@@ -7,18 +7,23 @@
 <title>Cronograma · PARADISE</title>
 
 <!--
-  CRONOGRAMA DE ACTIVIDADES DEL PERSONAL  (api/cronograma.py)
-  ===========================================================
-  Los turnos de la semana de Julian, Leonardo (Mañana), Alexander (Tarde),
-  Mayra (Noche) y Angela (Satélites) en bloques de una hora, ya sin la media
-  hora de almuerzo. Arriba, el resumen por persona con sus horas; abajo, la
-  malla hora por hora. Se puede ver una sola persona.
+  CRONOGRAMA DE ACTIVIDADES DEL PERSONAL  (api/cronograma.py y api/actividades.py)
+  ================================================================================
+  ARRIBA, LA MALLA PROPIA: la semana de quien entró en bloques de media hora,
+  de 6:00 am a 2:00 am. Su turno va sombreado y lo demás queda vacío. Encima,
+  las actividades:
+      📝 Personal         lo que está haciendo (la pone él, dentro de su turno)
+      🎓 Managers         capacitaciones del personal (CEO y Gerencia)
+      👩‍🏫 Modelos          una capacitación que da a una modelo
+      📣 Reunión general  (CEO y Gerencia)
+  Tocar un hueco programa ahí; tocar una actividad la abre (cambiarla o
+  quitarla si es suya; lo de CEO y Gerencia solo lo mueven ellos).
+  Cada monitor ve SOLO su malla. CEO y Gerencia eligen de quién.
+
+  ABAJO, EL RESUMEN: los turnos de la semana de todos, con sus horas.
 
   De miércoles a viernes 11:59 pm, quien elige descanso tiene arriba los días
-  de la semana siguiente (lo mismo que sale en la campana). CEO y Gerencia
-  pueden cambiar el descanso de cualquiera en cualquier semana.
-
-  Lo mismo está en la pestaña CRONOGRAMA DE ACTIVIDADES del escritorio.
+  de la semana siguiente (lo mismo que sale en la campana).
 -->
 
 <link rel="manifest" href="manifest_personal.webmanifest">
@@ -33,27 +38,50 @@
 <link rel="stylesheet" href="css/personal.css">
 
 <style>
-.semana { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.semana { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .semana .etiqueta { font-weight: 600; font-size: 14px; flex: 1; min-width: 150px; text-align: center; }
 .semana button { padding: 8px 13px; }
-.chips { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; padding-bottom: 2px; }
-.chip {
-    flex: none; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--borde);
-    background: var(--panel); color: var(--texto); font-size: 12.5px; font-weight: 600; cursor: pointer;
-}
-.chip.activo { border-color: var(--c, var(--cian)); background: color-mix(in srgb, var(--c, var(--cian)) 22%, transparent); }
-.punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-right: 6px; }
+.barra-malla { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.barra-malla select { background: var(--panel-alto); color: var(--texto); border: 1px solid var(--borde);
+                      border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+.barra-malla .boton-principal { width: auto; padding: 9px 14px; font-size: 13.5px; }
+.leyenda { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11.5px; color: var(--tenue); margin-bottom: 8px; }
+.leyenda span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px;
+                        background: var(--c); margin-right: 5px; vertical-align: -1px; }
 
+/* ---- la malla de media hora: una columna por día, actividades encima ---- */
 .desliza { overflow-x: auto; border: 1px solid var(--borde); border-radius: 14px; }
+.malla { display: grid; grid-template-columns: 58px repeat(7, minmax(92px, 1fr)); min-width: 720px; position: relative; }
+.malla .cabeza { position: sticky; top: 0; z-index: 3; background: var(--panel-alto); text-align: center;
+                 font-size: 11.5px; font-weight: 600; color: var(--tenue); padding: 7px 2px; border-bottom: 1px solid var(--borde); }
+.malla .cabeza small { display: block; font-weight: 400; color: var(--apagado); }
+.malla .cabeza.hoy { color: var(--cian); }
+.horas { position: relative; }
+.horas div { height: var(--fila); font-size: 10.5px; color: var(--apagado); text-align: right; padding-right: 6px;
+             transform: translateY(-6px); }
+.columna { position: relative; border-left: 1px solid var(--borde); cursor: pointer;
+           background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--fila) * 2 - 1px),
+                             var(--borde) calc(var(--fila) * 2 - 1px), var(--borde) calc(var(--fila) * 2)); }
+.columna.hoy { background-color: rgba(6, 182, 212, .05); }
+.turno-fondo { position: absolute; left: 0; right: 0; background: rgba(6, 182, 212, .10);
+               border-top: 1px dashed rgba(6, 182, 212, .5); border-bottom: 1px dashed rgba(6, 182, 212, .5);
+               pointer-events: none; }
+.turno-fondo span { position: absolute; top: 2px; right: 4px; font-size: 9.5px; color: var(--cian); }
+.descanso-fondo { position: absolute; inset: 0; display: grid; place-items: center; color: var(--apagado);
+                  font-size: 12px; pointer-events: none; }
+.actividad { position: absolute; border-radius: 7px; padding: 3px 5px; font-size: 10.5px; line-height: 1.25;
+             color: #fff; background: var(--c); overflow: hidden; cursor: pointer; z-index: 2;
+             box-shadow: 0 2px 6px rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .18); }
+.actividad b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.actividad small { opacity: .85; }
+
+/* ---- el resumen de todos ---- */
 table { border-collapse: collapse; width: 100%; font-size: 12px; }
 th, td { border-bottom: 1px solid var(--borde); padding: 7px 6px; text-align: center; vertical-align: middle; }
-th { color: var(--tenue); font-weight: 600; font-size: 11.5px; background: var(--panel-alto); position: sticky; top: 0; }
+th { color: var(--tenue); font-weight: 600; font-size: 11.5px; background: var(--panel-alto); }
 th small { display: block; font-weight: 400; color: var(--apagado); }
 th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
-.resumen td:first-child, .malla td:first-child, .resumen th:first-child, .malla th:first-child {
-    text-align: left; position: sticky; left: 0; background: var(--panel); z-index: 1;
-}
-.resumen td:first-child { min-width: 120px; }
+.resumen td:first-child, .resumen th:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); z-index: 1; min-width: 120px; }
 .resumen .persona b { display: block; font-size: 12.5px; }
 .resumen .persona small { color: var(--tenue); }
 .resumen .origen { display: block; color: var(--apagado); font-size: 10.5px; margin-top: 2px; }
@@ -65,15 +93,19 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
 .total { font-weight: 700; color: var(--cian); white-space: nowrap; }
 .cambiar { margin-top: 5px; width: 100%; font-size: 11px; padding: 4px; border-radius: 8px;
            background: var(--panel-alto); color: var(--texto); border: 1px solid var(--borde); }
-
-.malla td { height: 34px; padding: 3px; min-width: 74px; }
-.malla td:first-child { color: var(--tenue); font-size: 11px; white-space: nowrap; min-width: 62px; }
-.bloque { display: block; margin: 2px 0; padding: 3px 4px; border-radius: 6px; font-size: 10.5px; font-weight: 600;
-          color: #fff; background: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bloque.cubre { background: repeating-linear-gradient(135deg, var(--c), var(--c) 6px,
-                color-mix(in srgb, var(--c) 70%, #000) 6px, color-mix(in srgb, var(--c) 70%, #000) 12px); }
 .nota { font-size: 12px; color: var(--tenue); line-height: 1.5; margin: 8px 2px 0; }
 #eleccion { margin-bottom: 14px; }
+
+/* ---- el formulario ---- */
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.personas-lista { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 190px; overflow-y: auto;
+                  background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 12px; padding: 10px; }
+.personas-lista label { display: flex; gap: 7px; align-items: center; font-size: 13px; color: var(--texto); margin: 0; }
+.personas-lista input { width: auto; padding: 0; margin: 0; flex: none; }
+.personas-lista label.todos { grid-column: 1 / -1; font-weight: 600; border-bottom: 1px solid var(--borde); padding-bottom: 6px; }
+.error-form { color: #fecaca; font-size: 13px; margin: 0 0 10px; display: none; }
+.detalle-actividad p { margin: 6px 0; font-size: 13.5px; color: var(--tenue); line-height: 1.5; }
+.detalle-actividad b { color: var(--texto); }
 </style>
 </head>
 
@@ -88,7 +120,6 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
         <button class="boton-secundario" id="btn-siguiente">▶</button>
         <button class="boton-secundario" id="btn-hoy">Esta semana</button>
     </div>
-    <div class="chips" id="chips"></div>
     <div id="contenido"><div class="cargando"><span class="girando">◌</span></div></div>
 </main>
 
@@ -98,95 +129,296 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
 <script>
 (function () {
     'use strict';
+    const P = window.Personal;
+    const esc = (t) => P.escapar(t);
+    const corto = (n) => String(n || '').split(' ')[0];
+    const FILA = 26;                       // px por media hora
     const COLORES = {
         'Julian Mosquera': '#f59e0b', 'Leonardo Muñoz': '#06b6d4', 'Alexander Alban': '#8b5cf6',
         'Mayra Vargas': '#d946ef', 'Angela Diaz': '#10b981',
     };
-    const esc = (t) => Personal.escapar(t);
-    const corto = (n) => String(n || '').split(' ')[0];
-    const estado = { semana: '', persona: '', datos: null };
+    const estado = { semana: '', persona: '', malla: null, resumen: null, opciones: null };
 
-    function hoyIndice(datos) {
-        if (datos.semana !== datos.actual) return -1;
-        return new Date().getDay();   // 0 = domingo, igual que la API
+    function etiquetaMinuto(m) {
+        const h = Math.floor(m / 60) % 24, mm = m % 60;
+        if (h === 12 && mm === 0) return '12:00 m';
+        return ((h % 12) || 12) + ':' + String(mm).padStart(2, '0') + ' ' + (h < 12 ? 'am' : 'pm');
     }
 
-    function pintarChips() {
-        const filas = estado.datos ? estado.datos.filas : [];
-        const chips = document.getElementById('chips');
-        chips.innerHTML = '<button class="chip' + (!estado.persona ? ' activo' : '') + '" data-p="">Todos</button>' +
-            filas.map((f) => '<button class="chip' + (estado.persona === f.persona ? ' activo' : '') + '" data-p="' +
-                esc(f.persona) + '" style="--c:' + COLORES[f.persona] + '"><span class="punto"></span>' +
-                esc(corto(f.persona)) + '</button>').join('');
-        chips.querySelectorAll('.chip').forEach((b) => {
-            b.onclick = () => { estado.persona = b.dataset.p; pintar(); };
+    function hoyIndice(datos) { return datos.semana === datos.actual ? new Date().getDay() : -1; }
+
+    // ===================================================================
+    // LA MALLA PROPIA
+    // ===================================================================
+    function htmlMalla(m) {
+        const primero = m.filas[0].minuto;
+        const alto = m.filas.length * FILA;
+        const hoy = hoyIndice(m);
+        const y = (minuto) => (minuto - primero) / 30 * FILA;
+        let html = '<div class="desliza"><div class="malla" style="--fila:' + FILA + 'px">' +
+            '<div class="cabeza"></div>' + m.dias.map((d) =>
+                '<div class="cabeza' + (d.dia === hoy ? ' hoy' : '') + '">' + esc(d.nombre.slice(0, 3)) +
+                '<small>' + esc(d.fecha) + '</small></div>').join('');
+        html += '<div class="horas" style="height:' + alto + 'px">' + m.filas.map((f, i) =>
+            '<div>' + (i % 2 === 0 ? esc(f.texto) : '') + '</div>').join('') + '</div>';
+        m.dias.forEach((d) => {
+            const t = m.turnos[d.dia] || {};
+            html += '<div class="columna' + (d.dia === hoy ? ' hoy' : '') + '" data-dia="' + d.dia +
+                '" style="height:' + alto + 'px">';
+            if (t.desde != null) {
+                html += '<div class="turno-fondo" style="top:' + y(t.desde) + 'px;height:' + (y(t.hasta) - y(t.desde)) +
+                    'px"><span>' + esc(t.texto) + (t.cubre ? ' · cubre a ' + esc(corto(t.cubre)) : '') + '</span></div>';
+            } else if (t.descanso) {
+                html += '<div class="descanso-fondo">🛌 Descanso</div>';
+            }
+            // Las que se cruzan (solo puede pasar con lo de CEO/Gerencia) van lado a lado.
+            const delDia = m.actividades.filter((a) => a.dia === d.dia).sort((a, b) => a.inicio - b.inicio);
+            const carriles = [];
+            delDia.forEach((a) => {
+                let c = carriles.findIndex((fin) => fin <= a.inicio);
+                if (c < 0) { c = carriles.length; carriles.push(0); }
+                carriles[c] = a.inicio + a.duracion;
+                a._carril = c;
+            });
+            const n = Math.max(1, carriles.length);
+            delDia.forEach((a) => {
+                html += '<div class="actividad" data-id="' + esc(a.id) + '" style="--c:' + esc(a.color) +
+                    ';top:' + (y(a.inicio) + 1) + 'px;height:' + (a.duracion / 30 * FILA - 2) + 'px;left:calc(' +
+                    (a._carril * 100 / n) + '% + 2px);width:calc(' + (100 / n) + '% - 4px)" title="' +
+                    esc(a.titulo + ' · ' + a.cuando) + '"><b>' + esc(a.icono + ' ' + a.titulo) + '</b><small>' +
+                    esc(etiquetaMinuto(a.inicio) + ' – ' + etiquetaMinuto(a.inicio + a.duracion)) +
+                    (a.tipo === 'modelos' ? ' · ' + esc(a.modelo) : '') + '</small></div>';
+            });
+            html += '</div>';
+        });
+        return html + '</div></div>';
+    }
+
+    function pintarMalla() {
+        const m = estado.malla;
+        if (!m) return;
+        const propia = m.persona === P.ficha().monitor;
+        let html = '<div class="titulo-seccion">' + (propia ? 'Mi malla' : 'Malla de ' + esc(m.persona)) + '</div>' +
+            '<div class="barra-malla">' +
+            (m.es_jefe ? '<select id="sel-persona">' + m.personas.map((p) =>
+                '<option' + (p === m.persona ? ' selected' : '') + '>' + esc(p) + '</option>').join('') + '</select>' : '') +
+            '<button class="boton-principal" id="btn-programar">＋ Programar actividad</button></div>' +
+            '<div class="leyenda">' + m.tipos.map((t) => '<span style="--c:' + t.color + '">' + esc(t.icono + ' ' + t.texto) + '</span>').join('') +
+            '<span style="--c:rgba(6,182,212,.35)">Tu turno</span></div>' +
+            htmlMalla(m) +
+            '<p class="nota">Toca un hueco para programar ahí o una actividad para verla. ' +
+            (m.es_jefe ? 'Como CEO o Gerencia puedes programar a cualquier hora; si cae encima de una actividad personal, esa se corre y al monitor le llega el aviso.'
+                       : 'Tus actividades van dentro de tu turno. Lo que programan CEO y Gerencia solo lo mueven ellos.') + '</p>';
+        document.getElementById('malla').innerHTML = html;
+        const sel = document.getElementById('sel-persona');
+        if (sel) sel.onchange = () => { estado.persona = sel.value; cargarMalla(); };
+        document.getElementById('btn-programar').onclick = () => abrirFormulario({});
+        document.querySelectorAll('#malla .actividad').forEach((el) => {
+            el.onclick = (e) => {
+                e.stopPropagation();
+                const a = m.actividades.find((x) => x.id === el.dataset.id);
+                if (a) abrirDetalle(a);
+            };
+        });
+        document.querySelectorAll('#malla .columna').forEach((col) => {
+            col.onclick = (e) => {
+                const caja = col.getBoundingClientRect();
+                const fila = Math.floor((e.clientY - caja.top) / FILA);
+                const minuto = m.filas[0].minuto + Math.max(0, fila) * 30;
+                abrirFormulario({ dia: Number(col.dataset.dia), inicio: minuto });
+            };
         });
     }
 
-    function celdaResumen(fila, celda, datos) {
-        const c = COLORES[fila.persona];
+    // ===================================================================
+    // HOJAS: detalle y formulario
+    // ===================================================================
+    function abrirHoja(titulo, html) {
+        const capas = document.getElementById('capas-personal');
+        capas.innerHTML = '<div class="velo"></div><div class="hoja"><div class="hoja-cabecera"><h3>' + esc(titulo) +
+            '</h3><button class="cerrar" title="Cerrar">✕</button></div><div class="hoja-cuerpo">' + html + '</div></div>';
+        const cerrar = () => { capas.innerHTML = ''; };
+        capas.querySelector('.velo').onclick = cerrar;
+        capas.querySelector('.cerrar').onclick = cerrar;
+        return { cuerpo: capas.querySelector('.hoja-cuerpo'), cerrar: cerrar };
+    }
+
+    function abrirDetalle(a) {
+        const hoja = abrirHoja(a.icono + ' ' + a.titulo,
+            '<div class="detalle-actividad">' +
+            '<p><b>' + esc(a.texto_tipo) + '</b> · ' + esc(a.cuando) + '</p>' +
+            (a.tipo === 'modelos' ? '<p>Capacitación de <b>' + esc(a.responsable) + '</b> a <b>' + esc(a.modelo) + '</b>. Les llega a todas las modelos.</p>' : '') +
+            (a.tipo === 'managers' ? '<p>Para: ' + esc(a.personas.join(', ')) + '</p>' : '') +
+            (a.descripcion ? '<p>' + esc(a.descripcion) + '</p>' : '') +
+            (a.meet ? '<p><a href="' + esc(a.meet) + '" target="_blank" rel="noopener">🎥 Enlace de la reunión</a></p>' : '') +
+            '<p>Programada por ' + esc(a.creada_por) + '.</p>' +
+            (a.puede_editar ? '<div class="botones" style="margin-top:14px"><button class="boton-secundario" id="btn-editar">✏️ Cambiar</button>' +
+                '<button class="boton-secundario" id="btn-borrar">🗑️ Quitar</button></div>'
+                : '<p style="color:var(--apagado)">' + (a.de_jefe ? 'La programó CEO o Gerencia: solo ellos la mueven.' : 'Solo quien la puso la cambia.') + '</p>') +
+            '</div>');
+        if (!a.puede_editar) return;
+        hoja.cuerpo.querySelector('#btn-editar').onclick = () => abrirFormulario(a);
+        hoja.cuerpo.querySelector('#btn-borrar').onclick = async () => {
+            if (!confirm('¿Quitar «' + a.titulo + '»?')) return;
+            try {
+                const r = await P.pedir('/api/personal/cronograma/actividades/' + encodeURIComponent(a.id) + '/borrar', 'POST');
+                P.avisar(r.mensaje, 'bueno');
+                hoja.cerrar();
+                cargarMalla();
+            } catch (error) { P.avisar(error.message, 'malo'); }
+        };
+    }
+
+    async function opciones() {
+        if (!estado.opciones) estado.opciones = await P.pedir('/api/personal/cronograma/opciones');
+        return estado.opciones;
+    }
+
+    /* previo: {dia, inicio} de un hueco, o una actividad para cambiarla. */
+    async function abrirFormulario(previo) {
+        const m = estado.malla;
+        const editando = !!previo.id;
+        let ops;
+        try { ops = await opciones(); } catch (error) { P.avisar(error.message, 'malo'); return; }
+        const dia = previo.dia != null ? previo.dia : (hoyIndice(m) >= 0 ? hoyIndice(m) : 1);
+        const turno = m.turnos[dia] || {};
+        const inicio = previo.inicio != null ? previo.inicio : (turno.desde != null ? turno.desde - turno.desde % 30 : 9 * 60);
+        const duraciones = [30, 60, 90, 120, 150, 180, 240, 300, 360, 480];
+        const tipos = editando ? m.tipos.filter((t) => t.id === previo.tipo) : m.tipos;
+        const hoja = abrirHoja(editando ? 'Cambiar actividad' : 'Programar actividad',
+            '<div class="error-form" id="f-error"></div>' +
+            '<div class="campo"><label>Tipo</label><select id="f-tipo"' + (editando ? ' disabled' : '') + '>' +
+                tipos.map((t) => '<option value="' + t.id + '"' + (t.id === previo.tipo ? ' selected' : '') + '>' +
+                esc(t.icono + ' ' + t.texto) + '</option>').join('') + '</select></div>' +
+            '<div class="campo"><label>Qué es</label><input id="f-titulo" maxlength="120" placeholder="Ej: Subiendo contenido de Valentina" value="' +
+                esc(previo.titulo || '') + '"></div>' +
+            '<div class="dos"><div class="campo"><label>Día</label><select id="f-dia">' + m.dias.map((d) =>
+                '<option value="' + d.dia + '"' + (d.dia === dia ? ' selected' : '') + '>' + esc(d.nombre + ' ' + d.fecha) + '</option>').join('') +
+            '</select></div><div class="campo"><label>Hora</label><select id="f-inicio">' + m.filas.map((f) =>
+                '<option value="' + f.minuto + '"' + (f.minuto === inicio ? ' selected' : '') + '>' + esc(f.texto) + '</option>').join('') +
+            '</select></div></div>' +
+            '<div class="campo"><label>Duración</label><select id="f-duracion">' + duraciones.map((d) =>
+                '<option value="' + d + '"' + (d === (previo.duracion || 60) ? ' selected' : '') + '>' +
+                (d < 60 ? '30 min' : (d / 60) + (d === 60 ? ' hora' : ' horas')) + '</option>').join('') + '</select></div>' +
+            '<div id="f-extra"></div>' +
+            '<div class="campo"><label>Detalle (opcional)</label><textarea id="f-descripcion">' + esc(previo.descripcion || '') + '</textarea></div>' +
+            '<button class="boton-principal" id="f-guardar">' + (editando ? 'Guardar cambios' : 'Programar') + '</button>');
+        const $f = (id) => hoja.cuerpo.querySelector('#' + id);
+
+        function pintarExtra() {
+            const tipo = $f('f-tipo').value;
+            let html = '';
+            if (m.es_jefe && (tipo === 'managers' || tipo === 'personal')) {
+                const marcadas = editando ? previo.personas : [m.persona];
+                html += '<div class="campo"><label>' + (tipo === 'managers' ? 'Para quién' : 'En la malla de') + '</label><div class="personas-lista">' +
+                    (tipo === 'managers' ? '<label class="todos"><input type="checkbox" id="f-todos"> Todos</label>' : '') +
+                    ops.personal.map((p) => '<label><input type="checkbox" class="f-persona" value="' + esc(p) + '"' +
+                        (marcadas.indexOf(p) >= 0 ? ' checked' : '') + '> ' + esc(p) + '</label>').join('') + '</div></div>';
+            }
+            if (tipo === 'modelos' && !editando) {
+                html += '<div class="campo"><label>Modelo que recibe la capacitación (les llega a todas)</label><select id="f-modelo">' +
+                    '<option value="">Elige la modelo…</option>' + ops.modelos.map((x) =>
+                    '<option value="' + esc(x.cedula) + '">' + esc(x.nombre + ' · ' + x.jornada) + '</option>').join('') + '</select></div>';
+                if (m.es_jefe) {
+                    html += '<div class="campo"><label>Quién la da</label><select id="f-responsable">' + ops.personal.map((p) =>
+                        '<option' + (p === m.persona ? ' selected' : '') + '>' + esc(p) + '</option>').join('') + '</select></div>';
+                }
+            }
+            if (tipo === 'reunion' || tipo === 'managers') {
+                html += '<div class="campo"><label>Enlace de Meet (opcional)</label><input id="f-meet" placeholder="https://meet.google.com/…" value="' +
+                    esc(previo.meet || '') + '"></div>';
+            }
+            if (tipo === 'reunion') html += '<p class="nota" style="margin:0 0 12px">Le llega a todo el personal y a todas las modelos.</p>';
+            $f('f-extra').innerHTML = html;
+            const todos = $f('f-todos');
+            if (todos) todos.onchange = () => hoja.cuerpo.querySelectorAll('.f-persona').forEach((c) => { c.checked = todos.checked; });
+        }
+        $f('f-tipo').onchange = pintarExtra;
+        pintarExtra();
+
+        $f('f-guardar').onclick = async () => {
+            const tipo = $f('f-tipo').value;
+            const diaSel = Number($f('f-dia').value);
+            const cuerpo = {
+                titulo: $f('f-titulo').value.trim(),
+                descripcion: $f('f-descripcion').value.trim(),
+                fecha: m.dias[diaSel].iso,
+                inicio: Number($f('f-inicio').value),
+                duracion: Number($f('f-duracion').value),
+            };
+            const marcadas = Array.from(hoja.cuerpo.querySelectorAll('.f-persona:checked')).map((c) => c.value);
+            if ($f('f-meet')) cuerpo.meet = $f('f-meet').value.trim();
+            const error = $f('f-error');
+            const boton = $f('f-guardar');
+            boton.disabled = true;
+            try {
+                let r;
+                if (editando) {
+                    if (hoja.cuerpo.querySelector('.f-persona')) cuerpo.personas = marcadas;
+                    r = await P.pedir('/api/personal/cronograma/actividades/' + encodeURIComponent(previo.id), 'POST', cuerpo);
+                } else {
+                    cuerpo.tipo = tipo;
+                    cuerpo.personas = hoja.cuerpo.querySelector('.f-persona') ? marcadas : [m.persona];
+                    if ($f('f-modelo')) cuerpo.modelo = $f('f-modelo').value;
+                    if ($f('f-responsable')) cuerpo.responsable = $f('f-responsable').value;
+                    r = await P.pedir('/api/personal/cronograma/actividades', 'POST', cuerpo);
+                }
+                P.avisar(r.mensaje, 'bueno');
+                hoja.cerrar();
+                cargarMalla();
+            } catch (fallo) {
+                error.textContent = fallo.message;
+                error.style.display = 'block';
+                boton.disabled = false;
+            }
+        };
+    }
+
+    // ===================================================================
+    // EL RESUMEN DE TODOS (abajo)
+    // ===================================================================
+    function celdaResumen(fila, celda) {
         if (celda.descanso) return '<span class="turno descanso">🛌 Descanso</span>';
         if (!celda.turno) return '<span class="turno libre">—</span>';
-        return '<span class="turno" style="--c:' + c + '">' + esc(celda.texto) +
+        return '<span class="turno" style="--c:' + COLORES[fila.persona] + '">' + esc(celda.texto) +
             (celda.cubre ? '<span class="cubre">cubre a ' + esc(corto(celda.cubre)) + '</span>' : '') + '</span>';
     }
 
     function selectorAjuste(fila, datos) {
         if (!datos.puede_editar || !fila.elige) return '';
-        const opciones = ['<option value="">Cambiar descanso…</option>',
-            '<option value="auto">Automático (quitar cambio)</option>']
-            .concat(datos.dias.map((d) => '<option value="' + d.dia + '">' + esc(d.nombre) + ' ' + esc(d.fecha) + '</option>'));
-        return '<select class="cambiar" data-persona="' + esc(fila.persona) + '">' + opciones.join('') + '</select>';
+        return '<select class="cambiar" data-persona="' + esc(fila.persona) + '">' +
+            '<option value="">Cambiar descanso…</option><option value="auto">Automático (quitar cambio)</option>' +
+            datos.dias.map((d) => '<option value="' + d.dia + '">' + esc(d.nombre) + ' ' + esc(d.fecha) + '</option>').join('') +
+            '</select>';
     }
 
-    function pintar() {
-        const datos = estado.datos;
+    function pintarResumen() {
+        const datos = estado.resumen;
         if (!datos) return;
-        pintarChips();
-        document.getElementById('etiqueta-semana').textContent =
-            (datos.semana === datos.actual ? 'Esta semana · ' : '') + datos.etiqueta;
         const hoy = hoyIndice(datos);
-        const filas = datos.filas.filter((f) => !estado.persona || f.persona === estado.persona);
         const cabeza = '<tr><th></th>' + datos.dias.map((d) =>
             '<th class="' + (d.dia === hoy ? 'hoy' : '') + '">' + esc(d.nombre.slice(0, 3)) + '<small>' + esc(d.fecha) + '</small></th>').join('');
-
-        let html = '<div class="titulo-seccion">Resumen de la semana</div><div class="desliza"><table class="resumen">' +
-            cabeza + '<th>Horas</th></tr>' + filas.map((f) =>
+        document.getElementById('resumen').innerHTML =
+            '<div class="titulo-seccion" style="margin-top:22px">Turnos de la semana</div><div class="desliza"><table class="resumen">' +
+            cabeza + '<th>Horas</th></tr>' + datos.filas.map((f) =>
                 '<tr><td class="persona"><b>' + esc(f.persona) + '</b><small>' + esc(f.jornada) + '</small>' +
                 (f.texto_origen ? '<span class="origen">Descanso: ' + esc(f.texto_origen) + '</span>' : '') +
                 selectorAjuste(f, datos) + '</td>' +
-                f.dias.map((c) => '<td class="' + (c.dia === hoy ? 'hoy' : '') + '">' + celdaResumen(f, c, datos) + '</td>').join('') +
+                f.dias.map((c) => '<td class="' + (c.dia === hoy ? 'hoy' : '') + '">' + celdaResumen(f, c) + '</td>').join('') +
                 '<td class="total">' + f.horas_semana + ' h</td></tr>').join('') +
-            '</table></div>';
-
-        html += '<div class="titulo-seccion" style="margin-top:18px">Malla por horas</div><div class="desliza"><table class="malla">' +
-            cabeza + '</tr>' + datos.horas.map((h) => '<tr><td>' + esc(h.texto) + '</td>' + datos.dias.map((d) => {
-                const aqui = filas.filter((f) => f.dias[d.dia].horas.indexOf(h.hora) >= 0);
-                return '<td class="' + (d.dia === hoy ? 'hoy' : '') + '">' + aqui.map((f) => {
-                    const c = f.dias[d.dia];
-                    return '<span class="bloque' + (c.cubre ? ' cubre' : '') + '" style="--c:' + COLORES[f.persona] +
-                        '" title="' + esc(f.persona + ' · ' + c.texto + (c.cubre ? ' (cubre a ' + c.cubre + ')' : '')) + '">' +
-                        esc(corto(f.persona)) + '</span>';
-                }).join('') + '</td>';
-            }).join('') + '</tr>').join('') + '</table></div>' +
-            '<p class="nota">Cada bloque es una hora de trabajo, ya sin la media hora de almuerzo. ' +
-            'Las horas de 12:00 am y 1:00 am son del turno que empezó ese día. Rayado: cubre el descanso de otra persona.</p>';
-        document.getElementById('contenido').innerHTML = html;
-
+            '</table></div><p class="nota">Las horas ya descuentan la media hora de almuerzo.</p>';
         document.querySelectorAll('.cambiar').forEach((s) => {
             s.onchange = async () => {
-                const valor = s.value;
-                if (!valor) return;
+                if (!s.value) return;
                 const persona = s.dataset.persona;
-                const dia = valor === 'auto' ? null : Number(valor);
+                const dia = s.value === 'auto' ? null : Number(s.value);
                 const texto = dia === null ? 'volver al descanso automático de ' + persona
                     : 'poner el descanso de ' + persona + ' el ' + datos.dias[dia].nombre.toLowerCase() + ' ' + datos.dias[dia].fecha;
                 if (!confirm('¿' + texto.charAt(0).toUpperCase() + texto.slice(1) + '?')) { s.value = ''; return; }
                 try {
-                    await Personal.pedir('/api/personal/cronograma/ajustar', 'POST',
-                                         { semana: datos.semana, persona: persona, dia: dia });
-                    Personal.avisar('Malla actualizada.', 'bueno');
-                } catch (error) { Personal.avisar(error.message, 'malo'); }
+                    await P.pedir('/api/personal/cronograma/ajustar', 'POST', { semana: datos.semana, persona: persona, dia: dia });
+                    P.avisar('Malla actualizada.', 'bueno');
+                } catch (error) { P.avisar(error.message, 'malo'); }
                 cargar(datos.semana);
             };
         });
@@ -195,25 +427,45 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
     function pintarEleccion() {
         const caja = document.getElementById('eleccion');
         caja.innerHTML = '';
-        const info = estado.datos && estado.datos.eleccion;
-        if (info) caja.appendChild(Personal.tarjetaDescanso(info, () => { Personal.revisarTareas(true); cargar(estado.semana); }));
+        const info = estado.resumen && estado.resumen.eleccion;
+        if (info) caja.appendChild(P.tarjetaDescanso(info, () => { P.revisarTareas(true); cargar(estado.semana); }));
+    }
+
+    // ===================================================================
+    // CARGA
+    // ===================================================================
+    async function cargarMalla() {
+        try {
+            estado.malla = await P.pedir('/api/personal/cronograma/malla?semana=' + encodeURIComponent(estado.semana) +
+                                         '&persona=' + encodeURIComponent(estado.persona || ''));
+            estado.persona = estado.malla.persona;
+            pintarMalla();
+        } catch (error) {
+            document.getElementById('malla').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
+        }
     }
 
     async function cargar(semana) {
+        if (!document.getElementById('malla')) {
+            document.getElementById('contenido').innerHTML = '<div id="malla"><div class="cargando"><span class="girando">◌</span></div></div><div id="resumen"></div>';
+        }
         try {
-            const datos = await Personal.pedir('/api/personal/cronograma' + (semana ? '?semana=' + encodeURIComponent(semana) : ''));
-            estado.datos = datos;
+            const datos = await P.pedir('/api/personal/cronograma' + (semana ? '?semana=' + encodeURIComponent(semana) : ''));
+            estado.resumen = datos;
             estado.semana = datos.semana;
+            document.getElementById('etiqueta-semana').textContent =
+                (datos.semana === datos.actual ? 'Esta semana · ' : '') + datos.etiqueta;
             pintarEleccion();
-            pintar();
+            pintarResumen();
+            await cargarMalla();
         } catch (error) {
             document.getElementById('contenido').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
         }
     }
 
-    Personal.iniciar('cronograma').then(() => {
-        document.getElementById('btn-anterior').onclick = () => estado.datos && cargar(estado.datos.anterior);
-        document.getElementById('btn-siguiente').onclick = () => estado.datos && cargar(estado.datos.siguiente);
+    P.iniciar('cronograma').then(() => {
+        document.getElementById('btn-anterior').onclick = () => estado.resumen && cargar(estado.resumen.anterior);
+        document.getElementById('btn-siguiente').onclick = () => estado.resumen && cargar(estado.resumen.siguiente);
         document.getElementById('btn-hoy').onclick = () => cargar('');
         cargar('');
     });

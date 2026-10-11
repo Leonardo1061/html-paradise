@@ -241,6 +241,13 @@ document.addEventListener('paradise:tickets', (e) => {
     pintarGlobo();
 });
 
+// Las capacitaciones y reuniones del cronograma, con la hora y quién la da.
+document.addEventListener('paradise:actividades', (e) => {
+    const lista = (e.detail || []).slice(0, 6);
+    $('actividades-inicio').classList.toggle('oculto', !lista.length);
+    $('lista-actividades').innerHTML = lista.map(PARADISE_BARRA.tarjetaActividad).join('');
+});
+
 PARADISE_BARRA.ponerExtra(() => {
     const espera = (estado.datos && estado.datos.turnos.en_espera) || 0;
     return espera ? '⏳ Tienes <b>' + espera + '</b> turno(s) en lista de espera. Míralos en STATUS ROOM.'

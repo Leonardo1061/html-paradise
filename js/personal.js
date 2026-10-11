@@ -77,6 +77,14 @@
  * campana les enseña arriba de «Para mí» los días de la semana siguiente para
  * elegir su descanso. Mientras no elijan suma uno al globo. Viaja en
  * `descanso` de /tareas; la malla está en personal_cronograma.html.
+ *
+ * LAS ACTIVIDADES DEL CRONOGRAMA  (api/actividades.py)
+ * ----------------------------------------------------
+ * Capacitaciones de managers, capacitaciones a modelos y reuniones generales
+ * llegan a la campana al programarlas y otra vez 15 minutos antes. Una
+ * actividad personal solo llega si CEO o Gerencia la corrieron. Abrir la
+ * campana las da por vistas. Viajan en `actividades` de /tareas; el INICIO
+ * las escucha con el evento `personal:actividades`.
  */
 
 (function () {
@@ -240,6 +248,7 @@ const campana = {
     tareas: [],
     respuestas: [],                  // las que asignó y le contestaron sin que lo haya visto
     descanso: null,                  // la elección del descanso abierta (cronograma)
+    actividades: [],                 // las del cronograma que le tocan (próximas)
     conocidas: null,                 // ids ya vistos (para pitar solo por las nuevas)
     reloj: null,
     abierta: null,                   // la hoja, si está abierta
@@ -257,11 +266,16 @@ function pintarGlobo() {
     const globo = document.getElementById('globo-tareas');
     if (!globo) return;
     const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length +
-        (campana.descanso && campana.descanso.pendiente ? 1 : 0);
+        (campana.descanso && campana.descanso.pendiente ? 1 : 0) +
+        campana.actividades.filter(actividadSuena).length;
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
     document.dispatchEvent(new CustomEvent('personal:tareas', { detail: campana.tareas }));
+    document.dispatchEvent(new CustomEvent('personal:actividades', { detail: campana.actividades }));
 }
+
+/* ¿Esta actividad enciende el globo? Nueva, a 15 min o corrida. */
+function actividadSuena(a) { return a.nuevo || a.pronto || !!a.movida; }
 
 async function revisarTareas(forzar) {
     if (forzar !== true && document.visibilityState !== 'visible') return;
@@ -271,6 +285,16 @@ async function revisarTareas(forzar) {
         campana.respuestas = datos.respuestas || [];
         const antes = campana.descanso;
         campana.descanso = datos.descanso || null;
+        const sonaban = new Set(campana.actividades.filter(actividadSuena)
+            .map((a) => a.id + (a.pronto ? 'p' : '') + (a.movida ? 'm' : '')));
+        campana.actividades = datos.actividades || [];
+        const suenan = campana.actividades.filter(actividadSuena)
+            .filter((a) => !sonaban.has(a.id + (a.pronto ? 'p' : '') + (a.movida ? 'm' : '')));
+        if (suenan.length && campana.conocidas) {
+            pitar();
+            const a = suenan[0];
+            avisar(a.movida ? '🗓️ ' + a.movida : (a.pronto ? '⏰ En 15 min: ' : a.icono + ' ') + a.titulo);
+        }
         if (campana.descanso && campana.descanso.pendiente && campana.conocidas &&
             !(antes && antes.pendiente)) {
             pitar();
@@ -774,6 +798,22 @@ function abrirCampana() {
     function pintarRecibidas() {
         cuerpo.innerHTML = '';
         if (campana.descanso) cuerpo.appendChild(tarjetaDescanso(campana.descanso, () => revisarTareas(true)));
+        if (campana.actividades.length) {
+            const titulo = document.createElement('div');
+            titulo.className = 'titulo-seccion';
+            titulo.textContent = '🗓️ Actividades del cronograma';
+            cuerpo.appendChild(titulo);
+            campana.actividades.forEach((a) => cuerpo.appendChild(tarjetaActividad(a)));
+            const porVer = campana.actividades.filter(actividadSuena).map((a) => a.id);
+            if (porVer.length) {
+                pedir('/api/personal/cronograma/vistas', 'POST', { ids: porVer }).then(() => {
+                    campana.actividades.forEach((a) => {
+                        if (porVer.indexOf(a.id) >= 0) { a.nuevo = false; a.pronto = false; a.movida = ''; }
+                    });
+                    pintarGlobo();
+                }).catch(() => {});
+            }
+        }
         barraFiltros();
         if (campana.respuestas.length) {
             const titulo = document.createElement('div');
@@ -1019,6 +1059,24 @@ function tarjetaDescanso(info, alCambiar) {
     return caja;
 }
 
+/* Una actividad del cronograma (campana e INICIO). */
+function tarjetaActividad(a) {
+    const caja = document.createElement('div');
+    caja.className = 'tarea tarjeta-actividad' + (actividadSuena(a) ? ' por-elegir' : '');
+    caja.style.borderLeft = '4px solid ' + (a.color || 'var(--cian)');
+    const sello = a.movida ? 'Se movió' : a.pronto ? 'Empieza pronto' : a.nuevo ? 'Nueva' : '';
+    caja.innerHTML =
+        '<div style="display:flex;gap:8px;align-items:center"><b style="flex:1">' + escapar(a.icono + ' ' + a.titulo) + '</b>' +
+        (sello ? '<span class="pildora urgente">' + sello + '</span>' : '') + '</div>' +
+        '<div class="pie-descanso">' + escapar(a.texto_tipo + ' · ' + a.cuando) +
+        (a.tipo === 'modelos' ? ' · ' + escapar(a.responsable) + ' con ' + escapar(a.modelo) : '') + '</div>' +
+        (a.movida ? '<div class="pie-descanso" style="color:var(--ambar)">' + escapar(a.movida) + '</div>' : '') +
+        (a.descripcion ? '<div class="pie-descanso">' + escapar(a.descripcion) + '</div>' : '') +
+        (a.meet ? '<div class="botones" style="margin-top:8px"><a class="boton-secundario" target="_blank" rel="noopener" href="' +
+            escapar(a.meet) + '">🎥 Entrar a la reunión</a></div>' : '');
+    return caja;
+}
+
 // =======================================================================
 // BARRAS
 // =======================================================================
@@ -1166,6 +1224,7 @@ window.Personal = {
     escapar: escapar, abrirVisor: abrirVisor, abrirConversacion: abrirConversacion, aDataUrl: aDataUrl, comprimir: comprimir,
     abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha, ficha: ficha,
     tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas, tarjetaDescanso: tarjetaDescanso,
+    tarjetaActividad: tarjetaActividad, actividades: () => campana.actividades,
     tareas: () => campana.tareas, CLAVE_TOKEN: CLAVE_TOKEN,
 };
 })();
