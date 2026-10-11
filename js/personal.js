@@ -62,6 +62,14 @@
  * campana cuenta las pendientes y las que tienen algo nuevo de quien la
  * asignó (se apaga al abrir la conversación). Cerrada, no realizada o
  * cancelada ya no tiene conversación.
+ *
+ * «👥 TODO EL PERSONAL» Y RESUMEN  (Leonardo, 2026-10-11; api/tareas_grupales.py)
+ * -------------------------------------------------------------------------
+ * Al asignar se puede elegir «👥 Todo el personal» (menos CEO, Gerencia y
+ * Fotografía). La primera persona que pulsa «En curso» la toma: a las demás
+ * les sale en curso con «La está haciendo X», sin botones ni conversación.
+ * En «Enviadas», «📊 Por persona» enseña cuántas hizo y cuántas no realizó
+ * cada uno (este mes, el pasado o todo); tocar a alguien filtra sus tareas.
  */
 
 (function () {
@@ -294,7 +302,10 @@ function tarjetaTarea(t, recibida, alCambiar) {
         (t.prioridad !== 'Normal' ? '<span class="pildora ' + prioridad + '">' + escapar(t.prioridad) + '</span>' : '') +
         '<span class="pildora ' + claseEstado(t.estado) + '">' + escapar(t.estado) + '</span></div>' +
         '<div class="meta">' + (t.ticket ? '🎫 Ticket de ' + escapar(t.modelo || t.creada_por || '¿?') :
-            recibida ? 'De ' + escapar(t.creada_por || '¿?') : 'Para ' + escapar(t.asignada_a || '¿?')) +
+            recibida ? 'De ' + escapar(t.creada_por || '¿?') + (t.para_todos ? ' · 👥 para todo el personal' : '') :
+            t.para_todos ? '👥 Todo el personal (' + (t.n_grupo || '¿?') + ')' +
+                (t.tomada_por ? ' · la tomó ' + escapar(t.tomada_por) : ' · sin tomar') :
+            'Para ' + escapar(t.asignada_a || '¿?')) +
         (t.creada ? ' · ' + escapar(t.creada) : '') + '</div>' +
         (t.descripcion ? '<div class="desc">' + escapar(t.descripcion) + '</div>' : '') +
         '<div class="miniaturas"></div><div class="botones"></div>';
@@ -366,7 +377,16 @@ function tarjetaTarea(t, recibida, alCambiar) {
         b.onclick = () => abrirConversacion(t, alCambiar);
         botones.appendChild(b);
     }
-    if (recibida && t.abierta) {
+    // Grupal que tomó otra persona: solo se mira.
+    const deOtro = recibida && t.para_todos && t.tomada_por && t.tomada_por !== ficha().monitor;
+    if (deOtro) {
+        const r = document.createElement('div');
+        r.className = 'meta de-otro';
+        r.textContent = (t.estado === 'en curso' ? '👥 La está haciendo ' :
+                         t.hecha_por ? '👥 La hizo ' : '👥 La tomó ') + t.tomada_por;
+        caja.insertBefore(r, caja.querySelector('.miniaturas'));
+    }
+    if (recibida && t.abierta && !deOtro) {
         if (t.estado !== 'en curso') boton('▶ En curso', () => cambiar('en curso'));
         if (t.ticket) boton('💬 Responder', async () => responderTicket(caja, t, alCambiar));
         else if (t.estado !== 'hecha') boton('✓ Hecha', () => cambiar('hecha'));
@@ -675,6 +695,8 @@ function abrirCampana() {
         pestana: 'recibidas',
         filtro: 'pendientes',
         persona: '',                 // «Enviadas»: solo las de esta persona
+        resumen: false,              // «Enviadas»: viendo «📊 Por persona»
+        periodo: 'este_mes',
         personas: [],
         historial: null,             // {filtro, tareas, hay_mas}: las cerradas de «Para mí»
         pintar() {
@@ -762,9 +784,61 @@ function abrirCampana() {
     }
 
     /* Todas las que asignó, ya ordenadas y filtradas por la API, de 20 en 20. */
+    /* «📊 Por persona»: cuántas hizo y cuántas no realizó cada uno. */
+    async function pintarResumen() {
+        cuerpo.innerHTML = '';
+        const cabeza = document.createElement('div');
+        cabeza.className = 'cabeza-resumen';
+        cabeza.innerHTML = '<button class="boton-secundario volver-lista">← Tareas</button>' +
+            '<select class="filtro-persona periodo">' +
+            [['este_mes', 'Este mes'], ['mes_pasado', 'Mes pasado'], ['todo', 'Todo']].map((p) =>
+                '<option value="' + p[0] + '"' + (p[0] === hoja.periodo ? ' selected' : '') + '>' + p[1] + '</option>').join('') +
+            '</select>';
+        cuerpo.appendChild(cabeza);
+        cabeza.querySelector('.volver-lista').onclick = () => { hoja.resumen = false; hoja.pintar(); };
+        cabeza.querySelector('.periodo').onchange = (e) => { hoja.periodo = e.target.value; pintarResumen(); };
+        const zona = document.createElement('div');
+        zona.innerHTML = '<div class="cargando"><span class="girando">◌</span></div>';
+        cuerpo.appendChild(zona);
+        const periodo = hoja.periodo;
+        try {
+            const datos = await pedir('/api/personal/tareas/resumen?periodo=' + periodo);
+            if (!hoja.resumen || hoja.periodo !== periodo) return;
+            if (!datos.personas.length && !datos.grupales.no_realizadas && !datos.grupales.pendientes) {
+                zona.innerHTML = '<div class="vacio">No asignaste tareas en ese periodo.</div>';
+                return;
+            }
+            zona.innerHTML = '<table class="tabla-resumen"><thead><tr><th>Persona</th><th>✅ Hechas</th>' +
+                '<th>⛔ No realizadas</th><th>▶ En curso</th><th>Pendientes</th></tr></thead><tbody>' +
+                datos.personas.map((p) => '<tr data-persona="' + escapar(p.nombre) + '"><td>' + escapar(p.nombre) +
+                    '</td><td>' + p.hechas + '</td><td>' + p.no_realizadas + '</td><td>' + p.en_curso +
+                    '</td><td>' + p.pendientes + '</td></tr>').join('') +
+                '<tr class="grupales"><td>👥 Grupales sin tomar</td><td>—</td><td>' + datos.grupales.no_realizadas +
+                '</td><td>—</td><td>' + datos.grupales.pendientes + '</td></tr></tbody></table>' +
+                '<div class="meta" style="margin-top:8px">Por la fecha en que se asignó. «Hechas» incluye las ' +
+                'cerradas. Toca a una persona para ver sus tareas.</div>';
+            zona.querySelectorAll('tr[data-persona]').forEach((fila) => {
+                fila.onclick = () => {
+                    hoja.persona = fila.dataset.persona;
+                    hoja.resumen = false;
+                    hoja.filtro = 'hechas';
+                    hoja.pintar();
+                };
+            });
+        } catch (error) {
+            zona.innerHTML = '<div class="vacio">' + escapar(error.message) + '</div>';
+        }
+    }
+
     async function pintarEnviadas() {
+        if (hoja.resumen) { pintarResumen(); return; }
         cuerpo.innerHTML = '';
         barraFiltros();
+        const botonResumen = document.createElement('button');
+        botonResumen.className = 'filtro-tarea boton-resumen';
+        botonResumen.textContent = '📊 Por persona';
+        botonResumen.onclick = () => { hoja.resumen = true; pintarResumen(); };
+        cuerpo.querySelector('.filtros-tareas').appendChild(botonResumen);
         // A la derecha de los filtros: las de una sola persona.
         const selector = document.createElement('select');
         selector.className = 'filtro-persona';
@@ -817,6 +891,10 @@ function abrirCampana() {
         const imagenes = [];
         cuerpo.innerHTML =
             '<div class="campo"><label>Para</label><select class="t-para">' +
+            (datos.todo_el_personal && (datos.todo_el_personal.personas || []).length ?
+                '<option value="' + escapar(datos.todo_el_personal.valor) + '">' +
+                escapar(datos.todo_el_personal.texto) + ' (' + datos.todo_el_personal.personas.length +
+                ')</option>' : '') +
             (datos.monitores || []).map((m) => '<option value="' + escapar(m.nombre) + '">' +
                 escapar(m.nombre) + ' · ' + escapar(m.roles) + '</option>').join('') + '</select></div>' +
             '<div class="campo"><label>Título</label><input class="t-titulo" maxlength="200" placeholder="Qué hay que hacer"></div>' +
