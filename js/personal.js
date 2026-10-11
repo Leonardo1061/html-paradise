@@ -238,6 +238,9 @@ const campana = {
 
 /* Lo mismo que personal.cuenta_en_campana de la API. */
 function cuentaEnCampana(t) {
+    // Un ticket de una modelo, solo mientras no se ha visto (abrir la campana
+    // lo da por visto): al CEO le cuenta lo nuevo, no todo lo abierto.
+    if (t.ticket) return !t.leida;
     return t.estado === 'pendiente' || !t.leida;
 }
 
@@ -577,7 +580,7 @@ function abrirConversacion(t, alSalir) {
             '<div class="archivo-elegido oculto"></div>' +
             '<div class="fila-escribir">' +
             '  <button class="boton-secundario adjuntar" title="Adjuntar foto, video, PDF o Excel">📎</button>' +
-            '  <textarea maxlength="4000" rows="2" placeholder="Escribe tu respuesta"></textarea>' +
+            '  <textarea maxlength="4000" rows="3" placeholder="Escribe tu respuesta"></textarea>' +
             '  <button class="boton-principal enviar">Enviar</button>' +
             '</div>' +
             '<input type="file" class="oculto" accept="' + ACEPTA_ARCHIVOS + '">' +
@@ -779,8 +782,16 @@ function abrirCampana() {
                 escapar(historial.error) : hoja.filtro === 'pendientes' ?
                 'No tienes tareas pendientes. 🎉' : 'No hay tareas en esta pestaña.') + '</div>');
         }
-        // Ya no se dan por leídas al abrir: una pendiente cuenta hasta que se
-        // pone en curso, y lo nuevo del CEO hasta que se abre la conversación.
+        // Las tareas ya no se dan por leídas al abrir: una pendiente cuenta
+        // hasta que se pone en curso, y lo nuevo del CEO hasta que se abre la
+        // conversación. Los TICKET de las modelos sí: vistos, dejan de sumar.
+        const tickets = campana.tareas.filter((t) => t.ticket && !t.leida).map((t) => t.id);
+        if (tickets.length) {
+            pedir('/api/personal/tareas/leidas', 'POST', { ids: tickets }).then(() => {
+                campana.tareas.forEach((t) => { if (tickets.indexOf(t.id) >= 0) t.leida = true; });
+                pintarGlobo();
+            }).catch(() => {});
+        }
     }
 
     /* Todas las que asignó, ya ordenadas y filtradas por la API, de 20 en 20. */

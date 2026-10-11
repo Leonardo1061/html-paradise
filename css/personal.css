@@ -259,3 +259,12 @@ button { cursor: pointer; }
 .tabla-resumen tr[data-persona]:hover td { background: rgba(6, 182, 212, .08); }
 .tabla-resumen tr.grupales td { color: var(--tenue); }
 .tarea .de-otro { color: var(--cian); }
+
+/* Conversación con una tarea de texto largo (2026-10-11): la lista de
+   mensajes es lo único que se encoge y hace scroll; el pie para escribir y
+   adjuntar siempre se ve entero, y el cuadro de texto crece hasta 40 %. */
+.hoja.conversacion-tarea { height: 92dvh; max-height: 92dvh; }
+.hoja.conversacion-tarea .hoja-cabecera { flex: none; }
+.mensajes-tarea { min-height: 0; overflow-y: auto; }
+.pie-conversacion { flex: none; max-height: 55%; overflow-y: auto; }
+.pie-conversacion textarea { min-height: 64px; max-height: 40vh; resize: vertical; overflow-y: auto; }
