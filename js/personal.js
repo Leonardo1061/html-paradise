@@ -53,6 +53,15 @@
  * Quien asignó una tarea la puede marcar «⛔ No realizada» (no se hizo en el
  * plazo): es final, como cerrarla, y tiene su propio filtro. En «Enviadas»,
  * a la derecha de los filtros, un desplegable deja ver las de una persona.
+ *
+ * SIN «TODAS» Y CAMPANA POR PENDIENTES  (Leonardo, 2026-10-11)
+ * ------------------------------------------------------------
+ * Las pestañas son Pendientes (la de entrada), En curso, Hechas, Cerradas y
+ * No realizadas, para quien recibe y para quien asigna. Al pulsar «En curso»
+ * o «Hecha» la tarea se va a esa pestaña y la campana se mueve con ella. La
+ * campana cuenta las pendientes y las que tienen algo nuevo de quien la
+ * asignó (se apaga al abrir la conversación). Cerrada, no realizada o
+ * cancelada ya no tiene conversación.
  */
 
 (function () {
@@ -65,7 +74,6 @@ const CADA_MS_TAREAS = 30000;
 const TOPE_IMAGEN = 880000;          // base64; la API acepta 900 000
 const MAX_IMAGENES = 6;
 const FILTROS_TAREA = [
-    { id: '', texto: 'Todas' },
     { id: 'pendientes', texto: 'Pendientes', estados: ['pendiente'] },
     { id: 'en_curso', texto: 'En curso', estados: ['en curso'] },
     { id: 'hechas', texto: 'Hechas', estados: ['hecha'] },
@@ -220,10 +228,15 @@ const campana = {
     abierta: null,                   // la hoja, si está abierta
 };
 
+/* Lo mismo que personal.cuenta_en_campana de la API. */
+function cuentaEnCampana(t) {
+    return t.estado === 'pendiente' || !t.leida;
+}
+
 function pintarGlobo() {
     const globo = document.getElementById('globo-tareas');
     if (!globo) return;
-    const n = campana.tareas.filter((t) => !t.leida).length + campana.respuestas.length;
+    const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length;
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
     document.dispatchEvent(new CustomEvent('personal:tareas', { detail: campana.tareas }));
@@ -238,7 +251,7 @@ async function revisarTareas(forzar) {
         // «Nueva» es una tarea que no estaba o que tiene un mensaje o un
         // estado distinto desde la última vuelta.
         const clave = (t) => t.id + '·' + (t.num_respuestas || 0) + '·' + t.estado;
-        const pendientes = campana.tareas.filter((t) => !t.leida).concat(campana.respuestas);
+        const pendientes = campana.tareas.filter(cuentaEnCampana).concat(campana.respuestas);
         const ids = new Set(campana.tareas.concat(campana.respuestas).map(clave));
         if (campana.conocidas) {
             const nuevas = pendientes.filter((t) => !campana.conocidas.has(clave(t)));
@@ -299,6 +312,8 @@ function tarjetaTarea(t, recibida, alCambiar) {
     const cambiar = async (estado) => {
         const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/estado', 'POST', { estado: estado });
         avisar(r.mensaje, 'bueno');
+        const destino = { 'en curso': 'en_curso', 'hecha': 'hechas', 'cancelada': 'cerradas' }[estado];
+        if (destino && campana.abierta) campana.abierta.filtro = destino;
         alCambiar();
     };
     if (t.num_imagenes) {
@@ -344,7 +359,7 @@ function tarjetaTarea(t, recibida, alCambiar) {
             (t.cerrada_por || '¿?') + (t.cerrada ? ' · ' + t.cerrada : '');
         caja.insertBefore(r, caja.querySelector('.miniaturas'));
     }
-    if (!t.ticket) {
+    if (!t.ticket && t.con_conversacion !== false) {
         const b = document.createElement('button');
         b.className = 'boton-principal boton-conversacion';
         b.textContent = '💬 Conversación' + (t.num_respuestas ? ' (' + t.num_respuestas + ')' : '');
@@ -581,7 +596,8 @@ function abrirConversacion(t, alSalir) {
         };
         pie.querySelector('.no-realizada').onclick = async (e) => {
             e.target.disabled = true;
-            try { if (await marcarNoRealizada(info.tarea)) await cargar(true); } catch (error) { avisar(error.message, 'malo'); }
+            // Terminada, la conversación ya no se abre: se vuelve a la lista.
+            try { if (await marcarNoRealizada(info.tarea)) { salir(); return; } } catch (error) { avisar(error.message, 'malo'); }
             e.target.disabled = false;
         };
         pie.querySelector('.cerrar-tarea').onclick = async (e) => {
@@ -590,7 +606,7 @@ function abrirConversacion(t, alSalir) {
             try {
                 const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/cerrar', 'POST');
                 avisar(r.mensaje, 'bueno');
-                await cargar(true);
+                salir();
             } catch (error) { avisar(error.message, 'malo'); e.target.disabled = false; }
         };
     }
@@ -657,7 +673,7 @@ function abrirCampana() {
 
     const hoja = {
         pestana: 'recibidas',
-        filtro: '',
+        filtro: 'pendientes',
         persona: '',                 // «Enviadas»: solo las de esta persona
         personas: [],
         historial: null,             // {filtro, tareas, hay_mas}: las cerradas de «Para mí»
@@ -716,7 +732,7 @@ function abrirCampana() {
     function pintarRecibidas() {
         cuerpo.innerHTML = '';
         barraFiltros();
-        if (!hoja.filtro && campana.respuestas.length) {
+        if (campana.respuestas.length) {
             const titulo = document.createElement('div');
             titulo.className = 'titulo-seccion';
             titulo.textContent = '💬 Te respondieron en tareas que asignaste';
@@ -726,7 +742,8 @@ function abrirCampana() {
         const abiertas = campana.tareas.filter(pasaFiltro);
         abiertas.forEach((t) => cuerpo.appendChild(tarjetaTarea(t, true, () => revisarTareas(true))));
         // Al fondo, las ya cerradas (no vienen en la campana: se piden aparte).
-        const conHistorial = ['', 'hechas', 'cerradas', 'no_realizadas'].indexOf(hoja.filtro) >= 0;
+        // Las terminadas no vienen en la campana: se piden aparte.
+        const conHistorial = ['hechas', 'cerradas', 'no_realizadas'].indexOf(hoja.filtro) >= 0;
         const historial = hoja.historial && hoja.historial.filtro === hoja.filtro ? hoja.historial : null;
         if (conHistorial && !historial) {
             cuerpo.insertAdjacentHTML('beforeend', '<div class="cargando"><span class="girando">◌</span></div>');
@@ -737,17 +754,11 @@ function abrirCampana() {
         }
         if (!abiertas.length && (!conHistorial || (historial && !historial.tareas.length))) {
             cuerpo.insertAdjacentHTML('beforeend', '<div class="vacio">' + (historial && historial.error ?
-                escapar(historial.error) : hoja.filtro ? 'No hay tareas con ese filtro.' :
-                'No tienes tareas pendientes. 🎉') + '</div>');
+                escapar(historial.error) : hoja.filtro === 'pendientes' ?
+                'No tienes tareas pendientes. 🎉' : 'No hay tareas en esta pestaña.') + '</div>');
         }
-        // Al abrir la campana se dan por leídas (como el escritorio).
-        const sinLeer = campana.tareas.filter((t) => !t.leida).map((t) => t.id);
-        if (sinLeer.length) {
-            pedir('/api/personal/tareas/leidas', 'POST', { ids: sinLeer }).then(() => {
-                campana.tareas.forEach((t) => { if (sinLeer.indexOf(t.id) >= 0) t.leida = true; });
-                pintarGlobo();
-            }).catch(() => {});
-        }
+        // Ya no se dan por leídas al abrir: una pendiente cuenta hasta que se
+        // pone en curso, y lo nuevo del CEO hasta que se abre la conversación.
     }
 
     /* Todas las que asignó, ya ordenadas y filtradas por la API, de 20 en 20. */
@@ -783,8 +794,8 @@ function abrirCampana() {
             const viejo = lista.querySelector('.mostrar-mas');
             if (viejo) viejo.remove();
             if (!desde && !(datos.tareas || []).length) {
-                lista.innerHTML = '<div class="vacio">' + (filtro || persona ? 'No hay tareas con ese filtro.' :
-                    'Todavía no has asignado tareas.') + '</div>';
+                lista.innerHTML = '<div class="vacio">' + (persona ? 'No hay tareas con ese filtro.' :
+                    'No hay tareas en esta pestaña.') + '</div>';
                 return;
             }
             datos.tareas.forEach((t) => lista.appendChild(tarjetaTarea(t, false, recargar)));
