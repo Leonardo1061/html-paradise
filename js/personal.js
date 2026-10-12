@@ -253,6 +253,8 @@ function pitar() {
 // =======================================================================
 const campana = {
     tareas: [],
+    misTickets: [],                  // los que ESTA persona le mandó al CEO (no el CEO)
+    tipos: null,                     // {tipos, otra, puede_editar}: los tipos de solicitud
     respuestas: [],                  // las que asignó y le contestaron sin que lo haya visto
     descanso: null,                  // la elección del descanso abierta (cronograma)
     actividades: [],                 // las del cronograma que le tocan (próximas)
@@ -273,6 +275,7 @@ function pintarGlobo() {
     const globo = document.getElementById('globo-tareas');
     if (!globo) return;
     const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length +
+        campana.misTickets.filter((t) => t.nuevo).length +
         (campana.descanso && campana.descanso.pendiente ? 1 : 0) +
         campana.actividades.filter(actividadSuena).length;
     globo.textContent = n > 99 ? '99+' : String(n);
@@ -284,8 +287,24 @@ function pintarGlobo() {
 /* ¿Esta actividad enciende el globo? Nueva, a 15 min o corrida. */
 function actividadSuena(a) { return a.nuevo || a.pronto || !!a.movida; }
 
+/* ¿Es el CEO? (la API le pone el módulo de MIS TICKETS). */
+function esCeo() { return (ficha().modulos || []).indexOf('tickets') >= 0; }
+
+/* Los tickets que esta persona le mandó al CEO: su respuesta enciende el globo. */
+async function revisarMisTickets() {
+    if (esCeo()) return;
+    try {
+        const datos = await pedir('/api/personal/tickets/mios');
+        const antes = new Set(campana.misTickets.filter((t) => t.nuevo).map((t) => t.id + t.num_respuestas));
+        campana.misTickets = datos.tickets || [];
+        const nuevos = campana.misTickets.filter((t) => t.nuevo && !antes.has(t.id + t.num_respuestas));
+        if (nuevos.length && campana.conocidas) { pitar(); avisar('🎫 El CEO respondió: ' + nuevos[0].asunto); }
+    } catch (e) { /* sin red: la siguiente vuelta */ }
+}
+
 async function revisarTareas(forzar) {
     if (forzar !== true && document.visibilityState !== 'visible') return;
+    await revisarMisTickets();
     try {
         const datos = await pedir('/api/personal/tareas');
         campana.tareas = datos.tareas || [];
@@ -353,7 +372,8 @@ function tarjetaTarea(t, recibida, alCambiar) {
         (t.prioridad !== 'Normal' ? '<span class="pildora ' + prioridad + '">' + escapar(t.prioridad) + '</span>' : '') +
         (t.vencida ? '<span class="pildora urgente" title="Pendiente hace más de 24 horas">⏰ +24 h</span>' : '') +
         '<span class="pildora ' + claseEstado(t.estado) + '">' + escapar(t.estado) + '</span></div>' +
-        '<div class="meta">' + (t.ticket ? '🎫 Ticket de ' + escapar(t.modelo || t.creada_por || '¿?') :
+        '<div class="meta">' + (t.ticket ? '🎫 Ticket de ' + escapar(t.modelo || t.creada_por || '¿?') +
+            (t.de_personal ? ' (personal)' : '') + (t.tipo_solicitud ? ' · ' + escapar(t.tipo_solicitud) : '') :
             recibida ? 'De ' + escapar(t.creada_por || '¿?') + (t.para_todos ? ' · 👥 para todo el personal' : '') :
             t.para_todos ? '👥 Todo el personal (' + (t.n_grupo || '¿?') + ')' +
                 (t.tomada_por ? ' · la tomó ' + escapar(t.tomada_por) : ' · sin tomar') :
@@ -422,7 +442,8 @@ function tarjetaTarea(t, recibida, alCambiar) {
             (t.cerrada_por || '¿?') + (t.cerrada ? ' · ' + t.cerrada : '');
         caja.insertBefore(r, caja.querySelector('.miniaturas'));
     }
-    if (!t.ticket && t.con_conversacion !== false) {
+    // Desde 2026-10-12 el ticket también es una conversación hasta que el CEO lo finaliza.
+    if (t.con_conversacion !== false && (!t.ticket || t.abierta)) {
         const b = document.createElement('button');
         b.className = 'boton-principal boton-conversacion';
         b.textContent = '💬 Conversación' + (t.num_respuestas ? ' (' + t.num_respuestas + ')' : '');
@@ -440,8 +461,7 @@ function tarjetaTarea(t, recibida, alCambiar) {
     }
     if (recibida && t.abierta && !deOtro) {
         if (t.estado !== 'en curso') boton('▶ En curso', () => cambiar('en curso'));
-        if (t.ticket) boton('💬 Responder', async () => responderTicket(caja, t, alCambiar));
-        else if (t.estado !== 'hecha') boton('✓ Hecha', () => cambiar('hecha'));
+        if (!t.ticket && t.estado !== 'hecha') boton('✓ Hecha', () => cambiar('hecha'));
     }
     if (!recibida && t.abierta && !t.ticket) {
         // Si se arrepiente en la confirmación, el botón vuelve a quedar activo.
@@ -648,7 +668,7 @@ function abrirConversacion(t, alSalir) {
         if (!info.puede_escribir) { pie.innerHTML = ''; return; }
         if (pie.querySelector('textarea')) {
             pie.querySelector('.cerrar-tarea').classList.toggle('oculto', !info.puede_cerrar);
-            pie.querySelector('.no-realizada').classList.toggle('oculto', !info.puede_cerrar);
+            pie.querySelector('.no-realizada').classList.toggle('oculto', !info.puede_cerrar || !!info.tarea.ticket);
             return;
         }
         pie.innerHTML =
@@ -659,8 +679,10 @@ function abrirConversacion(t, alSalir) {
             '  <button class="boton-principal enviar">Enviar</button>' +
             '</div>' +
             '<input type="file" class="oculto" accept="' + ACEPTA_ARCHIVOS + '">' +
-            '<button class="boton-secundario cerrar-tarea' + (info.puede_cerrar ? '' : ' oculto') + '">🔒 Cerrar tarea</button>' +
-            '<button class="boton-secundario no-realizada' + (info.puede_cerrar ? '' : ' oculto') + '">⛔ No realizada</button>';
+            '<button class="boton-secundario cerrar-tarea' + (info.puede_cerrar ? '' : ' oculto') + '">' +
+                (info.tarea.ticket ? '🔒 Finalizar ticket' : '🔒 Cerrar tarea') + '</button>' +
+            '<button class="boton-secundario no-realizada' + (info.puede_cerrar && !info.tarea.ticket ? '' : ' oculto') +
+                '">⛔ No realizada</button>';
         const entrada = pie.querySelector('input[type=file]');
         const elegido = pie.querySelector('.archivo-elegido');
         const texto = pie.querySelector('textarea');
@@ -699,7 +721,8 @@ function abrirConversacion(t, alSalir) {
             e.target.disabled = false;
         };
         pie.querySelector('.cerrar-tarea').onclick = async (e) => {
-            if (!confirm('¿Cerrar la tarea? Ya no se podrá retomar ni escribir en ella.')) return;
+            if (!confirm(info.tarea.ticket ? '¿Finalizar el ticket? Ya no se podrá escribir en él.'
+                         : '¿Cerrar la tarea? Ya no se podrá retomar ni escribir en ella.')) return;
             e.target.disabled = true;
             try {
                 const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/cerrar', 'POST');
@@ -781,6 +804,145 @@ async function recordarTareas() {
     capas.querySelector('.ver-tareas').onclick = () => { cerrar(); abrirCampana(); };
 }
 
+// =======================================================================
+// TICKETS AL CEO: TIPOS DE SOLICITUD Y LOS DEL PERSONAL (2026-10-12)
+// =======================================================================
+async function cargarTipos() {
+    campana.tipos = await pedir('/api/personal/tickets/tipos');
+    return campana.tipos;
+}
+
+/* El CEO agrega, cambia de nombre o borra los tipos (los tickets que ya
+ * llegaron se quedan con el tipo con que se mandaron). */
+async function abrirTiposSolicitud(alGuardar) {
+    let datos;
+    try { datos = await cargarTipos(); } catch (error) { avisar(error.message, 'malo'); return; }
+    const capa = document.createElement('div');
+    capa.className = 'capa-conversacion';
+    capa.innerHTML = '<div class="velo"></div><div class="hoja">' +
+        '<div class="hoja-cabecera"><h3>⚙ Tipos de solicitud</h3><button class="cerrar" title="Cerrar">✕</button></div>' +
+        '<div class="hoja-cuerpo"><div class="meta" style="margin-bottom:10px">Los ven las modelos y el personal al ' +
+        'mandarte un ticket. Con «' + escapar(datos.otra || 'OTRA') + '» el asunto es obligatorio.</div>' +
+        '<div class="lista-tipos"></div>' +
+        '<button class="boton-secundario agregar-tipo" style="margin-top:8px">＋ Agregar tipo</button>' +
+        '<button class="boton-principal guardar-tipos" style="margin-top:14px">Guardar</button></div></div>';
+    document.getElementById('capas-personal').appendChild(capa);
+    const lista = capa.querySelector('.lista-tipos');
+    const fila = (valor) => {
+        const f = document.createElement('div');
+        f.className = 'fila-tipo';
+        f.innerHTML = '<input maxlength="80"><button class="cerrar" title="Eliminar">🗑</button>';
+        f.querySelector('input').value = valor || '';
+        f.querySelector('button').onclick = () => {
+            if (confirm('¿Eliminar el tipo «' + (f.querySelector('input').value || '') + '»?')) f.remove();
+        };
+        lista.appendChild(f);
+        return f;
+    };
+    (datos.tipos || []).forEach(fila);
+    const cerrar = () => capa.remove();
+    capa.querySelector('.velo').onclick = cerrar;
+    capa.querySelector('.cerrar').onclick = cerrar;
+    capa.querySelector('.agregar-tipo').onclick = () => fila('').querySelector('input').focus();
+    capa.querySelector('.guardar-tipos').onclick = async (e) => {
+        const tipos = Array.from(lista.querySelectorAll('input')).map((i) => i.value.trim()).filter(Boolean);
+        e.target.disabled = true;
+        try {
+            const r = await pedir('/api/personal/tickets/tipos', 'POST', { tipos: tipos });
+            campana.tipos = Object.assign({}, campana.tipos, { tipos: r.tipos });
+            avisar(r.mensaje, 'bueno');
+            cerrar();
+            if (alGuardar) alGuardar();
+        } catch (error) { avisar(error.message, 'malo'); e.target.disabled = false; }
+    };
+}
+
+/* El formulario del ticket del personal: el mismo de las modelos. */
+async function formularioTicket(contenedor, alEnviar) {
+    let datos;
+    try { datos = await cargarTipos(); } catch (error) { avisar(error.message, 'malo'); return; }
+    const otra = datos.otra || 'OTRA';
+    const fotos = [];            // {archivo, vista}
+    const archivos = [];         // videos y PDF
+    contenedor.innerHTML =
+        '<div class="campo"><label>Tipo de solicitud</label><select class="k-tipo"><option value="">Elige el tipo…</option>' +
+        (datos.tipos || []).map((x) => '<option>' + escapar(x) + '</option>').join('') + '</select></div>' +
+        '<div class="campo"><label class="k-etiqueta">Asunto (opcional)</label><input class="k-asunto" maxlength="200"></div>' +
+        '<div class="campo"><label>Cuéntale qué pasa (opcional)</label><textarea class="k-detalle" maxlength="4000"></textarea></div>' +
+        '<div class="campo"><label>Adjuntos (opcional): hasta 6 fotos y 4 videos o PDF</label>' +
+        '<button class="boton-secundario k-adjuntar">📎 Adjuntar</button>' +
+        '<input type="file" class="oculto k-archivo" accept="image/*,video/*,application/pdf,.pdf" multiple>' +
+        '<div class="miniaturas k-lista"></div></div>' +
+        '<button class="boton-principal k-enviar">Enviar al CEO</button>' +
+        '<button class="boton-secundario k-cancelar" style="margin-top:8px;width:100%">Cancelar</button>';
+    const $ = (x) => contenedor.querySelector(x);
+    $('.k-tipo').onchange = () => {
+        $('.k-etiqueta').textContent = $('.k-tipo').value === otra ? 'Asunto (obligatorio con «' + otra + '»)' : 'Asunto (opcional)';
+    };
+    const pintarLista = () => {
+        $('.k-lista').innerHTML = fotos.map((f) => '<img src="' + f.vista + '" alt="">').join('') +
+            archivos.map((a) => '<span class="meta">' + (a.type === 'application/pdf' ? '📄 ' : '🎬 ') + escapar(a.name) + '</span>').join('');
+    };
+    $('.k-adjuntar').onclick = () => $('.k-archivo').click();
+    $('.k-archivo').onchange = async (e) => {
+        for (const archivo of Array.from(e.target.files || [])) {
+            if ((archivo.type || '').indexOf('image/') === 0) {
+                if (fotos.length >= 6) { avisar('Como mucho 6 fotos.', 'malo'); continue; }
+                try { fotos.push({ archivo: archivo, vista: await comprimir(archivo) }); } catch (error) { avisar(error.message, 'malo'); }
+            } else if (archivos.length < 4) archivos.push(archivo);
+            else avisar('Como mucho 4 videos o PDF.', 'malo');
+        }
+        e.target.value = '';
+        pintarLista();
+    };
+    $('.k-cancelar').onclick = () => alEnviar();
+    $('.k-enviar').onclick = async () => {
+        const tipo = $('.k-tipo').value;
+        const asunto = $('.k-asunto').value.trim();
+        if (!tipo) { avisar('Elige el tipo de solicitud.', 'malo'); return; }
+        if (tipo === otra && !asunto) { avisar('Con «' + otra + '», escribe el asunto.', 'malo'); return; }
+        const formulario = new FormData();
+        formulario.append('tipo', tipo);
+        formulario.append('asunto', asunto);
+        formulario.append('detalle', $('.k-detalle').value);
+        formulario.append('vistas', JSON.stringify(fotos.map((f) => f.vista)));
+        fotos.forEach((f) => formulario.append('fotos', f.archivo, f.archivo.name || 'foto.jpg'));
+        archivos.forEach((a) => formulario.append('archivos', a, a.name || 'archivo'));
+        const boton = $('.k-enviar');
+        boton.disabled = true;
+        boton.textContent = 'Enviando…';
+        try {
+            const r = await pedirFormulario('/api/personal/tickets/nuevo', formulario);
+            avisar(r.mensaje || 'Ticket enviado al CEO.', 'bueno');
+            alEnviar();
+        } catch (error) {
+            avisar(error.message, 'malo');
+            boton.disabled = false;
+            boton.textContent = 'Enviar al CEO';
+        }
+    };
+}
+
+function tarjetaMiTicket(t, alCambiar) {
+    const caja = document.createElement('div');
+    caja.className = 'tarea' + (t.nuevo ? ' nueva' : '');
+    const estado = t.abierto ? (t.respuesta ? 'respondido' : 'pendiente') : (t.estado === 'cerrada' ? 'finalizado' : 'cerrado');
+    caja.innerHTML = '<div class="cabeza"><div class="t"></div><span class="pildora ' +
+        (t.abierto && !t.respuesta ? '' : 'bien') + '">' + estado + '</span></div>' +
+        '<div class="meta">' + escapar(t.tipo_solicitud || '') + ' · enviado ' + escapar(t.creada || 'ahora') + '</div>' +
+        (t.respuesta ? '<div class="desc ultima-respuesta"></div>' : '') + '<div class="botones"></div>';
+    caja.querySelector('.t').textContent = t.asunto || '';
+    if (t.respuesta) caja.querySelector('.ultima-respuesta').textContent = '💬 ' + (t.respondida_por || 'CEO') + ': ' + t.respuesta;
+    if (t.con_conversacion || t.num_respuestas) {
+        const b = document.createElement('button');
+        b.className = 'boton-principal boton-conversacion';
+        b.textContent = '💬 Conversación' + (t.num_respuestas ? ' (' + t.num_respuestas + ')' : '');
+        b.onclick = () => abrirConversacion({ id: t.id, titulo: t.asunto }, () => revisarTareas(true).then(alCambiar));
+        caja.querySelector('.botones').appendChild(b);
+    }
+    return caja;
+}
+
 function abrirCampana() {
     const yo = ficha();
     const capas = document.getElementById('capas-personal');
@@ -792,6 +954,7 @@ function abrirCampana() {
         '      <button class="pestana" data-p="recibidas">Para mí</button>' +
         (yo.puede_asignar ? '<button class="pestana" data-p="enviadas">Enviadas</button>' +
                             '<button class="pestana" data-p="nueva">＋ Asignar</button>' : '') +
+        (esCeo() ? '' : '<button class="pestana" data-p="tickets">🎫 Mis tickets</button>') +
         '    </div><div class="cuerpo-pestana"></div>' +
         '  </div></div>';
     const cuerpo = capas.querySelector('.cuerpo-pestana');
@@ -807,10 +970,12 @@ function abrirCampana() {
         periodo: 'este_mes',
         personas: [],
         historial: null,             // {filtro, tareas, hay_mas}: las cerradas de «Para mí»
+        tipo: '',                    // el CEO: solo los tickets de este tipo de solicitud
         pintar() {
             capas.querySelectorAll('.pestana').forEach((b) => b.classList.toggle('activa', b.dataset.p === hoja.pestana));
             if (hoja.pestana === 'recibidas') pintarRecibidas();
             else if (hoja.pestana === 'enviadas') pintarEnviadas();
+            else if (hoja.pestana === 'tickets') pintarMisTickets();
             else pintarNueva();
         },
     };
@@ -831,6 +996,56 @@ function abrirCampana() {
         cuerpo.appendChild(barra);
     }
 
+    /* El CEO: un tipo elegido deja solo los tickets de ese tipo. */
+    function pasaTipo(t) {
+        return !hoja.tipo || (t.ticket && (t.tipo_solicitud || 'OTRA') === hoja.tipo);
+    }
+
+    function barraTipos() {
+        const fila = document.createElement('div');
+        fila.className = 'filtros-tareas fila-tipos';
+        const selector = document.createElement('select');
+        selector.className = 'filtro-persona';
+        const pintar = () => {
+            const tipos = (campana.tipos && campana.tipos.tipos) || [];
+            selector.innerHTML = '<option value="">🎫 Todos los tipos</option>' +
+                tipos.map((x) => '<option>' + escapar(x) + '</option>').join('');
+            selector.value = hoja.tipo;
+        };
+        pintar();
+        if (!campana.tipos) cargarTipos().then(pintar).catch(() => {});
+        selector.onchange = () => { hoja.tipo = selector.value; hoja.pintar(); };
+        fila.appendChild(selector);
+        const editar = document.createElement('button');
+        editar.className = 'filtro-tarea';
+        editar.textContent = '⚙ Tipos de solicitud';
+        editar.onclick = () => abrirTiposSolicitud(() => hoja.pintar());
+        fila.appendChild(editar);
+        cuerpo.appendChild(fila);
+    }
+
+    /* «🎫 Mis tickets»: lo que le mandó al CEO, y el formulario para uno nuevo. */
+    function pintarMisTickets() {
+        cuerpo.innerHTML = '';
+        const nuevo = document.createElement('button');
+        nuevo.className = 'boton-principal';
+        nuevo.textContent = '＋ Nuevo ticket al CEO';
+        nuevo.onclick = () => formularioTicket(cuerpo, () => { revisarTareas(true); hoja.pintar(); });
+        cuerpo.appendChild(nuevo);
+        if (!campana.misTickets.length) {
+            cuerpo.insertAdjacentHTML('beforeend', '<div class="vacio">No le has mandado tickets al CEO.</div>');
+            return;
+        }
+        campana.misTickets.forEach((t) => cuerpo.appendChild(tarjetaMiTicket(t, () => hoja.pintar())));
+        const vistos = campana.misTickets.filter((t) => t.nuevo).map((t) => t.id);
+        if (vistos.length) {
+            pedir('/api/personal/tickets/vistos', 'POST', { ids: vistos }).then(() => {
+                campana.misTickets.forEach((t) => { if (vistos.indexOf(t.id) >= 0) t.nuevo = false; });
+                pintarGlobo();
+            }).catch(() => {});
+        }
+    }
+
     function pasaFiltro(t) {
         const f = FILTROS_TAREA.find((x) => x.id === hoja.filtro);
         return !f || !f.estados || f.estados.indexOf(t.estado) >= 0;
@@ -847,14 +1062,15 @@ function abrirCampana() {
     /* Las cerradas de «Para mí» (solo con Todas, Hechas o Cerradas). */
     async function cargarHistorial(desde) {
         const filtro = hoja.filtro;
+        const tipo = hoja.tipo;
         try {
             const datos = await pedir('/api/personal/tareas/historial?filtro=' + encodeURIComponent(filtro) +
-                                      '&desde=' + desde);
-            if (filtro !== hoja.filtro) return;
+                                      '&tipo=' + encodeURIComponent(tipo) + '&desde=' + desde);
+            if (filtro !== hoja.filtro || tipo !== hoja.tipo) return;
             const previas = desde && hoja.historial ? hoja.historial.tareas : [];
-            hoja.historial = { filtro: filtro, tareas: previas.concat(datos.tareas || []), hay_mas: datos.hay_mas };
+            hoja.historial = { filtro: filtro, tipo: tipo, tareas: previas.concat(datos.tareas || []), hay_mas: datos.hay_mas };
         } catch (error) {
-            hoja.historial = { filtro: filtro, tareas: [], hay_mas: false, error: error.message };
+            hoja.historial = { filtro: filtro, tipo: tipo, tareas: [], hay_mas: false, error: error.message };
         }
         if (hoja.pestana === 'recibidas') pintarRecibidas();
     }
@@ -879,19 +1095,21 @@ function abrirCampana() {
             }
         }
         barraFiltros();
-        if (campana.respuestas.length) {
+        if (esCeo()) barraTipos();
+        if (campana.respuestas.length && !hoja.tipo) {
             const titulo = document.createElement('div');
             titulo.className = 'titulo-seccion';
             titulo.textContent = '💬 Te respondieron en tareas que asignaste';
             cuerpo.appendChild(titulo);
             campana.respuestas.forEach((t) => cuerpo.appendChild(tarjetaTarea(t, false, () => revisarTareas(true))));
         }
-        const abiertas = campana.tareas.filter(pasaFiltro);
+        const abiertas = campana.tareas.filter(pasaFiltro).filter(pasaTipo);
         abiertas.forEach((t) => cuerpo.appendChild(tarjetaTarea(t, true, () => revisarTareas(true))));
         // Al fondo, las ya cerradas (no vienen en la campana: se piden aparte).
         // Las terminadas no vienen en la campana: se piden aparte.
         const conHistorial = ['hechas', 'cerradas', 'no_realizadas'].indexOf(hoja.filtro) >= 0;
-        const historial = hoja.historial && hoja.historial.filtro === hoja.filtro ? hoja.historial : null;
+        const historial = hoja.historial && hoja.historial.filtro === hoja.filtro &&
+            (hoja.historial.tipo || '') === hoja.tipo ? hoja.historial : null;
         if (conHistorial && !historial) {
             cuerpo.insertAdjacentHTML('beforeend', '<div class="cargando"><span class="girando">◌</span></div>');
             cargarHistorial(0);

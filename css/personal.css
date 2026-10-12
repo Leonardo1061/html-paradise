@@ -295,3 +295,10 @@ button { cursor: pointer; }
 .lista-recordatorio li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--borde); }
 .lista-recordatorio li span { font-size: 12px; color: var(--tenue); }
 .recordatorio-tareas .hoja-cabecera h3 { font-size: 15.5px; }
+
+/* ---------------------- tipos de solicitud y «Mis tickets» (personal.js) */
+.fila-tipos { align-items: center; }
+.fila-tipo { display: flex; gap: 6px; margin-bottom: 6px; }
+.fila-tipo input { flex: 1; min-width: 0; background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 9px 11px; color: var(--texto); font: inherit; font-size: 14px; }
+.campo select { width: 100%; }

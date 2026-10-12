@@ -45,6 +45,10 @@
  * La foto viaja dos veces: una vista previa pequeña (la ve el CEO en su
  * campana del escritorio y de la web) y el original a Drive. Los videos y
  * los PDF van a Drive. Ver `tickets.py` en la API.
+ * Desde 2026-10-12 lleva un «Tipo de solicitud» obligatorio (la lista la
+ * maneja el CEO; con «OTRA» el asunto es obligatorio) y cada ticket es una
+ * CONVERSACIÓN con el CEO («💬 Conversación»): ella le contesta con texto,
+ * foto, video o PDF hasta que el CEO lo finaliza.
  *
  * Y el botón 📤 SUBIR CONTENIDO (id `nav-subir`, entre STATUS ROOM y TICKET
  * CEO) abre la hoja para subir fotos y videos de la galería a su Drive, en
@@ -224,6 +228,25 @@ body.guardando .bm-burbuja, body:has(#vista-chat:not(.oculto)) .bm-burbuja { dis
     border-radius: 12px; padding: 12px 13px; color: #f4f4f5; font-size: 15px; font-family: inherit;
 }
 .bm-campo textarea { min-height: 96px; resize: vertical; }
+.bm-campo select {
+    width: 100%; box-sizing: border-box; background: #1b1a22; border: 1px solid #2a2932;
+    border-radius: 12px; padding: 12px 13px; color: #f4f4f5; font-size: 15px; font-family: inherit;
+}
+.bm-conv { display: flex; flex-direction: column; gap: 8px; }
+.bm-msj { max-width: 85%; align-self: flex-start; background: #1b1a22; border: 1px solid #2a2932;
+    border-radius: 14px 14px 14px 4px; padding: 9px 12px; font-size: 14px; line-height: 1.45; }
+.bm-msj.mio { align-self: flex-end; border-radius: 14px 14px 4px 14px; border-color: rgba(217,70,239,.45); }
+.bm-msj .quien { font-size: 11.5px; color: #9b9ba3; margin-bottom: 3px; }
+.bm-msj .txt { white-space: pre-wrap; word-break: break-word; }
+.bm-msj img { max-width: 220px; max-height: 220px; border-radius: 10px; display: block; margin-top: 6px; cursor: zoom-in; }
+.bm-msj .bm-secundario { margin-top: 6px; }
+.bm-escribir { border-top: 1px solid #2a2932; padding: 10px 12px 14px; }
+.bm-escribir .fila { display: flex; gap: 8px; align-items: flex-end; }
+.bm-escribir textarea { flex: 1; min-width: 0; min-height: 52px; max-height: 40vh; resize: vertical;
+    background: #1b1a22; border: 1px solid #2a2932; border-radius: 12px; padding: 9px 11px;
+    color: #f4f4f5; font: inherit; font-size: 14px; }
+.bm-escribir .bm-principal { width: auto; padding: 12px 16px; }
+.bm-fin { text-align: center; color: #9b9ba3; font-size: 13px; padding: 12px 6px; }
 .bm-campo input.bm-invalido { border-color: rgba(239,68,68,.7); }
 .bm-motivo { font-size: 12px; color: #fca5a5; margin-top: 6px; }
 .bm-motivo:empty { display: none; }
@@ -485,7 +508,9 @@ function pintarGlobo() {
 }
 
 function textoEstado(t) {
+    if (t.abierto && t.respuesta) return ['Respondido', 'respondido'];
     if (t.abierto) return t.estado === 'en curso' ? ['En revisión', ''] : ['Pendiente', ''];
+    if (t.estado === 'cerrada') return ['Finalizado', 'cerrado'];
     if (t.respuesta) return ['Respondido', 'respondido'];
     return ['Cerrado', 'cerrado'];
 }
@@ -497,13 +522,20 @@ function tarjeta(t) {
     caja.innerHTML =
         '<div class="cabeza"><div class="asunto">' + escapar(t.asunto) + '</div>' +
         '<span class="bm-pildora ' + clase + '">' + texto + '</span></div>' +
-        '<div class="meta">Enviado ' + escapar(t.creada || 'ahora') + '</div>' +
+        '<div class="meta">' + (t.tipo_solicitud ? escapar(t.tipo_solicitud) + ' · ' : '') +
+            'Enviado ' + escapar(t.creada || 'ahora') + '</div>' +
         (t.detalle ? '<div class="detalle">' + escapar(t.detalle) + '</div>' : '') +
         (t.respuesta ? '<div class="respuesta"><b>RESPUESTA DEL CEO' +
             (t.respondida ? ' · ' + escapar(t.respondida) : '') + '</b>' + escapar(t.respuesta) + '</div>' : '') +
         (!t.abierto && !t.respuesta ? '<div class="meta">El CEO lo cerró sin escribir respuesta.</div>' : '') +
         '<div class="bm-fila" style="margin-top:10px"></div><div class="bm-miniaturas"></div>';
     const fila = caja.querySelector('.bm-fila');
+    // La conversación con el CEO: abierta hasta que él la finaliza.
+    if (t.con_conversacion || t.num_respuestas) {
+        const b = boton('💬 Conversación' + (t.num_respuestas ? ' (' + t.num_respuestas + ')' : ''));
+        b.onclick = () => abrirConversacionTicket(t);
+        fila.appendChild(b);
+    }
     if (t.num_imagenes) {
         const b = boton('🖼️ ' + t.num_imagenes + (t.num_imagenes === 1 ? ' foto' : ' fotos'));
         b.onclick = async () => {
@@ -605,7 +637,10 @@ function abrirNuevo() {
     const fotos = [];                // {archivo, vista}
     const archivos = [];             // File (video o PDF)
     hoja.cuerpo.innerHTML =
-        '<div class="bm-campo"><label>Asunto</label><input class="t-asunto" maxlength="200" ' +
+        '<div class="bm-campo"><label>Tipo de solicitud</label><select class="t-tipo">' +
+            '<option value="">Cargando…</option></select></div>' +
+        '<div class="bm-campo"><label class="t-etiqueta-asunto">Asunto (opcional)</label>' +
+            '<input class="t-asunto" maxlength="200" ' +
             'placeholder="Ej: Revisión de mi pago de la semana"></div>' +
         '<div class="bm-campo"><label>Cuéntale qué pasa (opcional)</label>' +
             '<textarea class="t-detalle" maxlength="4000"></textarea></div>' +
@@ -623,6 +658,17 @@ function abrirNuevo() {
         '<p class="bm-nota">Le llega al CEO al momento. El ticket se queda en tu 🔔 campana como ' +
         'pendiente hasta que te responda, y te aviso en el teléfono cuando lo haga.</p>';
     const $ = (s) => hoja.cuerpo.querySelector(s);
+    let otra = 'OTRA';
+    // La lista la maneja el CEO: se pide cada vez.
+    pedir('/api/tickets/tipos').then((datos) => {
+        otra = datos.otra || otra;
+        $('.t-tipo').innerHTML = '<option value="">Elige el tipo…</option>' +
+            (datos.tipos || []).map((t) => '<option>' + escapar(t) + '</option>').join('');
+    }).catch(() => { $('.t-tipo').innerHTML = '<option value="">No se pudo cargar. Cierra y vuelve a abrir.</option>'; });
+    $('.t-tipo').onchange = () => {
+        $('.t-etiqueta-asunto').textContent = $('.t-tipo').value === otra ? 'Asunto (obligatorio con «OTRA»)'
+            : 'Asunto (opcional)';
+    };
 
     const pintarAdjuntos = () => {
         const caja = $('.bm-adjuntos');
@@ -686,8 +732,13 @@ function abrirNuevo() {
 
     $('.t-enviar').onclick = async () => {
         const asunto = $('.t-asunto').value.trim();
-        if (!asunto) { avisar('Escribe el asunto del ticket.', 'malo'); $('.t-asunto').focus(); return; }
+        const tipo = $('.t-tipo').value;
+        if (!tipo) { avisar('Elige el tipo de solicitud.', 'malo'); $('.t-tipo').focus(); return; }
+        if (tipo === otra && !asunto) {
+            avisar('Con «OTRA», escribe el asunto del ticket.', 'malo'); $('.t-asunto').focus(); return;
+        }
         const formulario = new FormData();
+        formulario.append('tipo', tipo);
         formulario.append('asunto', asunto);
         formulario.append('detalle', $('.t-detalle').value);
         formulario.append('vistas', JSON.stringify(fotos.map((f) => f.vista)));
@@ -713,7 +764,157 @@ function abrirNuevo() {
             barra.classList.add('bm-oculto');
         }
     };
-    $('.t-asunto').focus();
+    $('.t-tipo').focus();
+}
+
+// =======================================================================
+// 💬 LA CONVERSACIÓN DE UN TICKET
+// =======================================================================
+// Mensajes de 20 en 20 (api: /api/tickets/{id}/conversacion). Ella escribe
+// texto y/o un archivo (foto, video o PDF) hasta que el CEO lo finaliza.
+// Con la hoja abierta, cada 10 s se piden los nuevos.
+const CONV_CADA_MS = 10000;
+
+function abrirConversacionTicket(t) {
+    const hoja = abrirHoja('conversacion', '💬 ' + escapar(t.asunto || 'Ticket'));
+    const ruta = '/api/tickets/' + encodeURIComponent(t.id) + '/conversacion';
+    hoja.capa.querySelector('.bm-hoja').style.height = '92vh';
+    hoja.cuerpo.style.flex = '1';
+    hoja.cuerpo.innerHTML = '<button class="bm-secundario t-volver" style="margin-bottom:10px">← Tus tickets</button>' +
+        '<div class="bm-conv"><div class="bm-vacio">Cargando…</div></div>';
+    hoja.cuerpo.querySelector('.t-volver').onclick = () => { abrirCampana(); };
+    const lista = hoja.cuerpo.querySelector('.bm-conv');
+    const pie = document.createElement('div');
+    pie.className = 'bm-escribir';
+    hoja.capa.querySelector('.bm-hoja').appendChild(pie);
+    const est = { mensajes: [], hayMas: false, info: null };
+
+    const archivoUrl = async (m) => {
+        const r = await fetch(API + ruta + '/' + encodeURIComponent(m.id) + '/adjunto',
+                              { headers: { 'Authorization': 'Bearer ' + token() } });
+        if (!r.ok) throw new Error('No se pudo abrir el archivo.');
+        return URL.createObjectURL(await r.blob());
+    };
+
+    function burbuja(m) {
+        const b = document.createElement('div');
+        b.className = 'bm-msj' + (m.mio ? ' mio' : '');
+        b.innerHTML = '<div class="quien">' + escapar(m.mio ? 'Tú' : m.de) + ' · ' + escapar(m.cuando || '') + '</div>' +
+            (m.texto ? '<div class="txt"></div>' : '');
+        if (m.texto) b.querySelector('.txt').textContent = m.texto;
+        const a = m.adjunto;
+        if (a && a.tipo === 'imagen') {
+            const img = document.createElement('img');
+            b.appendChild(img);
+            archivoUrl(m).then((url) => { img.src = url; img.onclick = () => abrirVisor(url); })
+                .catch(() => { img.remove(); });
+        } else if (a) {
+            const boton_ = boton((a.tipo === 'video' ? '🎬 ' : a.tipo === 'pdf' ? '📄 ' : '📎 ') +
+                (a.titulo || a.nombre || 'Archivo'));
+            boton_.onclick = async () => {
+                const ventana = window.open('', '_blank');
+                try {
+                    const url = await archivoUrl(m);
+                    if (ventana) ventana.location.href = url; else window.location.href = url;
+                } catch (error) { if (ventana) ventana.close(); avisar(error.message, 'malo'); }
+            };
+            b.appendChild(boton_);
+        }
+        return b;
+    }
+
+    function pintar(alFinal) {
+        lista.innerHTML = '';
+        if (est.hayMas) {
+            const mas = boton('⬆ Ver anteriores');
+            mas.onclick = anteriores;
+            lista.appendChild(mas);
+        } else {
+            const inicio = document.createElement('div');
+            inicio.className = 'bm-msj mio';
+            inicio.innerHTML = '<div class="quien">Tu ticket · ' + escapar(t.tipo_solicitud || '') + '</div>' +
+                '<div class="txt"></div>';
+            inicio.querySelector('.txt').textContent = (t.asunto || '') + (t.detalle ? '\n\n' + t.detalle : '');
+            lista.appendChild(inicio);
+            // Lo que el CEO respondió antes de que existiera la conversación.
+            if (!est.mensajes.length && t.respuesta) {
+                lista.appendChild(burbuja({ de: 'CEO', texto: t.respuesta, cuando: t.respondida || '' }));
+            }
+        }
+        est.mensajes.forEach((m) => lista.appendChild(burbuja(m)));
+        if (est.info && !est.info.puede_escribir) {
+            lista.insertAdjacentHTML('beforeend', '<div class="bm-fin">🔒 El CEO finalizó este ticket.</div>');
+        }
+        if (alFinal) hoja.cuerpo.scrollTop = hoja.cuerpo.scrollHeight;
+    }
+
+    function pintarPie() {
+        if (!est.info.puede_escribir) { pie.remove(); return; }
+        if (pie.querySelector('textarea')) return;
+        pie.innerHTML = '<div class="bm-nota t-elegido" style="margin:0 0 6px"></div>' +
+            '<div class="fila"><button class="bm-secundario t-adjuntar" title="Foto, video o PDF">📎</button>' +
+            '<textarea maxlength="4000" placeholder="Escríbele al CEO"></textarea>' +
+            '<button class="bm-principal t-enviar">Enviar</button></div>' +
+            '<input type="file" class="bm-oculto" accept="image/*,video/*,application/pdf,.pdf">';
+        const entrada = pie.querySelector('input[type=file]');
+        const elegido = pie.querySelector('.t-elegido');
+        let archivo = null;
+        const pintarArchivo = () => { elegido.textContent = archivo ? '📎 ' + archivo.name : ''; };
+        pie.querySelector('.t-adjuntar').onclick = () => entrada.click();
+        entrada.onchange = () => { archivo = entrada.files[0] || null; entrada.value = ''; pintarArchivo(); };
+        const enviar = pie.querySelector('.t-enviar');
+        enviar.onclick = async () => {
+            const texto = pie.querySelector('textarea');
+            if (!texto.value.trim() && !archivo) { avisar('Escribe un mensaje o adjunta un archivo.', 'malo'); return; }
+            enviar.disabled = true;
+            enviar.textContent = archivo ? 'Subiendo…' : 'Enviando…';
+            try {
+                const formulario = new FormData();
+                formulario.append('texto', texto.value);
+                if (archivo) formulario.append('archivo', archivo, archivo.name || 'archivo');
+                const r = await subir(ruta, formulario, () => {});
+                texto.value = '';
+                archivo = null;
+                pintarArchivo();
+                est.mensajes.push(r.mensaje);
+                pintar(true);
+            } catch (error) { avisar(error.message, 'malo'); }
+            enviar.disabled = false;
+            enviar.textContent = 'Enviar';
+        };
+    }
+
+    async function cargar() {
+        const datos = await pedir(ruta);
+        if (estado.hoja !== hoja) return;
+        const primero = datos.mensajes.length ? datos.mensajes[0].ts : '';
+        const viejos = primero ? est.mensajes.filter((m) => m.ts && m.ts < primero) : [];
+        const antes = est.mensajes.map((m) => m.id).join(',');
+        est.mensajes = viejos.concat(datos.mensajes);
+        if (!viejos.length) est.hayMas = datos.hay_mas;
+        const cambio = !est.info || antes !== est.mensajes.map((m) => m.id).join(',') ||
+            est.info.puede_escribir !== datos.puede_escribir;
+        est.info = datos;
+        if (datos.ticket) Object.assign(t, datos.ticket);
+        if (cambio) pintar(true);
+        pintarPie();
+    }
+
+    async function anteriores() {
+        if (!est.mensajes.length) return;
+        try {
+            const datos = await pedir(ruta + '?antes=' + encodeURIComponent(est.mensajes[0].ts));
+            est.mensajes = datos.mensajes.concat(est.mensajes);
+            est.hayMas = datos.hay_mas;
+            pintar(false);
+        } catch (error) { avisar(error.message, 'malo'); }
+    }
+
+    cargar().catch((error) => { lista.innerHTML = '<div class="bm-vacio"></div>'; lista.firstChild.textContent = error.message; });
+    const reloj = setInterval(() => {
+        if (estado.hoja !== hoja) { clearInterval(reloj); return; }
+        if (document.visibilityState === 'visible' && est.info && est.info.puede_escribir) cargar().catch(() => {});
+    }, CONV_CADA_MS);
 }
 
 // =======================================================================
