@@ -14,13 +14,20 @@
   las actividades:
       📝 Personal         lo que está haciendo (la pone él, dentro de su turno)
       🎓 Managers         capacitaciones del personal (cualquiera del personal)
-      👩‍🏫 Modelos          una capacitación que da a una modelo
+      📞 Reunión con modelos  a una o varias modelos o a una jornada entera
       📣 Reunión general  (CEO y Gerencia)
+  Las reuniones pueden crear su sala de Meet con la cuenta del estudio
+  (theparadisemonitor): invita por correo y el acta de Gemini queda pegada a
+  la actividad. A todas las modelos les llega el aviso con el link.
   Tocar un hueco programa ahí; tocar una actividad la abre (cambiarla o
   quitarla si es suya; lo de CEO y Gerencia solo lo mueven ellos).
   Cada monitor ve SOLO su malla. CEO y Gerencia eligen de quién.
 
   ABAJO, EL RESUMEN: los turnos de la semana de todos, con sus horas.
+
+  PESTAÑA «📞 REUNIONES»: las salas de Meet de los últimos 14 días y las que
+  vienen, con su acta (también las del escritorio). Reemplaza al botón
+  REUNIONES de la barra y a reuniones.html (Leonardo, 2026-10-12).
 
   De miércoles a viernes 11:59 pm, quien elige descanso tiene arriba los días
   de la semana siguiente (lo mismo que sale en la campana).
@@ -103,6 +110,14 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
 .personas-lista input { width: auto; padding: 0; margin: 0; flex: none; }
 .crear-meet { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--texto); margin: 0 0 12px; line-height: 1.4; }
 .crear-meet input { width: auto; margin: 2px 0 0; flex: none; }
+.vista-reuniones .reunion { border-top: 1px solid var(--borde); padding: 12px 0; }
+.vista-reuniones .reunion:first-child { border-top: 0; padding-top: 0; }
+.vista-reuniones .reunion b { font-size: 14px; }
+.vista-reuniones .reunion .linea { font-size: 12.5px; color: var(--tenue); margin-top: 3px; line-height: 1.45; }
+.vista-reuniones .reunion .pildora { text-decoration: none; display: inline-block; margin: 7px 6px 0 0; }
+.vista-reuniones .dia { font-size: 12px; font-weight: 600; color: var(--cian); margin: 16px 0 8px; }
+.vista-reuniones .dia:first-child { margin-top: 0; }
+.citadas-elegidas { font-size: 12.5px; color: var(--tenue); margin: 6px 0 0; line-height: 1.4; }
 .personas-lista label.todos { grid-column: 1 / -1; font-weight: 600; border-bottom: 1px solid var(--borde); padding-bottom: 6px; }
 .error-form { color: #fecaca; font-size: 13px; margin: 0 0 10px; display: none; }
 .detalle-actividad p { margin: 6px 0; font-size: 13.5px; color: var(--tenue); line-height: 1.5; }
@@ -114,6 +129,12 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
 
 <main class="contenido">
     <h1 class="titulo-pagina">🗓️ Cronograma de actividades</h1>
+    <div class="pestanas" id="vistas">
+        <button class="pestana activa" data-vista="malla">🗓️ Malla</button>
+        <button class="pestana" data-vista="reuniones">📞 Reuniones</button>
+    </div>
+    <div id="vista-reuniones" class="vista-reuniones oculto"></div>
+    <div id="vista-malla">
     <div id="eleccion"></div>
     <div class="semana">
         <button class="boton-secundario" id="btn-anterior">◀</button>
@@ -122,6 +143,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
         <button class="boton-secundario" id="btn-hoy">Esta semana</button>
     </div>
     <div id="contenido"><div class="cargando"><span class="girando">◌</span></div></div>
+    </div>
 </main>
 
 <script src="js/config.js"></script>
@@ -248,7 +270,9 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
         const hoja = abrirHoja(a.icono + ' ' + a.titulo,
             '<div class="detalle-actividad">' +
             '<p><b>' + esc(a.texto_tipo) + '</b> · ' + esc(a.cuando) + '</p>' +
-            (a.tipo === 'modelos' ? '<p>Capacitación de <b>' + esc(a.responsable) + '</b> a <b>' + esc(a.modelo) + '</b>. Les llega a todas las modelos.</p>' : '') +
+            (a.tipo === 'modelos' ? '<p>Reunión de <b>' + esc(a.responsable) + '</b> con <b>' +
+                esc(a.jornada_citada ? 'toda la jornada ' + a.jornada_citada : a.modelo) +
+                '</b>. Les llega a todas las modelos' + (a.meet ? ', con el link' : '') + '.</p>' : '') +
             (a.tipo === 'managers' ? '<p>Para: ' + esc(a.personas.join(', ')) + '</p>' : '') +
             (a.descripcion ? '<p>' + esc(a.descripcion) + '</p>' : '') +
             (a.meet ? '<p><a href="' + esc(a.meet) + '" target="_blank" rel="noopener">🎥 Enlace de la reunión</a></p>' : '') +
@@ -321,25 +345,32 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                         (marcadas.indexOf(p) >= 0 ? ' checked' : '') + '> ' + esc(p) + '</label>').join('') + '</div></div>';
             }
             if (tipo === 'modelos' && !editando) {
-                html += '<div class="campo"><label>Modelo que recibe la capacitación (les llega a todas)</label><select id="f-modelo">' +
-                    '<option value="">Elige la modelo…</option>' + ops.modelos.map((x) =>
-                    '<option value="' + esc(x.cedula) + '">' + esc(x.nombre + ' · ' + x.jornada) + '</option>').join('') + '</select></div>';
+                html += '<div class="campo"><label>Con quién es la reunión (el aviso les llega a todas las modelos)</label>' +
+                    '<div class="pestanas" id="f-citar"><button type="button" class="pestana activa" data-citar="modelos">Modelos</button>' +
+                    '<button type="button" class="pestana" data-citar="jornada">Toda una jornada</button></div>' +
+                    '<div id="f-sec-modelos"><div class="selector-modelos" id="f-modelos"><input class="buscar" type="search" placeholder="Buscar modelo…" autocomplete="off">' +
+                    '<div class="opciones"></div></div><p class="citadas-elegidas" id="f-elegidas">Toca a las modelos que vas a citar.</p></div>' +
+                    '<div id="f-sec-jornada" class="oculto"><select id="f-jornada">' + (ops.jornadas || []).map((j) =>
+                        '<option value="' + esc(j) + '">' + esc(j) + '</option>').join('') + '</select>' +
+                    '<p class="citadas-elegidas" id="f-conteo"></p></div></div>';
                 if (m.es_jefe) {
                     html += '<div class="campo"><label>Quién la da</label><select id="f-responsable">' + ops.personal.map((p) =>
                         '<option' + (p === m.persona ? ' selected' : '') + '>' + esc(p) + '</option>').join('') + '</select></div>';
                 }
             }
-            if ((tipo === 'reunion' || tipo === 'managers') && previo.meet_estudio) {
+            if ((tipo === 'reunion' || tipo === 'managers' || tipo === 'modelos') && previo.meet_estudio) {
                 html += '<p class="nota" style="margin:0 0 12px">📹 Ya tiene sala de Meet de la cuenta del estudio: si cambias la hora, la sala se mueve sola.</p>';
-            } else if (tipo === 'reunion' || tipo === 'managers') {
+            } else if (tipo === 'reunion' || tipo === 'managers' || tipo === 'modelos') {
                 html += '<label class="crear-meet"><input type="checkbox" id="f-crear-meet"' + (editando ? '' : ' checked') + '> ' +
                     '📹 Crear la sala de Meet con la cuenta del estudio e invitar a ' +
-                    (tipo === 'reunion' ? 'todo el personal y las modelos' : 'quienes van') + ' (con su correo)</label>' +
+                    (tipo === 'reunion' ? 'todo el personal y las modelos' : tipo === 'modelos' ? 'las modelos' : 'quienes van') +
+                    ' (con su correo)</label>' +
                     '<div class="campo" id="f-campo-meet"><label>Enlace de Meet (opcional)</label><input id="f-meet" placeholder="https://meet.google.com/…" value="' +
                     esc(previo.meet || '') + '"></div>';
             }
             if (tipo === 'reunion') html += '<p class="nota" style="margin:0 0 12px">Le llega a todo el personal y a todas las modelos.</p>';
             $f('f-extra').innerHTML = html;
+            if ($f('f-modelos')) prepararCitadas();
             const crearMeet = $f('f-crear-meet');
             if (crearMeet) {
                 const alternar = () => $f('f-campo-meet').classList.toggle('oculto', crearMeet.checked);
@@ -348,6 +379,48 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
             }
             const todos = $f('f-todos');
             if (todos) todos.onchange = () => hoja.cuerpo.querySelectorAll('.f-persona').forEach((c) => { c.checked = todos.checked; });
+        }
+        // Reunión con modelos: varias (buscador) o una jornada entera.
+        const citar = { modo: 'modelos', elegidas: new Set() };
+        function prepararCitadas() {
+            const caja = $f('f-modelos');
+            const sinTildes = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            function pintar() {
+                const f = sinTildes(caja.querySelector('.buscar').value.trim());
+                const lista = ops.modelos.filter((x) => !f || sinTildes(x.nombre + ' ' + x.jornada).indexOf(f) >= 0);
+                const opciones = caja.querySelector('.opciones');
+                opciones.innerHTML = lista.length ? lista.map((x) =>
+                    '<button type="button" class="opcion' + (citar.elegidas.has(x.cedula) ? ' elegida' : '') + '" data-cedula="' +
+                    esc(x.cedula) + '"><span>' + (citar.elegidas.has(x.cedula) ? '✓ ' : '') + esc(x.nombre) + '</span><small>' +
+                    esc(x.jornada) + '</small></button>').join('') : '<div class="vacio">Ninguna modelo con ese nombre.</div>';
+                opciones.querySelectorAll('.opcion').forEach((b) => {
+                    b.onclick = () => {
+                        const c = b.dataset.cedula;
+                        if (citar.elegidas.has(c)) citar.elegidas.delete(c); else citar.elegidas.add(c);
+                        pintar();
+                    };
+                });
+                const nombres = ops.modelos.filter((x) => citar.elegidas.has(x.cedula)).map((x) => x.nombre);
+                $f('f-elegidas').textContent = nombres.length ? 'Citadas (' + nombres.length + '): ' + nombres.join(', ')
+                    : 'Toca a las modelos que vas a citar.';
+            }
+            function conteo() {
+                const j = $f('f-jornada').value;
+                const n = ops.modelos.filter((x) => x.jornada === j).length;
+                $f('f-conteo').textContent = n ? 'Se citarán ' + n + ' modelo(s) de esa jornada.' : 'No hay modelos en esa jornada.';
+            }
+            caja.querySelector('.buscar').oninput = pintar;
+            $f('f-jornada').onchange = conteo;
+            hoja.cuerpo.querySelectorAll('#f-citar .pestana').forEach((b) => {
+                b.onclick = () => {
+                    citar.modo = b.dataset.citar;
+                    hoja.cuerpo.querySelectorAll('#f-citar .pestana').forEach((x) => x.classList.toggle('activa', x === b));
+                    $f('f-sec-modelos').classList.toggle('oculto', citar.modo !== 'modelos');
+                    $f('f-sec-jornada').classList.toggle('oculto', citar.modo !== 'jornada');
+                    conteo();
+                };
+            });
+            pintar();
         }
         $f('f-tipo').onchange = pintarExtra;
         pintarExtra();
@@ -376,7 +449,10 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                 } else {
                     cuerpo.tipo = tipo;
                     cuerpo.personas = hoja.cuerpo.querySelector('.f-persona') ? marcadas : [m.persona];
-                    if ($f('f-modelo')) cuerpo.modelo = $f('f-modelo').value;
+                    if ($f('f-modelos')) {
+                        if (citar.modo === 'jornada') cuerpo.jornada = $f('f-jornada').value;
+                        else cuerpo.modelos = Array.from(citar.elegidas);
+                    }
                     if ($f('f-responsable')) cuerpo.responsable = $f('f-responsable').value;
                     r = await P.pedir('/api/personal/cronograma/actividades', 'POST', cuerpo);
                 }
@@ -480,7 +556,64 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
         }
     }
 
+    // ===================================================================
+    // PESTAÑA REUNIONES: las salas de Meet con su acta
+    // ===================================================================
+    function textoDia(iso) {
+        const [a, m, d] = iso.split('-').map(Number);
+        const f = new Date(a, m - 1, d);
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const dif = Math.round((f - hoy) / 86400000);
+        const nombre = f.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+        return dif === 0 ? 'Hoy · ' + nombre : dif === -1 ? 'Ayer · ' + nombre : dif === 1 ? 'Mañana · ' + nombre :
+            nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    }
+
+    async function cargarReuniones() {
+        const caja = document.getElementById('vista-reuniones');
+        if (!caja.innerHTML) caja.innerHTML = '<div class="cargando"><span class="girando">◌</span></div>';
+        try {
+            const datos = await P.pedir('/api/personal/cronograma/reuniones?dias=14');
+            const lista = datos.reuniones || [];
+            if (!lista.length) {
+                caja.innerHTML = '<div class="tarjeta"><div class="vacio">No hay reuniones con sala de Meet en los últimos ' +
+                    datos.dias + ' días. Prográmalas en la malla y marca «Crear la sala de Meet».</div></div>';
+                return;
+            }
+            let html = '<div class="tarjeta">', dia = '';
+            lista.forEach((r) => {
+                if (r.fecha !== dia) { dia = r.fecha; html += '<div class="dia">' + esc(textoDia(dia)) + '</div>'; }
+                const quienes = r.jornada_citada === 'Todas' ? 'Todo el personal y las modelos'
+                    : r.jornada_citada ? 'Jornada ' + r.jornada_citada + ' (' + r.total_modelos + ' modelos)'
+                    : (r.modelos || []).join(', ') || 'Personal';
+                const acta = r.link_notas
+                    ? '<a class="pildora bien" href="' + esc(r.link_notas) + '" target="_blank" rel="noopener">📝 Notas de Gemini</a>'
+                    : r.por_venir ? '<span class="pildora cian">🗓️ Programada</span>'
+                    : r.estado_acta === 'sin_acta' ? '<span class="pildora">Sin acta</span>'
+                    : '<span class="pildora alta">⏳ Esperando notas de Gemini</span>';
+                const entrar = r.enlace && (r.por_venir || !r.link_notas)
+                    ? '<a class="pildora cian" href="' + esc(r.enlace) + '" target="_blank" rel="noopener">🎥 Entrar</a>' : '';
+                html += '<div class="reunion"><b>' + esc(r.titulo || quienes) + '</b>' +
+                    '<div class="linea">🕒 ' + esc(r.hora) + ' · 👥 ' + esc(r.monitor) + (r.codigo ? ' · 🔑 ' + esc(r.codigo) : '') + '</div>' +
+                    (r.titulo ? '<div class="linea">' + esc(quienes) + '</div>' : '') + acta + entrar + '</div>';
+            });
+            caja.innerHTML = html + '</div><p class="nota">Las de los últimos ' + datos.dias +
+                ' días y las que vienen, también las del escritorio. Las notas salen cuando el vigilante del escritorio encuentra el acta.</p>';
+        } catch (error) {
+            caja.innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
+        }
+    }
+
+    function verVista(vista) {
+        document.querySelectorAll('#vistas .pestana').forEach((b) => b.classList.toggle('activa', b.dataset.vista === vista));
+        document.getElementById('vista-malla').classList.toggle('oculto', vista !== 'malla');
+        document.getElementById('vista-reuniones').classList.toggle('oculto', vista !== 'reuniones');
+        if (vista === 'reuniones') cargarReuniones();
+    }
+
     P.iniciar('cronograma').then(() => {
+        document.querySelectorAll('#vistas .pestana').forEach((b) => { b.onclick = () => verVista(b.dataset.vista); });
+        if (new URLSearchParams(window.location.search).get('vista') === 'reuniones') verVista('reuniones');
         document.getElementById('btn-anterior').onclick = () => estado.resumen && cargar(estado.resumen.anterior);
         document.getElementById('btn-siguiente').onclick = () => estado.resumen && cargar(estado.resumen.siguiente);
         document.getElementById('btn-hoy').onclick = () => cargar('');

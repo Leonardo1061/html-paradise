@@ -23,7 +23,6 @@ Las cuatro piezas hablan con la MISMA base de Firestore.
 | `index.html` | Login por **cédula + contraseña**. Es la portada del sitio |
 | `panel.html` | **Panel de inicio**: resumen de su semana y la barra de navegación |
 | `turnos.html` | Pre-agendamiento y toma de cupos de la semana |
-| `reuniones.html` | Reuniones de Meet (uso de los monitores) |
 | `plan.html` | **Plan de trabajo** (TUS SHOWS): la misma pantalla del programa de escritorio |
 | `fotografia.html` | **Fotografía**: malla del fotógrafo (agendarse y cancelar) y portafolio de estilos |
 | `dashboard.html` | Tablero de métricas. Hoy con datos de ejemplo |

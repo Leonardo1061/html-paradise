@@ -407,7 +407,7 @@ $('formulario').addEventListener('submit', async (evento) => {
     try {
         const r = await pedir('/api/datos', 'POST', cuerpo);
         if (pendiente) {
-            // turnos.html y reuniones.html trabajan por NOMBRE: ya no es la cédula.
+            // turnos.html trabaja por NOMBRE: ya no es la cédula.
             localStorage.setItem('modelo_actual', r.nombre);
             localStorage.removeItem('datos_pendientes');
             localStorage.removeItem('password_por_defecto');

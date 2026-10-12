@@ -178,8 +178,8 @@ document.getElementById('formulario').addEventListener('submit', async function 
         const datos = await respuesta.json();
 
         if (respuesta.ok) {
-            // `modelo_actual` lo siguen usando turnos.html y reuniones.html,
-            // que trabajan por NOMBRE. El token es lo que exige la API para el
+            // `modelo_actual` lo sigue usando turnos.html, que trabaja por
+            // NOMBRE. El token es lo que exige la API para el
             // plan de trabajo y el panel; la cédula no se guarda aquí.
             localStorage.setItem('modelo_actual', datos.nombre);
             localStorage.setItem('jornada_actual', datos.jornada);

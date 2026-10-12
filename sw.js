@@ -31,7 +31,7 @@
  * de que hay uno nuevo y lo reemplaza en la siguiente visita.
  */
 
-const VERSION = 'paradise-2';
+const VERSION = 'paradise-3';
 
 self.addEventListener('install', (evento) => {
     // Sin esperar a que se cierren las pestañas viejas: no hay caché que
@@ -82,6 +82,12 @@ self.addEventListener('push', (evento) => {
 self.addEventListener('notificationclick', (evento) => {
     evento.notification.close();
     const destino = absoluta(evento.notification.data && evento.notification.data.url);
+    // Un enlace de fuera (la sala de Meet de una reunión del cronograma) se
+    // abre en su propia ventana: no se lleva por delante la de la aplicación.
+    if (new URL(destino).origin !== self.location.origin) {
+        evento.waitUntil(self.clients.openWindow(destino));
+        return;
+    }
     const pagina = new URL(destino).pathname;
 
     evento.waitUntil((async () => {
