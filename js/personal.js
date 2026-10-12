@@ -450,6 +450,18 @@ function tarjetaTarea(t, recibida, alCambiar) {
             else throw new Error('No se marcó.');
         });
     }
+    // En curso o hecha: quien la asignó la devuelve a pendientes (2026-10-12).
+    if (!recibida && t.abierta && !t.ticket && (t.estado === 'en curso' || t.estado === 'hecha')) {
+        boton('↩ Regresar a pendientes', async () => {
+            const quien = t.para_todos ? 'todo el personal' : (t.asignada_a || 'la persona');
+            if (!confirm('¿Regresar «' + (t.titulo || '') + '» a pendientes?\n\nLe vuelve a ' +
+                         'salir en la campana a ' + quien + '.')) throw new Error('No se regresó.');
+            const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/a_pendientes', 'POST');
+            avisar(r.mensaje, 'bueno');
+            if (campana.abierta) campana.abierta.filtro = 'pendientes';
+            alCambiar();
+        });
+    }
     if (!recibida && t.abierta) boton('✕ Cancelar', () => cambiar('cancelada'));
     // Quien la asignó la puede borrar del todo, esté como esté (2026-10-12).
     if (!recibida && !t.ticket) {
