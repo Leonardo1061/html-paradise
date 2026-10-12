@@ -111,6 +111,13 @@ button { cursor: pointer; }
 .navegacion button.activo { color: #fff; }
 .navegacion button.activo .simbolo { background: rgba(255, 255, 255, .2); border-radius: 10px; padding: 4px 10px; }
 .navegacion .globo { top: -4px; right: calc(50% - 26px); border-color: transparent; }
+/* Con muchos módulos (REUNIONES, MIS TICKETS) los nombres no caben a 9px. */
+.navegacion[data-botones="6"] { padding-left: 2px; padding-right: 2px; }
+.navegacion[data-botones="6"] button { font-size: 8px; letter-spacing: -.3px; }
+.navegacion[data-botones="7"] { padding-left: 2px; padding-right: 2px; }
+@media (max-width: 759px) { .navegacion[data-botones="7"] { left: 8px; right: 8px; } }
+.navegacion[data-botones="7"] button { font-size: 7px; letter-spacing: -.3px; }
+.navegacion[data-botones="7"] button.activo .simbolo { padding: 4px 7px; }
 
 /* ------------------------------------------------------------- formularios */
 .campo { margin-bottom: 14px; }

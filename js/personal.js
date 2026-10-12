@@ -116,6 +116,7 @@ const MODULOS = [
     { id: 'chat', texto: 'CHAT', simbolo: '💬', pagina: 'personal_chat.html' },
     { id: 'fotografia', texto: 'FOTOGRAFÍA', simbolo: '📷', pagina: 'personal_fotografia.html' },
     { id: 'status', texto: 'STATUS ROOM', simbolo: '📋', pagina: 'personal_status.html' },
+    { id: 'reuniones', texto: 'REUNIONES', simbolo: '📞', pagina: 'personal_reuniones.html' },
     { id: 'cronograma', texto: 'CRONOGRAMA', simbolo: '🗓️', pagina: 'personal_cronograma.html' },
     // Solo el CEO: la API se lo añade a sus módulos (personal.es_ceo).
     { id: 'tickets', texto: 'MIS TICKETS', simbolo: '🎫', pagina: 'personal_tickets.html' },
@@ -1164,7 +1165,10 @@ function pintarBarras(actual, yo) {
     }
     nav.className = 'navegacion';
     const permitidos = ['inicio'].concat(yo.modulos || []);
-    nav.innerHTML = MODULOS.filter((m) => permitidos.indexOf(m.id) >= 0).map((m) =>
+    const visibles = MODULOS.filter((m) => permitidos.indexOf(m.id) >= 0);
+    // Con 6 o 7 botones la letra se achica para que quepan en un teléfono.
+    nav.dataset.botones = visibles.length;
+    nav.innerHTML = visibles.map((m) =>
         '<button class="' + (m.id === actual ? 'activo' : '') + '" data-pagina="' + m.pagina + '" data-id="' + m.id + '">' +
         '<span class="simbolo">' + m.simbolo + '</span>' + m.texto +
         (m.id === 'chat' ? '<span class="globo oculto" id="globo-chat">0</span>' : '') + '</button>').join('');

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Reuniones · PARADISE</title>
+
+<!--
+  REUNIONES (la sala de Meet con modelos)
+  =======================================
+  Lo mismo que reuniones.html, dentro de la web del personal y con su sesión
+  (/api/personal/reuniones, api/reuniones_personal.py):
+
+    - el monitor a cargo es quien ha entrado, no se elige;
+    - se cita a modelos sueltas (buscador, varias a la vez) o a una jornada
+      entera, y solo salen las modelos que esa persona ve;
+    - «Iniciar Meet» crea la sala con Calendar, la registra en Reuniones_Meet
+      y la abre en otra pestaña; el vigilante del escritorio le pega el acta
+      de Gemini por el código de la sala;
+    - abajo, las reuniones de hoy (también las del escritorio), con sus notas.
+-->
+
+<link rel="manifest" href="manifest_personal.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE Staff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+<style>
+.sala { border-color: rgba(52, 211, 153, .5); margin-bottom: 16px; text-align: center; }
+.sala .codigo { font-family: Consolas, monospace; font-size: 20px; font-weight: 700; letter-spacing: 1px; margin: 8px 0 12px; }
+.sala a.boton-principal { display: block; text-decoration: none; }
+.sala p { font-size: 12.5px; color: var(--tenue); margin: 8px 0 0; }
+.elegidas { font-size: 12.5px; color: var(--tenue); margin: 8px 0 0; }
+.reunion .linea2 { white-space: normal !important; }
+.reunion .pildora { text-decoration: none; display: inline-block; margin-top: 6px; }
+</style>
+</head>
+
+<body>
+
+<main class="contenido">
+    <div class="titulo-pagina">
+        <h1>📞 Reuniones</h1>
+        <p>Crea la sala de Meet con las modelos y queda registrada con su acta.</p>
+    </div>
+
+    <div id="sala"></div>
+
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
+
+    <form id="formulario" class="tarjeta oculto">
+        <div class="titulo-seccion">➕ Nueva reunión</div>
+        <div class="pestanas" id="tipos">
+            <button type="button" class="pestana activa" data-tipo="especificas">Modelos</button>
+            <button type="button" class="pestana" data-tipo="jornada_completa">Toda una jornada</button>
+        </div>
+        <div id="sec-especificas">
+            <div class="selector-modelos" id="modelos">
+                <input class="buscar" type="search" placeholder="Buscar modelo…" autocomplete="off">
+                <div class="opciones"></div>
+            </div>
+            <p class="elegidas" id="elegidas">Toca a las modelos que vas a citar.</p>
+        </div>
+        <div id="sec-jornada" class="campo oculto">
+            <label for="jornada">Jornada citada</label>
+            <select id="jornada"></select>
+            <p class="elegidas" id="conteo"></p>
+        </div>
+        <p class="elegidas" id="a-cargo"></p>
+        <button type="submit" class="boton-principal" id="iniciar" style="margin-top:14px">🌐 Iniciar Meet y registrar</button>
+    </form>
+
+    <section class="seccion">
+        <h2>🕒 Hoy</h2>
+        <div class="tarjeta" id="historial"><div class="vacio">Cargando…</div></div>
+    </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/personal.js"></script>
+<script>
+(function () {
+    'use strict';
+    const P = window.Personal;
+    const $ = (id) => document.getElementById(id);
+    const sinTildes = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const CADA_MS = 60000;
+    const estado = { tipo: 'especificas', modelos: [], elegidas: new Set() };
+
+    /* ------------------------------------------------ modelos (varias) */
+    function pintarModelos() {
+        const caja = $('modelos');
+        const f = sinTildes(caja.querySelector('.buscar').value.trim());
+        const lista = estado.modelos.filter((m) => !f || sinTildes(m.nombre + ' ' + m.jornada).indexOf(f) >= 0);
+        const opciones = caja.querySelector('.opciones');
+        opciones.innerHTML = lista.length ? lista.map((m) =>
+            '<button type="button" class="opcion' + (estado.elegidas.has(m.cedula) ? ' elegida' : '') +
+            '" data-cedula="' + P.escapar(m.cedula) + '"><span>' + (estado.elegidas.has(m.cedula) ? '✓ ' : '') +
+            P.escapar(m.nombre) + '</span><small>' + P.escapar(m.jornada) + '</small></button>').join('')
+            : '<div class="vacio">Ninguna modelo con ese nombre.</div>';
+        opciones.querySelectorAll('.opcion').forEach((b) => {
+            b.onclick = () => {
+                const c = b.dataset.cedula;
+                if (estado.elegidas.has(c)) estado.elegidas.delete(c); else estado.elegidas.add(c);
+                pintarModelos();
+            };
+        });
+        const nombres = estado.modelos.filter((m) => estado.elegidas.has(m.cedula)).map((m) => m.nombre);
+        $('elegidas').textContent = nombres.length
+            ? 'Citadas (' + nombres.length + '): ' + nombres.join(', ')
+            : 'Toca a las modelos que vas a citar.';
+    }
+
+    function pintarConteo() {
+        const j = $('jornada').value;
+        const n = estado.modelos.filter((m) => m.jornada === j).length;
+        $('conteo').textContent = n ? 'Se citarán ' + n + ' modelo(s) de esa jornada.' : 'No hay modelos en esa jornada.';
+    }
+
+    function elegirTipo(tipo) {
+        estado.tipo = tipo;
+        document.querySelectorAll('#tipos .pestana').forEach((b) => b.classList.toggle('activa', b.dataset.tipo === tipo));
+        $('sec-especificas').classList.toggle('oculto', tipo !== 'especificas');
+        $('sec-jornada').classList.toggle('oculto', tipo === 'especificas');
+        if (tipo !== 'especificas') pintarConteo();
+    }
+
+    /* ---------------------------------------------------- el historial */
+    function pintarHistorial(lista) {
+        if (!lista.length) {
+            $('historial').innerHTML = '<div class="vacio">Todavía no hay reuniones hoy.</div>';
+            return;
+        }
+        $('historial').innerHTML = lista.map((r) => {
+            const quienes = r.jornada_citada
+                ? 'Jornada ' + r.jornada_citada + ' (' + r.total_modelos + ' modelos)'
+                : (r.modelos || []).join(', ');
+            const acta = r.link_notas
+                ? '<a class="pildora bien" href="' + P.escapar(r.link_notas) + '" target="_blank" rel="noopener">📝 Leer notas</a>'
+                : '<span class="pildora alta">⏳ Esperando notas de Gemini</span>';
+            const entrar = r.enlace
+                ? ' <a class="pildora cian" href="' + P.escapar(r.enlace) + '" target="_blank" rel="noopener">🌐 Entrar</a>' : '';
+            return '<div class="fila reunion"><div class="principal">' +
+                '<div><strong>' + P.escapar(quienes) + '</strong></div>' +
+                '<div class="linea2">👥 ' + P.escapar(r.monitor) + (r.codigo ? ' · 🔑 ' + P.escapar(r.codigo) : '') + '</div>' +
+                acta + entrar + '</div><div class="lado">' + P.escapar(r.hora) + '</div></div>';
+        }).join('');
+    }
+
+    async function cargar(primera) {
+        try {
+            const datos = await P.pedir('/api/personal/reuniones');
+            estado.modelos = datos.modelos || [];
+            const visibles = new Set(estado.modelos.map((m) => m.cedula));
+            estado.elegidas.forEach((c) => { if (!visibles.has(c)) estado.elegidas.delete(c); });
+            if (primera) {
+                $('jornada').innerHTML = (datos.jornadas || []).map((j) =>
+                    '<option value="' + P.escapar(j) + '">' + P.escapar(j) + '</option>').join('');
+                $('a-cargo').textContent = 'Monitor a cargo: ' + datos.monitor;
+                $('cargando').classList.add('oculto');
+                $('formulario').classList.remove('oculto');
+            }
+            pintarModelos();
+            if (estado.tipo !== 'especificas') pintarConteo();
+            pintarHistorial(datos.reuniones || []);
+        } catch (error) {
+            if (primera) $('cargando').textContent = error.message;
+        }
+    }
+
+    function mostrarSala(datos) {
+        const quienes = datos.jornada_citada
+            ? 'Jornada ' + datos.jornada_citada + ' · ' + datos.total_modelos + ' modelos'
+            : (datos.modelos || []).join(', ');
+        $('sala').innerHTML = '<div class="tarjeta sala"><div class="titulo-seccion">✅ Sala creada y registrada</div>' +
+            '<div class="codigo">' + P.escapar(datos.codigo || '(sin código)') + '</div>' +
+            '<a class="boton-principal" href="' + P.escapar(datos.enlace) + '" target="_blank" rel="noopener">🌐 ABRIR MEET</a>' +
+            '<p>' + P.escapar(quienes) + '</p>' +
+            (datos.aviso ? '<p>⚠️ ' + P.escapar(datos.aviso) + '</p>' : '') +
+            '<p>Activa las notas de Gemini dentro de la llamada.</p></div>';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    $('formulario').onsubmit = async (ev) => {
+        ev.preventDefault();
+        const cuerpo = { tipo: estado.tipo, cedulas: [], jornada: '' };
+        if (estado.tipo === 'especificas') {
+            cuerpo.cedulas = Array.from(estado.elegidas);
+            if (!cuerpo.cedulas.length) { P.avisar('Elige al menos una modelo.', 'malo'); return; }
+        } else {
+            cuerpo.jornada = $('jornada').value;
+            if (!cuerpo.jornada) { P.avisar('Elige la jornada.', 'malo'); return; }
+        }
+        // La pestaña se abre ya, con el toque: después de esperar a la API el
+        // navegador la bloquearía. Si algo falla, se cierra.
+        const ventana = window.open('', '_blank');
+        const boton = $('iniciar');
+        boton.disabled = true;
+        boton.textContent = '⏳ Creando la sala…';
+        try {
+            const datos = await P.pedir('/api/personal/reuniones', 'POST', cuerpo);
+            if (ventana) ventana.location.href = datos.enlace;
+            mostrarSala(datos);
+            estado.elegidas.clear();
+            cargar(false);
+        } catch (error) {
+            if (ventana) ventana.close();
+            P.avisar(error.message, 'malo');
+        }
+        boton.disabled = false;
+        boton.textContent = '🌐 Iniciar Meet y registrar';
+    };
+
+    document.querySelectorAll('#tipos .pestana').forEach((b) => { b.onclick = () => elegirTipo(b.dataset.tipo); });
+    $('modelos').querySelector('.buscar').oninput = pintarModelos;
+    $('jornada').onchange = pintarConteo;
+
+    P.iniciar('reuniones').then(() => {
+        cargar(true);
+        setInterval(() => { if (!document.hidden) cargar(false); }, CADA_MS);
+    });
+})();
+</script>
+</body>
+</html>
