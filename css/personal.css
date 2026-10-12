@@ -282,3 +282,9 @@ button { cursor: pointer; }
 .dia-descanso.elegido small { color: #e0f2fe; }
 .dia-descanso:disabled { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
 .pie-descanso { font-size: 12.5px; color: var(--tenue); line-height: 1.45; }
+
+/* ------------------------------ recordatorio a las 24 h (personal.js) */
+.lista-recordatorio { list-style: none; margin: 0; padding: 0; }
+.lista-recordatorio li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--borde); }
+.lista-recordatorio li span { font-size: 12px; color: var(--tenue); }
+.recordatorio-tareas .hoja-cabecera h3 { font-size: 15.5px; }

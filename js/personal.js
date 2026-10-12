@@ -71,6 +71,13 @@
  * En «Enviadas», «📊 Por persona» enseña cuántas hizo y cuántas no realizó
  * cada uno (este mes, el pasado o todo); tocar a alguien filtra sus tareas.
  *
+ * RECORDATORIO A LAS 24 HORAS  (Leonardo, 2026-10-12; api/tareas_recordatorio.py)
+ * ------------------------------------------------------------------------
+ * Una tarea pendiente hace más de 24 horas sale con «⏰ +24 h». Al entrar a
+ * la web, si la persona está en su turno (nunca en su día de descanso), una
+ * ventana le recuerda cuáles tiene, con «Ver tareas». Sale una vez cada vez
+ * que abre la web (sessionStorage), no en cada cambio de página.
+ *
  * EL DESCANSO DE LA SEMANA  (Leonardo, 2026-10-11; api/cronograma.py)
  * -------------------------------------------------------------------
  * De miércoles a viernes 11:59 pm, a Julian, Leonardo, Alexander y Mayra la
@@ -344,6 +351,7 @@ function tarjetaTarea(t, recibida, alCambiar) {
     caja.innerHTML =
         '<div class="cabeza"><div class="t">' + escapar(t.titulo) + '</div>' +
         (t.prioridad !== 'Normal' ? '<span class="pildora ' + prioridad + '">' + escapar(t.prioridad) + '</span>' : '') +
+        (t.vencida ? '<span class="pildora urgente" title="Pendiente hace más de 24 horas">⏰ +24 h</span>' : '') +
         '<span class="pildora ' + claseEstado(t.estado) + '">' + escapar(t.estado) + '</span></div>' +
         '<div class="meta">' + (t.ticket ? '🎫 Ticket de ' + escapar(t.modelo || t.creada_por || '¿?') :
             recibida ? 'De ' + escapar(t.creada_por || '¿?') + (t.para_todos ? ' · 👥 para todo el personal' : '') :
@@ -715,6 +723,36 @@ function abrirConversacion(t, alSalir) {
             cargar().catch(() => {});
         }
     }, CADA_MS_CONVERSACION);
+}
+
+/* «⏰ Tienes tareas pendientes desde hace más de 24 horas». Una vez cada
+ * vez que se abre la web; la API devuelve vacío fuera del turno. */
+const CLAVE_RECORDATORIO = 'recordatorio_tareas_visto';
+
+async function recordarTareas() {
+    try { if (sessionStorage.getItem(CLAVE_RECORDATORIO)) return; } catch (e) { /* sin storage */ }
+    let datos;
+    try { datos = await pedir('/api/personal/tareas/recordatorio'); } catch (e) { return; }
+    if (!datos.tareas || !datos.tareas.length) return;
+    try { sessionStorage.setItem(CLAVE_RECORDATORIO, '1'); } catch (e) { /* sin storage */ }
+    const capas = document.getElementById('capas-personal');
+    if (!capas || capas.innerHTML) return;          // ya hay algo abierto encima
+    const n = datos.tareas.length;
+    capas.innerHTML =
+        '<div class="velo"></div><div class="hoja recordatorio-tareas">' +
+        '  <div class="hoja-cabecera"><h3>⏰ ' + (n === 1 ? 'Tienes 1 tarea pendiente' :
+            'Tienes ' + n + ' tareas pendientes') + ' desde hace más de 24 horas</h3>' +
+        '  <button class="cerrar" title="Cerrar">✕</button></div>' +
+        '  <div class="hoja-cuerpo"><ul class="lista-recordatorio">' +
+        datos.tareas.map((t) => '<li><b>' + escapar(t.titulo) + '</b><span>' +
+            (t.ticket ? '🎫 ' : 'De ') + escapar(t.de || '¿?') + (t.creada ? ' · ' + escapar(t.creada) : '') +
+            '</span></li>').join('') +
+        '  </ul><div class="meta">Ponla «En curso» para que deje de salir este recordatorio.</div>' +
+        '  <button class="boton-principal ver-tareas" style="margin-top:14px">Ver tareas</button></div></div>';
+    const cerrar = () => { capas.innerHTML = ''; };
+    capas.querySelector('.velo').onclick = cerrar;
+    capas.querySelector('.cerrar').onclick = cerrar;
+    capas.querySelector('.ver-tareas').onclick = () => { cerrar(); abrirCampana(); };
 }
 
 function abrirCampana() {
@@ -1181,6 +1219,8 @@ async function iniciar(actual) {
             const t = id && campana.tareas.concat(campana.respuestas).find((x) => x.id === id);
             if (id) abrirConversacion(t || { id: id, titulo: 'Tarea' },
                                       () => { if (campana.abierta) campana.abierta.pintar(); });
+        } else {
+            recordarTareas();
         }
     });
     campana.reloj = setInterval(revisarTareas, CADA_MS_TAREAS);
