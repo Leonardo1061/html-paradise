@@ -163,8 +163,9 @@ h1 { margin: 10px 0 4px; font-size: 22px; letter-spacing: -.3px; }
             <div class="campo"><label for="apellidos">Apellidos <b>*</b></label>
                 <input id="apellidos" autocomplete="family-name" maxlength="40"></div>
         </div>
-        <div class="campo"><label for="correo">Correo electrónico <b>*</b></label>
-            <input id="correo" type="email" autocomplete="email" inputmode="email"></div>
+        <div class="campo"><label for="correo">Correo de Gmail <b>*</b></label>
+            <input id="correo" type="email" autocomplete="email" inputmode="email"
+                   placeholder="tucorreo@gmail.com"></div>
         <div class="campo"><label for="celular">Número celular <b>*</b></label>
             <input id="celular" type="tel" autocomplete="tel" inputmode="tel"></div>
         <div id="claves" class="oculto">
@@ -402,6 +403,12 @@ $('formulario').addEventListener('submit', async (evento) => {
     const falta = ['nombres', 'apellidos', 'correo', 'celular'].concat(pendiente ? ['password', 'repetida'] : [])
         .find((c) => !String(cuerpo[c] || '').trim());
     if (falta) { avisar('Llena todos los campos obligatorios.', 'malo'); $(falta).focus(); return; }
+    // Solo Gmail: con ese correo se la invita a las salas de Meet (la API repite la regla).
+    if (!/@gmail\.com$/i.test(cuerpo.correo.trim())) {
+        avisar('Usa un correo @gmail.com.', 'malo');
+        $('correo').focus();
+        return;
+    }
 
     $('guardar').disabled = true;
     try {
