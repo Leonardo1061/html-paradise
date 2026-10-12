@@ -72,6 +72,10 @@ async function cargar() {
     }
     try {
         estado.datos = await pedir('/api/acceso/panel');
+        // La API dice si HOY sigue con la de la cédula: lo guardado en el login
+        // se queda viejo si la cambió en el escritorio o se la cambió el monitor.
+        if (estado.datos.password_por_defecto === true) localStorage.setItem('password_por_defecto', '1');
+        else if (estado.datos.password_por_defecto === false) localStorage.removeItem('password_por_defecto');
         $('cargando').classList.add('oculto');
         $('tablero').classList.remove('oculto');
         pintar();
