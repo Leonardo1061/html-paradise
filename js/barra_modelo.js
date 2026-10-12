@@ -97,7 +97,7 @@ function escapar(texto) {
 function token() { return localStorage.getItem('token_sesion') || ''; }
 
 function salirPorSesion() {
-    localStorage.removeItem('token_sesion');
+    PARADISE.olvidar('token_sesion');
     avisar('Tu sesión caducó. Entra otra vez.', 'malo');
     setTimeout(() => { window.location.href = PARADISE.URL_LOGIN; }, 1500);
 }
@@ -414,7 +414,7 @@ async function salir() {
     // La sesión no caduca: solo esto la cierra (y deja de avisar aquí).
     if (window.PARADISE_PUSH) { try { await PARADISE_PUSH.salir(false); } catch (e) { /* da igual */ } }
     ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto', 'datos_pendientes']
-        .forEach((clave) => localStorage.removeItem(clave));
+        .forEach((clave) => PARADISE.olvidar(clave));
     window.location.href = PARADISE.URL_LOGIN;
 }
 

@@ -59,7 +59,7 @@ function escapar(texto) {
 function token() { return localStorage.getItem('token_sesion') || ''; }
 
 function salirPorSesion() {
-    localStorage.removeItem('token_sesion');
+    PARADISE.olvidar('token_sesion');
     setTimeout(() => { window.location.href = PARADISE.URL_LOGIN; }, 1500);
 }
 

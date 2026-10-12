@@ -224,7 +224,7 @@ function avisar(texto, tipo) {
 
 function fueraDeSesion() {
     ['token_sesion', 'modelo_actual', 'jornada_actual', 'password_por_defecto', 'datos_pendientes']
-        .forEach((clave) => localStorage.removeItem(clave));
+        .forEach((clave) => PARADISE.olvidar(clave));
     window.location.replace(PARADISE.URL_LOGIN);
 }
 

@@ -94,7 +94,7 @@ async function pedir(ruta, metodo, cuerpo) {
     });
 
     if (respuesta.status === 401) {
-        localStorage.removeItem('token_sesion');
+        PARADISE.olvidar('token_sesion');
         avisar('Tu sesión caducó. Entra otra vez.', 'malo');
         setTimeout(() => { window.location.href = PARADISE.URL_LOGIN; }, 1500);
         throw new Error('sesión caducada');

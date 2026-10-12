@@ -80,4 +80,65 @@
     if (!window.PARADISE.ES_PRODUCCION) {
         console.warn('PARADISE: usando API de pruebas →', api);
     }
+
+    /* ------------------------------------------------ LA SESIÓN NO SE PIERDE
+     * El token vive en localStorage, pero el teléfono puede vaciarlo sin
+     * avisar: el navegador lo borra cuando le falta espacio, Safari limpia lo
+     * que guardan las páginas, algunos navegadores borran «datos del sitio»
+     * al cerrarse... y la persona vuelve a ver el login aunque la sesión siga
+     * viva en la API. Por eso se guarda una copia en una cookie de 400 días
+     * (lo máximo que aceptan los navegadores) que se renueva en cada visita,
+     * y si localStorage aparece vacío se rellena desde ahí antes de que la
+     * página lo lea. Este archivo va el primero en todas las páginas.
+     *
+     * Para cerrar sesión hay que usar PARADISE.olvidar(...): si solo se borra
+     * localStorage, la cookie la devolvería en la página siguiente. */
+    var CLAVES_SESION = ['token_sesion', 'modelo_actual', 'jornada_actual', 'token_personal'];
+    var PREFIJO_COOKIE = 'pdz_';
+    var SEGUNDOS_COOKIE = 400 * 24 * 60 * 60;
+
+    function leerCookie(nombre) {
+        var partes = document.cookie ? document.cookie.split('; ') : [];
+        for (var i = 0; i < partes.length; i++) {
+            var igual = partes[i].indexOf('=');
+            if (partes[i].slice(0, igual) === nombre) {
+                try { return decodeURIComponent(partes[i].slice(igual + 1)); } catch (e) { return ''; }
+            }
+        }
+        return '';
+    }
+
+    function escribirCookie(nombre, valor, segundos) {
+        var seguro = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = nombre + '=' + encodeURIComponent(valor) + '; Max-Age=' + segundos +
+            '; Path=/; SameSite=Strict' + seguro;
+    }
+
+    try {
+        CLAVES_SESION.forEach(function (clave) {
+            var guardado = localStorage.getItem(clave);
+            var copia = leerCookie(PREFIJO_COOKIE + clave);
+            if (guardado) escribirCookie(PREFIJO_COOKIE + clave, guardado, SEGUNDOS_COOKIE);
+            else if (copia) localStorage.setItem(clave, copia);
+        });
+    } catch (error) { /* sin almacenamiento: no hay nada que copiar */ }
+
+    // Que el navegador no vacíe este sitio por falta de espacio. En una app
+    // instalada Chrome lo concede sin preguntar; si no, no pasa nada.
+    try {
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persisted().then(function (ya) {
+                if (!ya) navigator.storage.persist();
+            }).catch(function () { /* da igual */ });
+        }
+    } catch (error) { /* da igual */ }
+
+    /* Borra estas claves de localStorage Y de la copia. Para salir. */
+    window.PARADISE.olvidar = function () {
+        for (var i = 0; i < arguments.length; i++) {
+            var clave = arguments[i];
+            try { localStorage.removeItem(clave); } catch (e) { /* da igual */ }
+            if (CLAVES_SESION.indexOf(clave) >= 0) escribirCookie(PREFIJO_COOKIE + clave, '', 0);
+        }
+    };
 })();

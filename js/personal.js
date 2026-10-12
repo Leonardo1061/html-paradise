@@ -125,7 +125,7 @@ function token() { return localStorage.getItem(CLAVE_TOKEN) || ''; }
 function aLogin() { window.location.href = PARADISE.URL_LOGIN + 'personal.html'; }
 
 function salirPorSesion() {
-    localStorage.removeItem(CLAVE_TOKEN);
+    PARADISE.olvidar(CLAVE_TOKEN);
     setTimeout(aLogin, 1500);
 }
 
@@ -1113,7 +1113,7 @@ function pintarBarras(actual, yo) {
         // dice a la API que este teléfono deja de recibir sus mensajes.
         if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(true);
         else { try { await pedir('/api/personal/salir', 'POST'); } catch (e) { /* da igual */ } }
-        localStorage.removeItem(CLAVE_TOKEN);
+        PARADISE.olvidar(CLAVE_TOKEN);
         localStorage.removeItem(CLAVE_FICHA);
         aLogin();
     };
