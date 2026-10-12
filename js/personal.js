@@ -451,6 +451,20 @@ function tarjetaTarea(t, recibida, alCambiar) {
         });
     }
     if (!recibida && t.abierta) boton('✕ Cancelar', () => cambiar('cancelada'));
+    // Quien la asignó la puede borrar del todo, esté como esté (2026-10-12).
+    if (!recibida && !t.ticket) {
+        boton('🗑 Eliminar', async () => {
+            if (!confirm('¿Eliminar DEFINITIVAMENTE la tarea «' + (t.titulo || '') + '»?' +
+                         (t.para_todos ? '\n\nSe borra para todo el personal.' : '') +
+                         '\n\nSe borra también su conversación y no se puede deshacer.')) {
+                throw new Error('No se eliminó.');
+            }
+            const r = await pedir('/api/personal/tareas/' + encodeURIComponent(t.id) + '/eliminar', 'POST');
+            avisar(r.mensaje, 'bueno');
+            caja.remove();
+            alCambiar();
+        });
+    }
     return caja;
 }
 
