@@ -231,7 +231,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
             htmlMalla(m) +
             '<p class="nota">Toca un hueco para programar ahí o una actividad para verla. ' +
             (m.es_jefe ? 'Como CEO o Gerencia puedes programar a cualquier hora; si cae encima de una actividad personal, esa se corre y al monitor le llega el aviso.'
-                       : 'Tus actividades van dentro de tu turno. Lo que programan CEO y Gerencia solo lo mueven ellos.') + '</p>';
+                       : 'Tus actividades personales van dentro de tu turno; las reuniones, a cualquier hora. Lo que programan CEO y Gerencia solo lo mueven ellos.') + '</p>';
         document.getElementById('malla').innerHTML = html;
         const sel = document.getElementById('sel-persona');
         if (sel) sel.onchange = () => { estado.persona = sel.value; cargarMalla(); };
