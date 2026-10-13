@@ -213,6 +213,8 @@ button { cursor: pointer; }
 
 /* ------------------------------------- conversación de una tarea (personal.js) */
 .capa-conversacion .velo { z-index: 60; }
+/* Toda hoja de una capa encima va POR ENCIMA de su velo (si no, se ve borrosa). */
+.capa-conversacion .hoja { z-index: 70; }
 .hoja.conversacion-tarea { z-index: 70; height: 92vh; }
 .mensajes-tarea { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .mensajes-tarea .ver-anteriores { align-self: center; }
