@@ -92,6 +92,12 @@
  * actividad personal solo llega si CEO o Gerencia la corrieron. Abrir la
  * campana las da por vistas. Viajan en `actividades` de /tareas; el INICIO
  * las escucha con el evento `personal:actividades`.
+ *
+ * ACTUALIZA TUS DATOS  (Leonardo, 2026-10-13; api/datos_personal.py)
+ * -----------------------------------------------------------------
+ * A quien le falte nombre, apellido, teléfono o un correo @gmail.com, la
+ * campana le pone arriba de «Para mí» la tarjeta «📝 Actualiza tus datos»
+ * y le suma uno al globo hasta que los guarde. Viaja en `mis_datos` de /tareas.
  */
 
 (function () {
@@ -258,6 +264,7 @@ const campana = {
     respuestas: [],                  // las que asignó y le contestaron sin que lo haya visto
     descanso: null,                  // la elección del descanso abierta (cronograma)
     actividades: [],                 // las del cronograma que le tocan (próximas)
+    misDatos: null,                  // {pendiente, faltan} si le falta algún dato
     conocidas: null,                 // ids ya vistos (para pitar solo por las nuevas)
     reloj: null,
     abierta: null,                   // la hoja, si está abierta
@@ -277,6 +284,7 @@ function pintarGlobo() {
     const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length +
         campana.misTickets.filter((t) => t.nuevo).length +
         (campana.descanso && campana.descanso.pendiente ? 1 : 0) +
+        (campana.misDatos ? 1 : 0) +
         campana.actividades.filter(actividadSuena).length;
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
@@ -311,6 +319,11 @@ async function revisarTareas(forzar) {
         campana.respuestas = datos.respuestas || [];
         const antes = campana.descanso;
         campana.descanso = datos.descanso || null;
+        const faltabanDatos = campana.misDatos;
+        campana.misDatos = datos.mis_datos || null;
+        if (campana.misDatos && !faltabanDatos) {
+            avisar('📝 Actualiza tus datos: nombre, apellido, teléfono y Gmail. Están en la 🔔 campana.');
+        }
         const sonaban = new Set(campana.actividades.filter(actividadSuena)
             .map((a) => a.id + (a.pronto ? 'p' : '') + (a.movida ? 'm' : '')));
         campana.actividades = datos.actividades || [];
@@ -1073,6 +1086,7 @@ function abrirCampana() {
 
     function pintarRecibidas() {
         cuerpo.innerHTML = '';
+        if (campana.misDatos) cuerpo.appendChild(tarjetaMisDatos(() => revisarTareas(true)));
         if (campana.descanso) cuerpo.appendChild(tarjetaDescanso(campana.descanso, () => revisarTareas(true)));
         if (campana.actividades.length) {
             const titulo = document.createElement('div');
@@ -1335,6 +1349,59 @@ function tarjetaDescanso(info, alCambiar) {
         };
     });
     return caja;
+}
+
+/* «📝 Actualiza tus datos» arriba de «Para mí» mientras le falte alguno. */
+function tarjetaMisDatos(alGuardar) {
+    const caja = document.createElement('div');
+    caja.className = 'tarea tarjeta-descanso por-elegir';
+    caja.innerHTML =
+        '<div class="titulo-seccion">📝 Actualiza tus datos</div>' +
+        '<div class="pie-descanso">Déjanos tu nombre, apellido, teléfono y tu correo de Gmail ' +
+        '(con ese te invitamos a las reuniones de Meet).</div>' +
+        '<button class="boton-principal" style="margin-top:10px">Actualizar mis datos</button>';
+    caja.querySelector('button').onclick = () => abrirMisDatos(alGuardar);
+    return caja;
+}
+
+/* El formulario de los datos del personal (el mismo de las modelos, más corto). */
+async function abrirMisDatos(alGuardar) {
+    let datos;
+    try { datos = await pedir('/api/personal/mis-datos'); } catch (error) { avisar(error.message, 'malo'); return; }
+    const dominio = datos.dominio || 'gmail.com';
+    const capa = document.createElement('div');
+    capa.className = 'capa-conversacion';
+    capa.innerHTML = '<div class="velo"></div><div class="hoja">' +
+        '<div class="hoja-cabecera"><h3>📝 Actualiza tus datos</h3><button class="cerrar" title="Cerrar">✕</button></div>' +
+        '<div class="hoja-cuerpo">' +
+        '<div class="campo"><label>Nombres</label><input class="d-nombres" maxlength="40" autocomplete="given-name"></div>' +
+        '<div class="campo"><label>Apellidos</label><input class="d-apellidos" maxlength="40" autocomplete="family-name"></div>' +
+        '<div class="campo"><label>Teléfono</label><input class="d-telefono" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="3001234567"></div>' +
+        '<div class="campo"><label>Correo de Gmail</label><input class="d-correo" maxlength="120" type="email" inputmode="email" autocomplete="email" placeholder="tucorreo@' + escapar(dominio) + '"></div>' +
+        '<button class="boton-principal guardar-datos">Guardar</button></div></div>';
+    document.getElementById('capas-personal').appendChild(capa);
+    const campo = (nombre) => capa.querySelector('.d-' + nombre);
+    ['nombres', 'apellidos', 'telefono', 'correo'].forEach((n) => { campo(n).value = datos[n] || ''; });
+    const cerrar = () => capa.remove();
+    capa.querySelector('.velo').onclick = cerrar;
+    capa.querySelector('.cerrar').onclick = cerrar;
+    capa.querySelector('.guardar-datos').onclick = async (e) => {
+        const cuerpo = {
+            nombres: campo('nombres').value.trim(), apellidos: campo('apellidos').value.trim(),
+            telefono: campo('telefono').value.trim(), correo: campo('correo').value.trim().toLowerCase(),
+        };
+        if (!cuerpo.nombres || !cuerpo.apellidos || !cuerpo.telefono || !cuerpo.correo) {
+            avisar('Llena los cuatro datos.', 'malo'); return;
+        }
+        if (!cuerpo.correo.endsWith('@' + dominio)) { avisar('Usa un correo @' + dominio + '.', 'malo'); return; }
+        e.target.disabled = true;
+        try {
+            const r = await pedir('/api/personal/mis-datos', 'POST', cuerpo);
+            avisar(r.mensaje, 'bueno');
+            cerrar();
+            if (alGuardar) alGuardar();
+        } catch (error) { avisar(error.message, 'malo'); e.target.disabled = false; }
+    };
 }
 
 /* Una actividad del cronograma (campana e INICIO). */
