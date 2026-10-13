@@ -31,9 +31,13 @@
 <body>
 
 <main class="contenido">
-    <div class="titulo-pagina">
-        <h1>🎫 Mis tickets</h1>
-        <p id="subtitulo">Lo que te han escrito las modelos, lo más reciente arriba.</p>
+    <div class="titulo-pagina" style="display:flex;gap:12px;align-items:flex-start">
+        <div style="flex:1">
+            <h1>🎫 Mis tickets</h1>
+            <p id="subtitulo">Lo que te han escrito las modelos, lo más reciente arriba.</p>
+        </div>
+        <!-- Añadir, modificar y eliminar los tipos de solicitud (solo el CEO). -->
+        <button class="boton-secundario" id="tipos" title="Añadir, modificar o eliminar tipos">⚙ Tipos de solicitud</button>
     </div>
     <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
     <div id="lista"></div>
@@ -75,6 +79,7 @@
     }
 
     $('mas').onclick = () => cargar(false);
+    $('tipos').onclick = () => P.abrirTiposSolicitud(() => cargar(true));
     P.iniciar('tickets').then(() => cargar(true));
 })();
 </script>

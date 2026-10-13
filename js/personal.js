@@ -1016,11 +1016,7 @@ function abrirCampana() {
         if (!campana.tipos) cargarTipos().then(pintar).catch(() => {});
         selector.onchange = () => { hoja.tipo = selector.value; hoja.pintar(); };
         fila.appendChild(selector);
-        const editar = document.createElement('button');
-        editar.className = 'filtro-tarea';
-        editar.textContent = '⚙ Tipos de solicitud';
-        editar.onclick = () => abrirTiposSolicitud(() => hoja.pintar());
-        fila.appendChild(editar);
+        // El editor de los tipos vive en el módulo MIS TICKETS (Leonardo, 2026-10-12).
         cuerpo.appendChild(fila);
     }
 
@@ -1509,7 +1505,7 @@ window.Personal = {
     selectorModelos: selectorModelos,
     iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, avisar: avisar,
     escapar: escapar, abrirVisor: abrirVisor, abrirConversacion: abrirConversacion, aDataUrl: aDataUrl, comprimir: comprimir,
-    abrirCampana: abrirCampana, globoChat: globoChat, guardarFicha: guardarFicha, ficha: ficha,
+    abrirCampana: abrirCampana, abrirTiposSolicitud: abrirTiposSolicitud, globoChat: globoChat, guardarFicha: guardarFicha, ficha: ficha,
     tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas, tarjetaDescanso: tarjetaDescanso,
     tarjetaActividad: tarjetaActividad, actividades: () => campana.actividades,
     tareas: () => campana.tareas, CLAVE_TOKEN: CLAVE_TOKEN,
