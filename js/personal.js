@@ -1091,7 +1091,7 @@ function abrirCampana() {
             }
         }
         barraFiltros();
-        if (esCeo()) barraTipos();
+        // El filtro por tipo de los tickets vive en MIS TICKETS (Leonardo, 2026-10-12).
         if (campana.respuestas.length && !hoja.tipo) {
             const titulo = document.createElement('div');
             titulo.className = 'titulo-seccion';

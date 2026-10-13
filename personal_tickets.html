@@ -36,8 +36,14 @@
             <h1>🎫 Mis tickets</h1>
             <p id="subtitulo">Lo que te han escrito las modelos, lo más reciente arriba.</p>
         </div>
-        <!-- Añadir, modificar y eliminar los tipos de solicitud (solo el CEO). -->
-        <button class="boton-secundario" id="tipos" title="Añadir, modificar o eliminar tipos">⚙ Tipos de solicitud</button>
+        <!-- El triángulo despliega el filtro por tipo; la tuerca añade, modifica
+             o elimina los tipos de solicitud (solo el CEO entra aquí). -->
+        <div class="acciones-tickets">
+            <select id="filtro-tipo" class="filtro-tipo" title="Filtrar por tipo de solicitud">
+                <option value="">TIPOS DE SOLICITUD</option>
+            </select>
+            <button class="redondo tuerca-tipos" id="tipos" title="Añadir, modificar o eliminar tipos de solicitud">⚙</button>
+        </div>
     </div>
     <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
     <div id="lista"></div>
@@ -60,14 +66,16 @@
         if (reiniciar) cargados = 0;
         $('mas').disabled = true;
         try {
-            const datos = await P.pedir('/api/personal/tickets?desde=' + cargados);
+            const datos = await P.pedir('/api/personal/tickets?desde=' + cargados +
+                                        '&tipo=' + encodeURIComponent($('filtro-tipo').value));
             $('cargando').classList.add('oculto');
             if (reiniciar) $('lista').innerHTML = '';
             (datos.tickets || []).forEach((t) => {
                 $('lista').appendChild(P.tarjetaTarea(t, true, () => { cargar(true); P.revisarTareas(true); }));
             });
             cargados += (datos.tickets || []).length;
-            if (!datos.total) $('lista').innerHTML = '<div class="vacio">Todavía no te ha llegado ningún ticket.</div>';
+            if (!datos.total) $('lista').innerHTML = '<div class="vacio">' + ($('filtro-tipo').value
+                ? 'No hay tickets de ese tipo.' : 'Todavía no te ha llegado ningún ticket.') + '</div>';
             $('subtitulo').textContent = datos.total
                 ? 'Viendo ' + cargados + ' de ' + datos.total + ', lo más reciente arriba.'
                 : 'Lo que te han escrito las modelos, lo más reciente arriba.';
@@ -79,7 +87,21 @@
     }
 
     $('mas').onclick = () => cargar(false);
-    $('tipos').onclick = () => P.abrirTiposSolicitud(() => cargar(true));
+    async function cargarTipos() {
+        try {
+            const datos = await P.pedir('/api/personal/tickets/tipos');
+            const elegido = $('filtro-tipo').value;
+            $('filtro-tipo').innerHTML = '<option value="">TIPOS DE SOLICITUD</option>' +
+                (datos.tipos || []).map((t) => '<option>' + P.escapar(t) + '</option>').join('');
+            $('filtro-tipo').value = (datos.tipos || []).indexOf(elegido) >= 0 ? elegido : '';
+        } catch (e) { /* sin red: queda «todos» */ }
+    }
+    $('filtro-tipo').onchange = () => {
+        $('filtro-tipo').classList.toggle('activo', !!$('filtro-tipo').value);
+        cargar(true);
+    };
+    $('tipos').onclick = () => P.abrirTiposSolicitud(() => { cargarTipos(); cargar(true); });
+    cargarTipos();
     P.iniciar('tickets').then(() => cargar(true));
 })();
 </script>

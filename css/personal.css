@@ -304,3 +304,15 @@ button { cursor: pointer; }
 .fila-tipo input { flex: 1; min-width: 0; background: var(--panel-alto); border: 1px solid var(--borde);
     border-radius: 10px; padding: 9px 11px; color: var(--texto); font: inherit; font-size: 14px; }
 .campo select { width: 100%; }
+
+/* MIS TICKETS: filtro por tipo (triángulo) y la tuerca de los tipos */
+.acciones-tickets { display: flex; align-items: center; gap: 10px; flex: none; }
+.filtro-tipo { appearance: none; -webkit-appearance: none; background: transparent; border: 0;
+    color: var(--texto); font: inherit; font-size: 13px; font-weight: 600; letter-spacing: .3px;
+    text-transform: uppercase; max-width: 230px; padding: 6px 22px 6px 4px; cursor: pointer; field-sizing: content;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: right 8px center, right 3px center; background-size: 5px 5px; background-repeat: no-repeat; }
+.filtro-tipo.activo { color: var(--cian); }
+.filtro-tipo option { background: var(--panel); color: var(--texto); text-transform: none; }
+.tuerca-tipos { font-size: 20px; }
+@media (max-width: 520px) { .titulo-pagina { flex-wrap: wrap; } .acciones-tickets { width: 100%; justify-content: flex-end; } }
