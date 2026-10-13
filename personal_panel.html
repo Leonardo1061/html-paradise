@@ -14,7 +14,22 @@
   respuesta se ven en CHAT (aquí solo el globo de la barra). Cada número sale de la API (/api/personal/resumen y
   /api/personal/chat/conversaciones) con las reglas del escritorio: a cada
   uno le salen solo los chats y las modelos que su rol le deja ver.
+
+  ＋ CREAR MODELO (2026-10-13): todo el personal da de alta una modelo con
+  solo cédula y jornada (POST /api/personal/modelos). Queda con datos
+  pendientes: entra a la web con su cédula y los últimos 4 dígitos y llena
+  «📝 Actualiza tus datos». Las jornadas salen de /yo (`jornadas_crear`):
+  Tropic Studio solo para quien ve Tropic.
 -->
+<style>
+.cabeza-inicio { display: flex; align-items: flex-start; gap: 12px; }
+.cabeza-inicio .titulo-pagina { flex: 1; min-width: 0; }
+.cabeza-inicio .boton-crear { flex: none; margin-top: 4px; }
+.resultado-alta { text-align: center; padding: 6px 0 4px; }
+.resultado-alta .grande { font-size: 40px; }
+.resultado-alta p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
+.resultado-alta .clave { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
+</style>
 
 <link rel="manifest" href="manifest_personal.webmanifest">
 <link rel="apple-touch-icon" href="iconos/icono-192.png">
@@ -31,9 +46,12 @@
 <body>
 
 <main class="contenido">
-    <div class="titulo-pagina">
-        <h1 id="saludo">Hola</h1>
-        <p id="subtitulo">Esto es lo que tienes hoy.</p>
+    <div class="cabeza-inicio">
+        <div class="titulo-pagina">
+            <h1 id="saludo">Hola</h1>
+            <p id="subtitulo">Esto es lo que tienes hoy.</p>
+        </div>
+        <button class="boton-secundario boton-crear oculto" id="btn-crear-modelo">＋ Crear modelo</button>
     </div>
     <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
     <div id="tablero" class="oculto">
@@ -75,7 +93,72 @@
         $('ver-tareas').onclick = P.abrirCampana;
     }
 
+    // ＋ CREAR MODELO: solo cédula y jornada; ella llena el resto en la web.
+    function abrirCrearModelo(jornadas) {
+        const capa = document.createElement('div');
+        capa.className = 'capa-conversacion';
+        capa.innerHTML = '<div class="velo"></div><div class="hoja">' +
+            '<div class="hoja-cabecera"><h3>＋ Crear modelo</h3><button class="cerrar" title="Cerrar">✕</button></div>' +
+            '<div class="hoja-cuerpo"></div></div>';
+        document.getElementById('capas-personal').appendChild(capa);
+        const cuerpo = capa.querySelector('.hoja-cuerpo');
+        const cerrar = () => capa.remove();
+        capa.querySelector('.velo').onclick = cerrar;
+        capa.querySelector('.cerrar').onclick = cerrar;
+
+        function formulario() {
+            cuerpo.innerHTML =
+                '<div class="campo"><label>Cédula *</label>' +
+                    '<input class="c-cedula" inputmode="numeric" autocomplete="off" placeholder="Solo números"></div>' +
+                '<div class="campo"><label>Jornada *</label><select class="c-jornada">' +
+                    '<option value="">Elige la jornada</option>' +
+                    jornadas.map((j) => '<option>' + esc(j) + '</option>').join('') + '</select></div>' +
+                '<div style="margin-bottom:14px;font-size:12px;color:var(--tenue);line-height:1.5">Con eso basta. Ella entra a la web con su cédula ' +
+                    'y los últimos 4 dígitos, y ahí llena sus nombres, apellidos, correo, celular y contraseña.</div>' +
+                '<button class="boton-principal c-crear">Crear modelo</button>';
+            const cedula = cuerpo.querySelector('.c-cedula');
+            const jornada = cuerpo.querySelector('.c-jornada');
+            cedula.focus();
+            cuerpo.querySelector('.c-crear').onclick = async (e) => {
+                const limpia = cedula.value.replace(/\D/g, '');
+                if (!limpia) { P.avisar('Escribe la cédula.', 'malo'); cedula.focus(); return; }
+                if (!jornada.value) { P.avisar('Elige la jornada.', 'malo'); jornada.focus(); return; }
+                if (!confirm('¿La cédula ' + limpia + ' está bien escrita?\n\n' +
+                             'Es el ID de la modelo y no se puede cambiar después.')) return;
+                e.target.disabled = true;
+                try {
+                    const r = await P.pedir('/api/personal/modelos', 'POST',
+                                            { cedula: limpia, jornada: jornada.value });
+                    resultado(r);
+                } catch (error) {
+                    P.avisar(error.message, 'malo');
+                    e.target.disabled = false;
+                }
+            };
+        }
+
+        function resultado(r) {
+            cuerpo.innerHTML = '<div class="resultado-alta"><div class="grande">✅</div>' +
+                '<p><b>Modelo ' + esc(r.cedula) + '</b> creada en ' + esc(r.jornada) + '.</p>' +
+                '<p>Ya puede entrar a la web con su cédula y esta contraseña:</p>' +
+                '<p class="clave">' + esc(r.password) + '</p>' +
+                '<p style="font-size:12px;color:var(--tenue)">Al entrar llena sus datos, y ahí se le crea su carpeta de Drive.</p></div>' +
+                '<div class="botones" style="margin-top:16px;display:flex;gap:8px">' +
+                '<button class="boton-secundario c-otra" style="flex:1">Crear otra</button>' +
+                '<button class="boton-principal c-listo" style="flex:1">Listo</button></div>';
+            cuerpo.querySelector('.c-otra').onclick = formulario;
+            cuerpo.querySelector('.c-listo').onclick = cerrar;
+        }
+
+        formulario();
+    }
+
     P.iniciar('inicio').then(async (yo) => {
+        const jornadasCrear = yo.jornadas_crear || [];
+        if (jornadasCrear.length) {
+            $('btn-crear-modelo').classList.remove('oculto');
+            $('btn-crear-modelo').onclick = () => abrirCrearModelo(jornadasCrear);
+        }
         // La campana llega por su lado (personal.js): se escucha desde ya.
         document.addEventListener('personal:tareas', (e) => pintarTareas(e.detail || []));
         // Las actividades del cronograma que le tocan (capacitaciones, reuniones).
