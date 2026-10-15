@@ -54,6 +54,10 @@
  * CEO) abre la hoja para subir fotos y videos de la galería a su Drive, en
  * PERSONAL/{asunto}. El asunto solo vale si sirve de nombre de carpeta. Ver
  * `contenido.py` en la API: la carpeta llega a MULTIMEDIA del escritorio.
+ * Arriba tiene dos pestañas: «📁 Personal» (lo de siempre) y «⚡ Kwiky»
+ * (2026-10-15): EXACTAMENTE 5 videos por envío, de hasta 2 GB, a
+ * KWIKY VIDEOS/{número siguiente}. Esas no van a MULTIMEDIA: el monitor las
+ * sube a Streamate desde SEGUIMIENTO KWIKY de la Admin, una carpeta por día.
  *
  * Todo el aspecto vive aquí (clases `bm-`), para verse igual en las cinco
  * páginas aunque cada una tenga su hoja de estilos.
@@ -267,6 +271,14 @@ body.guardando .bm-burbuja, body:has(#vista-chat:not(.oculto)) .bm-burbuja { dis
 .bm-subida.error { border-color: rgba(239,68,68,.55); }
 .bm-subida.error .nombre { white-space: normal; }
 .bm-subida.subiendo { border-color: rgba(139,92,246,.6); }
+.bm-pestanas { display: flex; gap: 6px; margin-bottom: 14px; background: #1b1a22;
+    border: 1px solid #2a2932; border-radius: 12px; padding: 4px; }
+.bm-pestanas button { flex: 1; background: none; border: 0; color: #9b9ba3; border-radius: 9px;
+    padding: 9px 6px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+.bm-pestanas button.activa { background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%); color: #fff; }
+.bm-kwiky-info { background: #1b1a22; border: 1px solid rgba(139,92,246,.45); border-radius: 12px;
+    padding: 11px 13px; font-size: 13.5px; line-height: 1.45; margin-bottom: 14px; }
+.bm-kwiky-info b { color: #e9d5ff; }
 .bm-principal {
     width: 100%; background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%); border: 0; color: #fff;
     font-weight: 600; border-radius: 12px; padding: 14px; font-size: 15px; font-family: inherit; cursor: pointer;
@@ -928,7 +940,7 @@ function abrirConversacionTicket(t) {
 const ASUNTO_MIN = 3;
 const ASUNTO_MAX = 60;
 const ASUNTO_PATRON = /^[0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ _-]+$/;
-const ASUNTOS_RESERVADOS = ['personal', 'chat paradise', 'capturas', 'subidos', 'tickets ceo'];
+const ASUNTOS_RESERVADOS = ['personal', 'chat paradise', 'capturas', 'subidos', 'tickets ceo', 'kwiky videos'];
 const MB = 1024 * 1024;
 const TOPE_FOTO_CONTENIDO = 30 * MB;      // los de contenido.py
 const TOPE_VIDEO_CONTENIDO = 300 * MB;
@@ -973,7 +985,27 @@ function pesoTexto(bytes) {
                        : Math.max(1, Math.round(bytes / 1024)) + ' KB';
 }
 
-function abrirSubir() {
+/* Las dos pestañas de arriba. Cambiar de pestaña vuelve a abrir la hoja en la
+   otra, salvo con una subida a medias. */
+function pestanasSubir(hoja, activa, ocupada) {
+    const caja = document.createElement('div');
+    caja.className = 'bm-pestanas';
+    [['personal', '📁 Personal'], ['kwiky', '⚡ Kwiky']].forEach(([modo, texto]) => {
+        const b = document.createElement('button');
+        b.textContent = texto;
+        if (modo === activa) b.className = 'activa';
+        b.onclick = () => {
+            if (modo === activa) return;
+            if (ocupada()) { avisar('Espera a que termine de subir.', 'malo'); return; }
+            abrirSubir(modo);
+        };
+        caja.appendChild(b);
+    });
+    hoja.cuerpo.prepend(caja);
+}
+
+function abrirSubir(modo) {
+    if (modo === 'kwiky') { abrirKwiky(); return; }
     const hoja = abrirHoja('subir', '📤 Subir contenido');
     const lista = [];                // {archivo, tipo, estado: listo|subiendo|hecho|error, error, vista}
     let subiendo = false;
@@ -995,6 +1027,7 @@ function abrirSubir() {
         'Fotos de hasta 30 MB y videos de hasta 300 MB. No cierres esta ventana mientras sube.</p>';
     const $ = (s) => hoja.cuerpo.querySelector(s);
     const entradaAsunto = $('.s-asunto');
+    pestanasSubir(hoja, 'personal', () => subiendo);
 
     const pendientes = () => lista.filter((x) => x.estado !== 'hecho');
 
@@ -1162,6 +1195,216 @@ function abrirSubir() {
 
     revisarBoton();
     entradaAsunto.focus();
+}
+
+// =======================================================================
+// ⚡ KWIKY: 5 videos exactos a KWIKY VIDEOS/{número}
+// =======================================================================
+// La API dice qué carpeta toca y cuántos faltan (5, o menos si el último envío
+// se cortó a mitad: entonces se retoma la misma carpeta). Justo antes de subir
+// se pide `paquete`, que crea la carpeta, y los videos van de uno en uno.
+const TOPE_VIDEO_KWIKY = 2 * 1024 * MB;   // el de contenido.py
+const VIDEOS_KWIKY = 5;
+
+function abrirKwiky() {
+    const hoja = abrirHoja('subir', '📤 Subir contenido');
+    const lista = [];                // {archivo, estado: listo|subiendo|hecho|error, error}
+    let subiendo = false;
+    let numero = 0, faltan = 0;      // lo que dice la API
+    hoja.cuerpo.innerHTML =
+        '<div class="bm-kwiky-info s-info">Buscando tu carpeta de Kwiky…</div>' +
+        '<div class="bm-campo"><label>Videos de tu galería</label>' +
+            '<button class="bm-secundario s-galeria" disabled>🎬 Escoger videos</button>' +
+            '<input type="file" class="bm-oculto s-entrada" accept="video/*" multiple>' +
+            '<div class="s-lista"></div></div>' +
+        '<div class="bm-progreso bm-oculto"><div></div></div>' +
+        '<div class="bm-nota s-estado"></div>' +
+        '<button class="bm-principal s-enviar" disabled>Subir</button>' +
+        '<p class="bm-nota">Cada envío son exactamente ' + VIDEOS_KWIKY + ' videos, de hasta 2 GB cada uno. ' +
+        'Se guardan en tu Drive, en KWIKY VIDEOS › (número), y tu monitor los sube a Streamate. ' +
+        'Si tienes más, envíalos de ' + VIDEOS_KWIKY + ' en ' + VIDEOS_KWIKY + '. No cierres esta ventana mientras sube.</p>';
+    const $ = (s) => hoja.cuerpo.querySelector(s);
+    pestanasSubir(hoja, 'kwiky', () => subiendo);
+
+    const pendientes = () => lista.filter((x) => x.estado !== 'hecho');
+
+    const pintarInfo = () => {
+        const info = $('.s-info');
+        info.innerHTML = faltan === VIDEOS_KWIKY
+            ? 'Se guardará en la carpeta <b></b>. Escoge exactamente <b></b> videos.'
+            : 'La carpeta <b></b> quedó incompleta. Escoge ' +
+              (faltan === 1 ? 'el <b></b> video que le falta.' : 'los <b></b> videos que le faltan.');
+        const negritas = info.querySelectorAll('b');
+        negritas[0].textContent = numero;
+        negritas[1].textContent = faltan;
+    };
+
+    // Subir solo se enciende con justo los que faltan, ni uno más ni uno menos.
+    const revisarBoton = () => {
+        if (subiendo) return;
+        const cuantos = pendientes().length;
+        const enviar = $('.s-enviar');
+        enviar.disabled = !numero || cuantos !== faltan;
+        enviar.textContent = cuantos ? 'Subir ' + cuantos + (cuantos === 1 ? ' video' : ' videos') : 'Subir';
+        let ayuda = '';
+        if (numero && cuantos < faltan) {
+            const resto = faltan - cuantos;
+            ayuda = cuantos ? 'Te falta' + (resto === 1 ? ' 1 video.' : 'n ' + resto + ' videos.')
+                            : 'Escoge ' + faltan + (faltan === 1 ? ' video.' : ' videos.');
+        } else if (cuantos > faltan) {
+            ayuda = 'Son ' + faltan + ' exactos: quita ' + (cuantos - faltan) + '.';
+        }
+        if (!lista.some((x) => x.estado === 'error')) $('.s-estado').textContent = ayuda;
+    };
+
+    const pintarLista = () => {
+        const caja = $('.s-lista');
+        caja.innerHTML = '';
+        lista.forEach((x, i) => {
+            const fila = document.createElement('div');
+            fila.className = 'bm-subida ' + x.estado;
+            const icono = { listo: '', subiendo: '⏫', hecho: '✅', error: '⚠️' }[x.estado];
+            fila.innerHTML = '<span class="tipo">🎬</span><span class="nombre"></span><span class="peso"></span>' +
+                (icono ? '<span>' + icono + '</span>' : '') +
+                (!subiendo && (x.estado === 'listo' || x.estado === 'error') ? '<button title="Quitar">✕</button>' : '');
+            fila.querySelector('.nombre').textContent = (x.archivo.name || 'video') + (x.error ? ' · ' + x.error : '');
+            fila.querySelector('.peso').textContent = pesoTexto(x.archivo.size);
+            const quitar = fila.querySelector('button');
+            if (quitar) quitar.onclick = () => { lista.splice(i, 1); pintarLista(); };
+            caja.appendChild(fila);
+        });
+        revisarBoton();
+    };
+
+    const agregar = (archivo) => {
+        const nombre = archivo.name || 'video';
+        if (tipoContenido(archivo) !== 'video') { avisar('«' + nombre + '» no es un video.', 'malo'); return; }
+        if (archivo.size > TOPE_VIDEO_KWIKY) {
+            avisar('«' + nombre + '» pesa ' + pesoTexto(archivo.size) + ': el máximo es 2 GB.', 'malo');
+            return;
+        }
+        if (!archivo.size) { avisar('«' + nombre + '» está vacío.', 'malo'); return; }
+        if (lista.some((x) => x.archivo.name === archivo.name && x.archivo.size === archivo.size)) return;
+        if (pendientes().length >= faltan) {
+            avisar('Son ' + faltan + ' videos exactos: «' + nombre + '» no cabe.', 'malo');
+            return;
+        }
+        lista.push({ archivo: archivo, estado: 'listo', error: '' });
+    };
+
+    $('.s-galeria').onclick = () => $('.s-entrada').click();
+    $('.s-entrada').onchange = () => {
+        Array.from($('.s-entrada').files || []).forEach(agregar);
+        $('.s-entrada').value = '';
+        pintarLista();
+    };
+
+    pedir('/api/contenido/kwiky').then((datos) => {
+        if (!hoja.capa.isConnected) return;
+        numero = datos.numero;
+        faltan = datos.faltan;
+        pintarInfo();
+        $('.s-galeria').disabled = false;
+        revisarBoton();
+    }).catch((error) => {
+        if (hoja.capa.isConnected) $('.s-info').textContent = error.message;
+    });
+
+    const cerrarNormal = hoja.cerrar;
+    const alSalir = (e) => { e.preventDefault(); e.returnValue = ''; };
+    hoja.cerrar = () => {
+        if (subiendo && !window.confirm('Todavía se están subiendo videos. Si cierras, se corta la subida. ¿Cerrar?')) return;
+        window.removeEventListener('beforeunload', alSalir);
+        cerrarNormal();
+    };
+    hoja.capa.querySelector('.bm-velo').onclick = hoja.cerrar;
+    hoja.capa.querySelector('.bm-cerrar').onclick = hoja.cerrar;
+
+    $('.s-enviar').onclick = async () => {
+        const tanda = pendientes();
+        if (!tanda.length || tanda.length !== faltan) return;
+        subiendo = true;
+        window.addEventListener('beforeunload', alSalir);
+        $('.s-galeria').disabled = true;
+        const enviar = $('.s-enviar');
+        enviar.disabled = true;
+        enviar.textContent = 'Preparando la carpeta…';
+        pintarLista();
+        // La carpeta se crea ahora. Si en otro teléfono ya la llenaron a
+        // medias, la API dice otro número de faltantes y se pide revisar.
+        try {
+            const paquete = await pedir('/api/contenido/kwiky/paquete', 'POST');
+            const cambio = paquete.numero !== numero || paquete.faltan !== faltan;
+            numero = paquete.numero;
+            faltan = paquete.faltan;
+            if (cambio) {
+                subiendo = false;
+                window.removeEventListener('beforeunload', alSalir);
+                $('.s-galeria').disabled = false;
+                pintarInfo();
+                pintarLista();
+                avisar('Tu carpeta de Kwiky cambió: revisa cuántos videos faltan.', 'malo');
+                return;
+            }
+        } catch (error) {
+            subiendo = false;
+            window.removeEventListener('beforeunload', alSalir);
+            $('.s-galeria').disabled = false;
+            pintarLista();
+            avisar(error.message, 'malo');
+            return;
+        }
+        const barra = $('.bm-progreso');
+        barra.classList.remove('bm-oculto');
+        const total = tanda.reduce((suma, x) => suma + x.archivo.size, 0) || 1;
+        let hechos = 0, fallidos = 0, bytesHechos = 0;
+        for (let i = 0; i < tanda.length; i++) {
+            if (!hoja.capa.isConnected) break;
+            const x = tanda[i];
+            const nombre = x.archivo.name || 'video';
+            x.estado = 'subiendo';
+            x.error = '';
+            pintarLista();
+            enviar.textContent = 'Subiendo ' + (i + 1) + ' de ' + tanda.length + '…';
+            const formulario = new FormData();
+            formulario.append('numero', String(numero));
+            formulario.append('archivo', x.archivo, x.archivo.name || 'video.mp4');
+            try {
+                await subir('/api/contenido/kwiky', formulario, (p) => {
+                    barra.firstChild.style.width = Math.round((bytesHechos + p * x.archivo.size) / total * 100) + '%';
+                    $('.s-estado').textContent = p >= 1 ? 'Guardando «' + nombre + '» en Drive…'
+                        : 'Subiendo «' + nombre + '» · ' + Math.round(p * 100) + '%';
+                });
+                x.estado = 'hecho';
+                faltan--;
+                hechos++;
+            } catch (error) {
+                x.estado = 'error';
+                x.error = error.message;
+                fallidos++;
+            }
+            bytesHechos += x.archivo.size;
+            barra.firstChild.style.width = Math.round(bytesHechos / total * 100) + '%';
+        }
+        subiendo = false;
+        window.removeEventListener('beforeunload', alSalir);
+        if (!hoja.capa.isConnected) return;
+        $('.s-galeria').disabled = false;
+        barra.classList.add('bm-oculto');
+        barra.firstChild.style.width = '0';
+        if (!fallidos) {
+            avisar('✅ Listo: tus videos quedaron en KWIKY VIDEOS › ' + numero + '. Tu monitor los sube a Streamate.', 'bueno');
+            hoja.cerrar();
+            return;
+        }
+        pintarInfo();
+        pintarLista();
+        $('.s-estado').textContent = (hechos ? hechos + ' guardados. ' : '') + fallidos +
+            (fallidos === 1 ? ' no se pudo subir' : ' no se pudieron subir') + ': toca «Subir» para reintentar.';
+        avisar('Algunos videos no se subieron. Revisa la lista y reinténtalo.', 'malo');
+    };
+
+    revisarBoton();
 }
 
 // =======================================================================
