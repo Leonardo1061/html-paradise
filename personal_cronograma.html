@@ -236,8 +236,10 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
             '<span style="--c:rgba(6,182,212,.35)">Tu turno</span></div>' +
             htmlMalla(m) +
             '<p class="nota">Toca un hueco para programar ahí o una actividad para verla. ' +
-            (m.es_jefe ? 'Como CEO o Gerencia puedes programar a cualquier hora; si cae encima de una actividad personal, esa se corre y al monitor le llega el aviso.'
-                       : 'Tus actividades personales van dentro de tu turno; las reuniones, a cualquier hora. Lo que programan CEO y Gerencia solo lo mueven ellos.') + '</p>';
+            (m.es_jefe ? 'Como CEO o Gerencia puedes programar a cualquier hora. ' :
+                         'Tus actividades personales van dentro de tu turno; las reuniones, a cualquier hora. ') +
+            'Una actividad puede ir encima de otra: si no vas a una reunión, pon encima lo que estás haciendo ' +
+            '(abre la reunión y toca «＋ Poner algo encima»).</p>';
         document.getElementById('malla').innerHTML = html;
         const sel = document.getElementById('sel-persona');
         if (sel) sel.onchange = () => { estado.persona = sel.value; cargarMalla(); };
@@ -287,10 +289,14 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                 '. Para las notas, entra con esa cuenta y activa «Tomar notas con Gemini».</p>' : '') +
             (a.acta ? '<p><a href="' + esc(a.acta) + '" target="_blank" rel="noopener">📝 Notas de Gemini</a></p>' : '') +
             '<p>Programada por ' + esc(a.creada_por) + '.</p>' +
-            (a.puede_editar ? '<div class="botones" style="margin-top:14px"><button class="boton-secundario" id="btn-editar">✏️ Cambiar</button>' +
+            '<div class="botones" style="margin-top:14px"><button class="boton-secundario" id="btn-encima">＋ Poner algo encima</button>' +
+            (a.puede_editar ? '<button class="boton-secundario" id="btn-editar">✏️ Cambiar</button>' +
                 '<button class="boton-secundario" id="btn-borrar">🗑️ Quitar</button></div>'
-                : '<p style="color:var(--apagado)">' + (a.de_jefe ? 'La programó CEO o Gerencia: solo ellos la mueven.' : 'Solo quien la puso la cambia.') + '</p>') +
+                : '</div><p style="color:var(--apagado)">' + (a.de_jefe ? 'La programó CEO o Gerencia: solo ellos la mueven.' : 'Solo quien la puso la cambia.') + '</p>') +
             '</div>');
+        // Encima de otra (Leonardo, 2026-10-15): el mismo día y la misma hora.
+        hoja.cuerpo.querySelector('#btn-encima').onclick = () =>
+            abrirFormulario({ dia: a.dia, inicio: a.inicio, duracion: a.duracion });
         if (!a.puede_editar) return;
         hoja.cuerpo.querySelector('#btn-editar').onclick = () => abrirFormulario(a);
         hoja.cuerpo.querySelector('#btn-borrar').onclick = async () => {
