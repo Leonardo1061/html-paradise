@@ -58,6 +58,9 @@
  * (2026-10-15): EXACTAMENTE 5 videos por envío, de hasta 2 GB, a
  * KWIKY VIDEOS/{número siguiente}. Esas no van a MULTIMEDIA: el monitor las
  * sube a Streamate desde SEGUIMIENTO KWIKY de la Admin, una carpeta por día.
+ * Desde 2026-10-16, en las dos pestañas: la pantalla no se apaga mientras
+ * sube (Wake Lock), un corte de conexión se reintenta solo al volver y al
+ * final sale una alerta grande (y notificación si la página no está a la vista).
  *
  * Todo el aspecto vive aquí (clases `bm-`), para verse igual en las cinco
  * páginas aunque cada una tenga su hoja de estilos.
@@ -124,23 +127,161 @@ async function pedir(ruta, metodo, cuerpo) {
     return datos;
 }
 
-/* Con barra de progreso: un video tarda en subir y fetch no la da. */
+/* Con barra de progreso: un video tarda en subir y fetch no la da.
+   Un error con `red = true` es de conexión (o del servidor despertando): ese
+   se puede reintentar solo. Si el envío se queda quieto (el teléfono durmió
+   la página y la conexión quedó colgada) se corta para reintentarlo. */
+const QUIETO_MS = 120000;
 function subir(ruta, formulario, alAvanzar) {
     return new Promise((resolver, rechazar) => {
         const xhr = new XMLHttpRequest();
+        let ultimo = Date.now();
+        let enviado = false;         // ya subió todo: ahora el servidor lo pasa a Drive
+        let cortado = false;
+        let volvio = false;          // acaba de volver a la vista
+        const deRed = (texto) => { const e = new Error(texto); e.red = true; return e; };
+        const revisar = () => {
+            if (enviado || cortado) return;
+            const quieto = Date.now() - ultimo;
+            if (quieto > QUIETO_MS || (document.visibilityState === 'visible' && quieto > 20000 && volvio)) {
+                cortado = true;
+                xhr.abort();
+            }
+            volvio = false;
+        };
+        const alVolver = () => { if (document.visibilityState === 'visible') { volvio = true; revisar(); } };
+        const reloj = setInterval(revisar, 10000);
+        document.addEventListener('visibilitychange', alVolver);
+        const terminar = () => { clearInterval(reloj); document.removeEventListener('visibilitychange', alVolver); };
         xhr.open('POST', API + ruta);
         xhr.setRequestHeader('Authorization', 'Bearer ' + token());
-        xhr.upload.onprogress = (e) => { if (e.lengthComputable) alAvanzar(e.loaded / e.total); };
+        xhr.upload.onprogress = (e) => {
+            ultimo = Date.now();
+            if (e.lengthComputable) alAvanzar(e.loaded / e.total);
+        };
+        xhr.upload.onload = () => { enviado = true; };
         xhr.onload = () => {
+            terminar();
             let datos = {};
             try { datos = JSON.parse(xhr.responseText); } catch (e) { datos = {}; }
             if (xhr.status === 401) { salirPorSesion(); rechazar(new Error('Tu sesión caducó.')); return; }
             if (xhr.status >= 200 && xhr.status < 300) resolver(datos);
-            else rechazar(new Error(datos.detail || 'No se pudo enviar. Inténtalo otra vez.'));
+            else if (xhr.status === 502 || xhr.status === 503 || xhr.status === 504) {
+                rechazar(deRed('El servidor no respondió. Inténtalo otra vez.'));
+            } else rechazar(new Error(datos.detail || 'No se pudo enviar. Inténtalo otra vez.'));
         };
-        xhr.onerror = () => rechazar(new Error('Se cortó la conexión. Inténtalo otra vez.'));
+        xhr.onerror = () => { terminar(); rechazar(deRed('Se cortó la conexión. Inténtalo otra vez.')); };
+        xhr.onabort = () => { terminar(); rechazar(deRed('La subida se quedó quieta. Inténtalo otra vez.')); };
         xhr.send(formulario);
     });
+}
+
+// -----------------------------------------------------------------------
+// Subidas largas en el teléfono (2026-10-16)
+// -----------------------------------------------------------------------
+// Una página no puede seguir subiendo con la pantalla apagada de forma
+// segura: el teléfono la duerme (en iPhone casi enseguida). Por eso:
+//   · mientras sube, se pide que la pantalla NO se apague (Wake Lock);
+//   · si la conexión se corta, se espera a que vuelva la página y la red y
+//     se reintenta solo ese archivo, sin que ella toque nada;
+//   · al terminar sale una alerta grande, vibra y, si la página no está a la
+//     vista, llega una notificación (si dio permiso de avisos).
+const REINTENTOS = 6;
+let pantalla = null;                 // el Wake Lock activo
+let quiereDespierta = false;
+
+async function pedirPantalla() {
+    if (!quiereDespierta || pantalla || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+    try {
+        pantalla = await navigator.wakeLock.request('screen');
+        pantalla.addEventListener('release', () => { pantalla = null; });
+    } catch (e) { pantalla = null; }
+}
+
+function mantenerDespierta(si) {
+    quiereDespierta = si;
+    if (si) pedirPantalla();
+    else if (pantalla) { pantalla.release().catch(() => {}); pantalla = null; }
+}
+
+// Al volver a la página el navegador suelta el Wake Lock: se pide otra vez.
+document.addEventListener('visibilitychange', () => { if (quiereDespierta) pedirPantalla(); });
+
+function esperarConexion(pausa) {
+    return new Promise((listo) => {
+        const revisar = () => {
+            if (document.visibilityState === 'visible' && navigator.onLine !== false) {
+                document.removeEventListener('visibilitychange', revisar);
+                window.removeEventListener('online', revisar);
+                setTimeout(listo, pausa);
+            }
+        };
+        document.addEventListener('visibilitychange', revisar);
+        window.addEventListener('online', revisar);
+        revisar();
+    });
+}
+
+/* `subir` con reintentos solos ante cortes de conexión. `yaLlego` (opcional)
+   pregunta a la API si el archivo sí quedó guardado antes del corte, para no
+   mandarlo dos veces. `alReintentar(n)` deja poner el aviso en la hoja. */
+async function subirConReintento(ruta, formulario, alAvanzar, yaLlego, alReintentar) {
+    for (let intento = 1; ; intento++) {
+        try {
+            return await subir(ruta, formulario, alAvanzar);
+        } catch (error) {
+            if (!error.red || intento >= REINTENTOS) throw error;
+            if (alReintentar) alReintentar(intento);
+            await esperarConexion(Math.min(30000, 2000 * intento * intento));
+            if (yaLlego) {
+                try { if (await yaLlego()) return {}; } catch (e) { /* se reintenta igual */ }
+            }
+        }
+    }
+}
+
+async function notificarFin(titulo, cuerpo) {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+    try {
+        const registro = await navigator.serviceWorker.getRegistration();
+        if (!registro) return;
+        await registro.showNotification(titulo, {
+            body: cuerpo, icon: 'iconos/icono-192.png', badge: 'iconos/icono-192.png',
+            tag: 'paradise-subida', renotify: true, requireInteraction: true,
+            vibrate: [300, 150, 300], data: { url: window.location.pathname.split('/').pop() || 'panel.html' },
+        });
+    } catch (e) { /* la alerta grande ya está en la página */ }
+}
+
+/* La alerta grande del final, encima de todo. `bien` la pinta verde. */
+function alertaFinal(bien, titulo, cuerpo) {
+    estilos();
+    const capa = document.createElement('div');
+    capa.className = 'bm-final';
+    capa.innerHTML = '<div class="caja ' + (bien ? 'bien' : 'mal') + '">' +
+        '<div class="icono">' + (bien ? '✅' : '⚠️') + '</div><h2></h2><p></p>' +
+        '<button class="bm-principal">Entendido</button></div>';
+    capa.querySelector('h2').textContent = titulo;
+    capa.querySelector('p').textContent = cuerpo;
+    const tituloPagina = document.title;
+    document.title = (bien ? '✅ ' : '⚠️ ') + titulo;
+    capa.querySelector('button').onclick = () => { capa.remove(); document.title = tituloPagina; };
+    document.body.appendChild(capa);
+    try { if (navigator.vibrate) navigator.vibrate(bien ? [200, 100, 200] : [500, 150, 500]); } catch (e) { /* nada */ }
+    if (document.visibilityState !== 'visible') notificarFin((bien ? '✅ ' : '⚠️ ') + titulo, cuerpo);
+}
+
+/* Mientras sube: pantalla encendida, aviso para no salir y franja en la hoja. */
+function modoSubida(hoja, si) {
+    mantenerDespierta(si);
+    let franja = hoja.cuerpo.querySelector('.bm-no-salgas');
+    if (si && !franja) {
+        franja = document.createElement('div');
+        franja.className = 'bm-no-salgas';
+        franja.textContent = '🔆 No salgas de esta pantalla ni la bloquees hasta que termine. ' +
+            'Si se corta la conexión, la subida sigue sola cuando vuelvas.';
+        hoja.cuerpo.prepend(franja);
+    } else if (!si && franja) franja.remove();
 }
 
 let avisoActual = null;
@@ -333,6 +474,17 @@ body.guardando .bm-burbuja, body:has(#vista-chat:not(.oculto)) .bm-burbuja { dis
 .bm-aviso.malo { border-color: rgba(239,68,68,.55); }
 .bm-aviso.bueno { border-color: rgba(52,211,153,.5); }
 @media (min-width: 760px) { .bm-aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
+.bm-no-salgas { background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.45); color: #fde68a;
+    border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; margin-bottom: 12px; }
+.bm-final { position: fixed; inset: 0; z-index: 10001; background: rgba(0,0,0,.8); backdrop-filter: blur(4px);
+    display: grid; place-items: center; padding: 20px; font-family: 'Poppins', -apple-system, 'Segoe UI', sans-serif; }
+.bm-final .caja { width: 100%; max-width: 400px; background: #141318; color: #f4f4f5; border-radius: 22px;
+    padding: 28px 22px 22px; text-align: center; border: 2px solid rgba(52,211,153,.6);
+    box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+.bm-final .caja.mal { border-color: rgba(239,68,68,.65); }
+.bm-final .icono { font-size: 64px; line-height: 1; }
+.bm-final h2 { margin: 14px 0 8px; font-size: 22px; }
+.bm-final p { margin: 0 0 20px; font-size: 15px; line-height: 1.5; color: #d4d4d8; white-space: pre-line; }
 .chat-camara {
     position: fixed; inset: 0; z-index: 2020; background: #000;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px;
@@ -1024,7 +1176,8 @@ function abrirSubir(modo) {
         '<button class="bm-principal s-enviar" disabled>Subir</button>' +
         '<p class="bm-nota">Se guarda en tu Drive, en la carpeta PERSONAL › (tu asunto). Si ya ' +
         'usaste ese asunto, se agrega a la misma carpeta. Tu monitor la recibe en Multimedia. ' +
-        'Fotos de hasta 30 MB y videos de hasta 300 MB. No cierres esta ventana mientras sube.</p>';
+        'Fotos de hasta 30 MB y videos de hasta 300 MB. No cierres esta ventana ni bloquees el teléfono mientras sube: ' +
+        'la pantalla se queda encendida sola y, si se corta la conexión, sigue cuando vuelvas.</p>';
     const $ = (s) => hoja.cuerpo.querySelector(s);
     const entradaAsunto = $('.s-asunto');
     pestanasSubir(hoja, 'personal', () => subiendo);
@@ -1138,6 +1291,7 @@ function abrirSubir(modo) {
         entradaAsunto.value = asunto;
         subiendo = true;
         window.addEventListener('beforeunload', alSalir);
+        modoSubida(hoja, true);
         entradaAsunto.disabled = true;
         $('.s-galeria').disabled = true;
         const enviar = $('.s-enviar');
@@ -1158,10 +1312,12 @@ function abrirSubir(modo) {
             formulario.append('asunto', asunto);
             formulario.append('archivo', x.archivo, x.archivo.name || (x.tipo === 'video' ? 'video.mp4' : 'foto.jpg'));
             try {
-                const r = await subir('/api/contenido', formulario, (p) => {
+                const r = await subirConReintento('/api/contenido', formulario, (p) => {
                     barra.firstChild.style.width = Math.round((bytesHechos + p * x.archivo.size) / total * 100) + '%';
                     $('.s-estado').textContent = p >= 1 ? 'Guardando «' + nombre + '» en Drive…'
                         : 'Subiendo «' + nombre + '» · ' + Math.round(p * 100) + '%';
+                }, null, (n) => {
+                    $('.s-estado').textContent = 'Se cortó la conexión: «' + nombre + '» se reintenta solo (intento ' + (n + 1) + ').';
                 });
                 x.estado = 'hecho';
                 carpeta = r.asunto || carpeta;
@@ -1176,21 +1332,24 @@ function abrirSubir(modo) {
         }
         subiendo = false;
         window.removeEventListener('beforeunload', alSalir);
+        modoSubida(hoja, false);
         if (!hoja.capa.isConnected) return;
         entradaAsunto.disabled = false;
         $('.s-galeria').disabled = false;
         barra.classList.add('bm-oculto');
         barra.firstChild.style.width = '0';
         if (!fallidos) {
-            avisar('✅ ' + hechos + (hechos === 1 ? ' archivo guardado' : ' archivos guardados') +
-                   ' en PERSONAL › ' + carpeta + '. Tu monitor ya lo tiene en Multimedia.', 'bueno');
             hoja.cerrar();
+            alertaFinal(true, '¡Subida completa!', hechos + (hechos === 1 ? ' archivo quedó guardado' : ' archivos quedaron guardados') +
+                        ' en tu Drive, en PERSONAL › ' + carpeta + '.\nTu monitor ya lo tiene en Multimedia.');
             return;
         }
         pintarLista();
         $('.s-estado').textContent = (hechos ? hechos + ' guardados. ' : '') + fallidos +
             (fallidos === 1 ? ' no se pudo subir' : ' no se pudieron subir') + ': toca «Subir» para reintentar.';
-        avisar('Algunos archivos no se subieron. Revisa la lista y reinténtalo.', 'malo');
+        alertaFinal(false, 'Faltaron archivos', (hechos ? hechos + (hechos === 1 ? ' se guardó' : ' se guardaron') + ', pero ' : '') +
+                    fallidos + (fallidos === 1 ? ' no se pudo subir.' : ' no se pudieron subir.') +
+                    '\nToca «Subir» para reintentar los que faltan.');
     };
 
     revisarBoton();
@@ -1230,7 +1389,8 @@ function abrirKwiky() {
         '<button class="bm-principal s-enviar" disabled>Subir</button>' +
         '<p class="bm-nota">Cada envío son exactamente ' + VIDEOS_KWIKY + ' videos, de hasta 2 GB cada uno. ' +
         'Se guardan en tu Drive, en KWIKY VIDEOS › (número), y tu monitor los sube a Streamate. ' +
-        'Si tienes más, envíalos de ' + VIDEOS_KWIKY + ' en ' + VIDEOS_KWIKY + '. No cierres esta ventana mientras sube.</p>';
+        'Si tienes más, envíalos de ' + VIDEOS_KWIKY + ' en ' + VIDEOS_KWIKY + '. No cierres esta ventana ni bloquees el ' +
+        'teléfono mientras sube: la pantalla se queda encendida sola y, si se corta la conexión, sigue cuando vuelvas.</p>';
     const $ = (s) => hoja.cuerpo.querySelector(s);
     pestanasSubir(hoja, 'kwiky', () => subiendo);
 
@@ -1376,6 +1536,7 @@ function abrirKwiky() {
         if (!tanda.length || tanda.length !== faltan) return;
         subiendo = true;
         window.addEventListener('beforeunload', alSalir);
+        modoSubida(hoja, true);
         $('.s-galeria').disabled = true;
         const enviar = $('.s-enviar');
         enviar.disabled = true;
@@ -1390,6 +1551,7 @@ function abrirKwiky() {
             if (cambio) {
                 subiendo = false;
                 window.removeEventListener('beforeunload', alSalir);
+                modoSubida(hoja, false);
                 $('.s-galeria').disabled = false;
                 pintarInfo();
                 pintarLista();
@@ -1399,6 +1561,7 @@ function abrirKwiky() {
         } catch (error) {
             subiendo = false;
             window.removeEventListener('beforeunload', alSalir);
+            modoSubida(hoja, false);
             $('.s-galeria').disabled = false;
             pintarLista();
             avisar(error.message, 'malo');
@@ -1421,10 +1584,18 @@ function abrirKwiky() {
             formulario.append('para', para);
             formulario.append('archivo', x.archivo, x.archivo.name || 'video.mp4');
             try {
-                await subir('/api/contenido/kwiky', formulario, (p) => {
+                // Tras un corte se pregunta a la API si el video sí llegó (le
+                // falta uno menos, o la carpeta ya se completó) para no repetirlo.
+                const yaLlego = async () => {
+                    const ahora = await pedir('/api/contenido/kwiky?para=' + encodeURIComponent(para));
+                    return ahora.numero !== numero || ahora.faltan < faltan;
+                };
+                await subirConReintento('/api/contenido/kwiky', formulario, (p) => {
                     barra.firstChild.style.width = Math.round((bytesHechos + p * x.archivo.size) / total * 100) + '%';
                     $('.s-estado').textContent = p >= 1 ? 'Guardando «' + nombre + '» en Drive…'
                         : 'Subiendo «' + nombre + '» · ' + Math.round(p * 100) + '%';
+                }, yaLlego, (n) => {
+                    $('.s-estado').textContent = 'Se cortó la conexión: «' + nombre + '» se reintenta solo (intento ' + (n + 1) + ').';
                 });
                 x.estado = 'hecho';
                 faltan--;
@@ -1439,21 +1610,24 @@ function abrirKwiky() {
         }
         subiendo = false;
         window.removeEventListener('beforeunload', alSalir);
+        modoSubida(hoja, false);
         if (!hoja.capa.isConnected) return;
         $('.s-galeria').disabled = false;
         barra.classList.add('bm-oculto');
         barra.firstChild.style.width = '0';
         if (!fallidos) {
-            avisar('✅ Listo: tus videos quedaron en ' + (carpeta || 'KWIKY VIDEOS › ' + numero) +
-                   '. Tu monitor los sube a Streamate.', 'bueno');
             hoja.cerrar();
+            alertaFinal(true, '¡Kwikis subidos!', 'Tus ' + hechos + (hechos === 1 ? ' video quedó guardado' : ' videos quedaron guardados') +
+                        ' en ' + (carpeta || 'KWIKY VIDEOS › ' + numero) + '.\nTu monitor los sube a Streamate.');
             return;
         }
         pintarInfo();
         pintarLista();
         $('.s-estado').textContent = (hechos ? hechos + ' guardados. ' : '') + fallidos +
             (fallidos === 1 ? ' no se pudo subir' : ' no se pudieron subir') + ': toca «Subir» para reintentar.';
-        avisar('Algunos videos no se subieron. Revisa la lista y reinténtalo.', 'malo');
+        alertaFinal(false, 'Faltaron videos', (hechos ? hechos + (hechos === 1 ? ' se guardó' : ' se guardaron') + ', pero ' : '') +
+                    fallidos + (fallidos === 1 ? ' no se pudo subir.' : ' no se pudieron subir.') +
+                    '\nToca «Subir» para reintentar: van a la misma carpeta.');
     };
 
     revisarBoton();
