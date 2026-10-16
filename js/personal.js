@@ -1209,23 +1209,51 @@ function abrirCampana() {
                 zona.innerHTML = '<div class="vacio">No asignaste tareas en ese periodo.</div>';
                 return;
             }
-            zona.innerHTML = '<table class="tabla-resumen"><thead><tr><th>Persona</th><th>✅ Hechas</th>' +
-                '<th>⛔ No realizadas</th><th>▶ En curso</th><th>Pendientes</th></tr></thead><tbody>' +
-                datos.personas.map((p) => '<tr data-persona="' + escapar(p.nombre) + '"><td>' + escapar(p.nombre) +
-                    '</td><td>' + p.hechas + '</td><td>' + p.no_realizadas + '</td><td>' + p.en_curso +
-                    '</td><td>' + p.pendientes + '</td></tr>').join('') +
-                '<tr class="grupales"><td>👥 Grupales sin tomar</td><td>—</td><td>' + datos.grupales.no_realizadas +
-                '</td><td>—</td><td>' + datos.grupales.pendientes + '</td></tr></tbody></table>' +
-                '<div class="meta" style="margin-top:8px">Por la fecha en que se asignó. «Hechas» incluye las ' +
-                'cerradas. Toca a una persona para ver sus tareas.</div>';
-            zona.querySelectorAll('tr[data-persona]').forEach((fila) => {
-                fila.onclick = () => {
-                    hoja.persona = fila.dataset.persona;
-                    hoja.resumen = false;
-                    hoja.filtro = 'hechas';
-                    hoja.pintar();
-                };
-            });
+            // Tocar un encabezado ordena por esa columna; otro toque invierte.
+            // Sin tocar nada queda el orden que trae la API.
+            const columnas = [['nombre', 'Persona'], ['hechas', '✅ Hechas'], ['no_realizadas', '⛔ No realizadas'],
+                ['en_curso', '▶ En curso'], ['pendientes', 'Pendientes']];
+            const pintarTabla = () => {
+                const orden = hoja.ordenResumen;
+                const personas = datos.personas.slice();
+                if (orden) {
+                    personas.sort((a, b) => {
+                        const r = orden.col === 'nombre' ?
+                            String(a.nombre).localeCompare(String(b.nombre), 'es', { sensitivity: 'base' }) :
+                            (a[orden.col] || 0) - (b[orden.col] || 0);
+                        return orden.asc ? r : -r;
+                    });
+                }
+                zona.innerHTML = '<table class="tabla-resumen"><thead><tr>' +
+                    columnas.map((c) => '<th data-col="' + c[0] + '" style="cursor:pointer;user-select:none">' + c[1] +
+                        (orden && orden.col === c[0] ? (orden.asc ? ' ▲' : ' ▼') : '') + '</th>').join('') +
+                    '</tr></thead><tbody>' +
+                    personas.map((p) => '<tr data-persona="' + escapar(p.nombre) + '"><td>' + escapar(p.nombre) +
+                        '</td><td>' + p.hechas + '</td><td>' + p.no_realizadas + '</td><td>' + p.en_curso +
+                        '</td><td>' + p.pendientes + '</td></tr>').join('') +
+                    '<tr class="grupales"><td>👥 Grupales sin tomar</td><td>—</td><td>' + datos.grupales.no_realizadas +
+                    '</td><td>—</td><td>' + datos.grupales.pendientes + '</td></tr></tbody></table>' +
+                    '<div class="meta" style="margin-top:8px">Por la fecha en que se asignó. «Hechas» incluye las ' +
+                    'cerradas. Toca un encabezado para ordenar y a una persona para ver sus tareas.</div>';
+                zona.querySelectorAll('th[data-col]').forEach((th) => {
+                    th.onclick = () => {
+                        const col = th.dataset.col;
+                        // Los números empiezan de mayor a menor; el nombre, de la A a la Z.
+                        hoja.ordenResumen = orden && orden.col === col ? { col: col, asc: !orden.asc } :
+                            { col: col, asc: col === 'nombre' };
+                        pintarTabla();
+                    };
+                });
+                zona.querySelectorAll('tr[data-persona]').forEach((fila) => {
+                    fila.onclick = () => {
+                        hoja.persona = fila.dataset.persona;
+                        hoja.resumen = false;
+                        hoja.filtro = 'hechas';
+                        hoja.pintar();
+                    };
+                });
+            };
+            pintarTabla();
         } catch (error) {
             zona.innerHTML = '<div class="vacio">' + escapar(error.message) + '</div>';
         }
