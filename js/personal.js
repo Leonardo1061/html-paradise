@@ -386,7 +386,9 @@ function tarjetaTarea(t, recibida, alCambiar) {
         (t.vencida ? '<span class="pildora urgente" title="Pendiente hace más de 24 horas">⏰ +24 h</span>' : '') +
         '<span class="pildora ' + claseEstado(t.estado) + '">' + escapar(t.estado) + '</span></div>' +
         '<div class="meta">' + (t.ticket ? '🎫 Ticket de ' + escapar(t.modelo || t.creada_por || '¿?') +
-            (t.de_personal ? ' (personal)' : '') + (t.tipo_solicitud ? ' · ' + escapar(t.tipo_solicitud) : '') :
+            (t.de_personal ? ' (personal)' : '') +
+            (t.enviado_por ? ' · ✍ lo envió ' + escapar(t.enviado_por) : '') +
+            (t.tipo_solicitud ? ' · ' + escapar(t.tipo_solicitud) : '') :
             recibida ? 'De ' + escapar(t.creada_por || '¿?') + (t.para_todos ? ' · 👥 para todo el personal' : '') :
             t.para_todos ? '👥 Todo el personal (' + (t.n_grupo || '¿?') + ')' +
                 (t.tomada_por ? ' · la tomó ' + escapar(t.tomada_por) : ' · sin tomar') :
@@ -870,14 +872,28 @@ async function abrirTiposSolicitud(alGuardar) {
     };
 }
 
-/* El formulario del ticket del personal: el mismo de las modelos. */
-async function formularioTicket(contenedor, alEnviar) {
-    let datos;
-    try { datos = await cargarTipos(); } catch (error) { avisar(error.message, 'malo'); return; }
+/* Sin tildes y en minúsculas, para buscar la modelo. */
+function textoBusqueda(texto) {
+    return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/* El formulario del ticket del personal: el mismo de las modelos. Con
+ * `porModelo`, primero se elige la modelo y el ticket queda como suyo
+ * (le aparece en su TICKET CEO; el CEO ve quién lo envió). 2026-10-16. */
+async function formularioTicket(contenedor, alEnviar, porModelo) {
+    let datos, modelos = [];
+    try {
+        datos = await cargarTipos();
+        if (porModelo) modelos = (await pedir('/api/personal/tickets/modelos')).modelos || [];
+    } catch (error) { avisar(error.message, 'malo'); return; }
+    if (porModelo && !modelos.length) { avisar('No tienes modelos a las que mandarles un ticket.', 'malo'); return; }
     const otra = datos.otra || 'OTRA';
     const fotos = [];            // {archivo, vista}
     const archivos = [];         // videos y PDF
     contenedor.innerHTML =
+        (porModelo ? '<div class="campo"><label>Modelo (queda como si ella lo enviara)</label>' +
+            '<input class="k-buscar" placeholder="Buscar por nombre, apellido o cédula…" autocomplete="off">' +
+            '<select class="k-modelo" style="margin-top:6px"></select></div>' : '') +
         '<div class="campo"><label>Tipo de solicitud</label><select class="k-tipo"><option value="">Elige el tipo…</option>' +
         (datos.tipos || []).map((x) => '<option>' + escapar(x) + '</option>').join('') + '</select></div>' +
         '<div class="campo"><label class="k-etiqueta">Asunto (opcional)</label><input class="k-asunto" maxlength="200"></div>' +
@@ -889,6 +905,21 @@ async function formularioTicket(contenedor, alEnviar) {
         '<button class="boton-principal k-enviar">Enviar al CEO</button>' +
         '<button class="boton-secundario k-cancelar" style="margin-top:8px;width:100%">Cancelar</button>';
     const $ = (x) => contenedor.querySelector(x);
+    if (porModelo) {
+        const pintarModelos = () => {
+            const buscado = textoBusqueda($('.k-buscar').value).trim();
+            const antes = $('.k-modelo').value;
+            const lista = modelos.filter((m) => !buscado ||
+                textoBusqueda(m.nombre + ' ' + m.cedula + ' ' + (m.jornada || '')).indexOf(buscado) >= 0);
+            $('.k-modelo').innerHTML = '<option value="">' + (lista.length ? 'Elige la modelo… (' + lista.length + ')' : 'Ninguna coincide') + '</option>' +
+                lista.map((m) => '<option value="' + escapar(m.cedula) + '">' + escapar(m.nombre) +
+                    ' · ' + escapar(m.jornada || '') + ' · ' + escapar(m.cedula) + '</option>').join('');
+            if (lista.length === 1) $('.k-modelo').value = lista[0].cedula;
+            else if (lista.some((m) => m.cedula === antes)) $('.k-modelo').value = antes;
+        };
+        $('.k-buscar').oninput = pintarModelos;
+        pintarModelos();
+    }
     $('.k-tipo').onchange = () => {
         $('.k-etiqueta').textContent = $('.k-tipo').value === otra ? 'Asunto (obligatorio con «' + otra + '»)' : 'Asunto (opcional)';
     };
@@ -912,9 +943,12 @@ async function formularioTicket(contenedor, alEnviar) {
     $('.k-enviar').onclick = async () => {
         const tipo = $('.k-tipo').value;
         const asunto = $('.k-asunto').value.trim();
+        const cedula = porModelo ? $('.k-modelo').value : '';
+        if (porModelo && !cedula) { avisar('Elige la modelo.', 'malo'); return; }
         if (!tipo) { avisar('Elige el tipo de solicitud.', 'malo'); return; }
         if (tipo === otra && !asunto) { avisar('Con «' + otra + '», escribe el asunto.', 'malo'); return; }
         const formulario = new FormData();
+        if (cedula) formulario.append('cedula', cedula);
         formulario.append('tipo', tipo);
         formulario.append('asunto', asunto);
         formulario.append('detalle', $('.k-detalle').value);
@@ -1041,6 +1075,12 @@ function abrirCampana() {
         nuevo.textContent = '＋ Nuevo ticket al CEO';
         nuevo.onclick = () => formularioTicket(cuerpo, () => { revisarTareas(true); hoja.pintar(); });
         cuerpo.appendChild(nuevo);
+        const porModelo = document.createElement('button');
+        porModelo.className = 'boton-secundario';
+        porModelo.style.cssText = 'margin-top:8px;width:100%';
+        porModelo.textContent = '👩 Ticket en nombre de una modelo';
+        porModelo.onclick = () => formularioTicket(cuerpo, () => { revisarTareas(true); hoja.pintar(); }, true);
+        cuerpo.appendChild(porModelo);
         if (!campana.misTickets.length) {
             cuerpo.insertAdjacentHTML('beforeend', '<div class="vacio">No le has mandado tickets al CEO.</div>');
             return;
