@@ -1203,6 +1203,10 @@ function abrirSubir(modo) {
 // La API dice qué carpeta toca y cuántos faltan (5, o menos si el último envío
 // se cortó a mitad: entonces se retoma la misma carpeta). Justo antes de subir
 // se pide `paquete`, que crea la carpeta, y los videos van de uno en uno.
+// Con DOS cuentas de Streamate («Streamate» y «Streamate_2») primero se
+// pregunta «KWIKIS PARA: nick1 · nick2 · Ambos»: la segunda tiene su propia
+// numeración en KWIKY VIDEOS › SECUNDARIOS; «Ambos» va a la principal marcada
+// para las dos.
 const TOPE_VIDEO_KWIKY = 2 * 1024 * MB;   // el de contenido.py
 const VIDEOS_KWIKY = 5;
 
@@ -1211,7 +1215,11 @@ function abrirKwiky() {
     const lista = [];                // {archivo, estado: listo|subiendo|hecho|error, error}
     let subiendo = false;
     let numero = 0, faltan = 0;      // lo que dice la API
+    let para = '', carpeta = '';     // para quién (con dos cuentas) y la ruta en Drive
+    let cuentas = null;              // {principal, secundaria} si tiene dos Streamate
     hoja.cuerpo.innerHTML =
+        '<div class="bm-campo s-para bm-oculto"><label>Kwikis para</label>' +
+            '<div class="bm-pestanas"></div></div>' +
         '<div class="bm-kwiky-info s-info">Buscando tu carpeta de Kwiky…</div>' +
         '<div class="bm-campo"><label>Videos de tu galería</label>' +
             '<button class="bm-secundario s-galeria" disabled>🎬 Escoger videos</button>' +
@@ -1230,13 +1238,51 @@ function abrirKwiky() {
 
     const pintarInfo = () => {
         const info = $('.s-info');
-        info.innerHTML = faltan === VIDEOS_KWIKY
-            ? 'Se guardará en la carpeta <b></b>. Escoge exactamente <b></b> videos.'
+        info.innerHTML = (faltan === VIDEOS_KWIKY
+            ? 'Se guardará en <b></b>. Escoge exactamente <b></b> videos.'
             : 'La carpeta <b></b> quedó incompleta. Escoge ' +
-              (faltan === 1 ? 'el <b></b> video que le falta.' : 'los <b></b> videos que le faltan.');
+              (faltan === 1 ? 'el <b></b> video que le falta.' : 'los <b></b> videos que le faltan.')) +
+            (para === 'ambos' ? ' Son para tus dos cuentas.' : '');
         const negritas = info.querySelectorAll('b');
-        negritas[0].textContent = numero;
+        negritas[0].textContent = carpeta || ('KWIKY VIDEOS › ' + numero);
         negritas[1].textContent = faltan;
+    };
+
+    const tomar = (datos) => {
+        numero = datos.numero;
+        faltan = datos.faltan;
+        carpeta = datos.carpeta || '';
+    };
+
+    // Con dos cuentas: los tres botones; al tocar uno se pregunta su carpeta.
+    const elegir = (opcion, boton) => {
+        if (subiendo) return;
+        para = opcion;
+        $('.s-para .bm-pestanas').querySelectorAll('button').forEach((b) => b.classList.toggle('activa', b === boton));
+        $('.s-info').textContent = 'Buscando tu carpeta de Kwiky…';
+        $('.s-galeria').disabled = true;
+        numero = 0;
+        revisarBoton();
+        pedir('/api/contenido/kwiky?para=' + encodeURIComponent(opcion)).then((datos) => {
+            if (!hoja.capa.isConnected || para !== opcion) return;
+            tomar(datos);
+            pintarInfo();
+            $('.s-galeria').disabled = false;
+            revisarBoton();
+        }).catch((error) => { if (hoja.capa.isConnected) $('.s-info').textContent = error.message; });
+    };
+
+    const pintarCuentas = () => {
+        const caja = $('.s-para .bm-pestanas');
+        caja.innerHTML = '';
+        [['principal', cuentas.principal], ['secundaria', cuentas.secundaria], ['ambos', 'Ambos']].forEach(([opcion, texto]) => {
+            const b = document.createElement('button');
+            b.textContent = texto;
+            b.onclick = () => elegir(opcion, b);
+            caja.appendChild(b);
+        });
+        $('.s-para').classList.remove('bm-oculto');
+        $('.s-info').textContent = 'Tienes dos cuentas de Streamate: escoge para cuál son estos Kwikis.';
     };
 
     // Subir solo se enciende con justo los que faltan, ni uno más ni uno menos.
@@ -1301,8 +1347,13 @@ function abrirKwiky() {
 
     pedir('/api/contenido/kwiky').then((datos) => {
         if (!hoja.capa.isConnected) return;
-        numero = datos.numero;
-        faltan = datos.faltan;
+        if (datos.cuentas && datos.numero === null) {
+            cuentas = datos.cuentas;
+            pintarCuentas();
+            return;
+        }
+        tomar(datos);
+        para = datos.para || '';
         pintarInfo();
         $('.s-galeria').disabled = false;
         revisarBoton();
@@ -1333,10 +1384,9 @@ function abrirKwiky() {
         // La carpeta se crea ahora. Si en otro teléfono ya la llenaron a
         // medias, la API dice otro número de faltantes y se pide revisar.
         try {
-            const paquete = await pedir('/api/contenido/kwiky/paquete', 'POST');
+            const paquete = await pedir('/api/contenido/kwiky/paquete?para=' + encodeURIComponent(para), 'POST');
             const cambio = paquete.numero !== numero || paquete.faltan !== faltan;
-            numero = paquete.numero;
-            faltan = paquete.faltan;
+            tomar(paquete);
             if (cambio) {
                 subiendo = false;
                 window.removeEventListener('beforeunload', alSalir);
@@ -1368,6 +1418,7 @@ function abrirKwiky() {
             enviar.textContent = 'Subiendo ' + (i + 1) + ' de ' + tanda.length + '…';
             const formulario = new FormData();
             formulario.append('numero', String(numero));
+            formulario.append('para', para);
             formulario.append('archivo', x.archivo, x.archivo.name || 'video.mp4');
             try {
                 await subir('/api/contenido/kwiky', formulario, (p) => {
@@ -1393,7 +1444,8 @@ function abrirKwiky() {
         barra.classList.add('bm-oculto');
         barra.firstChild.style.width = '0';
         if (!fallidos) {
-            avisar('✅ Listo: tus videos quedaron en KWIKY VIDEOS › ' + numero + '. Tu monitor los sube a Streamate.', 'bueno');
+            avisar('✅ Listo: tus videos quedaron en ' + (carpeta || 'KWIKY VIDEOS › ' + numero) +
+                   '. Tu monitor los sube a Streamate.', 'bueno');
             hoja.cerrar();
             return;
         }
