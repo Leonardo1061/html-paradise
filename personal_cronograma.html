@@ -15,6 +15,8 @@
       📝 Personal         lo que está haciendo (la pone él, dentro de su turno)
       🎓 Managers         capacitaciones del personal (cualquiera del personal)
       📞 Reunión con modelos  a una o varias modelos o a una jornada entera
+      🔒 Reunión privada  quien la da y UNA modelo: la sala de Meet es solo para
+                          ellos dos y ninguna otra modelo recibe aviso
       📣 Reunión general  (CEO y Gerencia)
   Las reuniones pueden crear su sala de Meet con la cuenta del estudio
   (theparadisemonitor): invita por correo y el acta de Gemini queda pegada a
@@ -216,7 +218,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                     (a._carril * 100 / n) + '% + 2px);width:calc(' + (100 / n) + '% - 4px)" title="' +
                     esc(a.titulo + ' · ' + a.cuando) + '"><b>' + esc(a.icono + ' ' + a.titulo) + '</b><small>' +
                     esc(etiquetaMinuto(a.inicio) + ' – ' + etiquetaMinuto(a.inicio + a.duracion)) +
-                    (a.tipo === 'modelos' ? ' · ' + esc(a.modelo) : '') + '</small></div>';
+                    (a.tipo === 'modelos' || a.tipo === 'privada' ? ' · ' + esc(a.modelo) : '') + '</small></div>';
             });
             html += '</div>';
         });
@@ -281,6 +283,8 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
             (a.tipo === 'modelos' ? '<p>Reunión de <b>' + esc(a.responsable) + '</b> con <b>' +
                 esc(a.jornada_citada ? 'toda la jornada ' + a.jornada_citada : a.modelo) +
                 '</b>. Les llega a todas las modelos' + (a.meet ? ', con el link' : '') + '.</p>' : '') +
+            (a.tipo === 'privada' ? '<p>Reunión privada de <b>' + esc(a.responsable) + '</b> con <b>' + esc(a.modelo) +
+                '</b>. La sala es solo para ellos dos: a ninguna otra modelo le llega el aviso.</p>' : '') +
             (a.tipo === 'managers' ? '<p>Para: ' + esc(a.personas.join(', ')) + '</p>' : '') +
             (a.descripcion ? '<p>' + esc(a.descripcion) + '</p>' : '') +
             (a.meet ? '<p><a href="' + esc(a.meet) + '" target="_blank" rel="noopener">🎥 Enlace de la reunión</a></p>' : '') +
@@ -356,10 +360,15 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                     ops.personal.map((p) => '<label><input type="checkbox" class="f-persona" value="' + esc(p) + '"' +
                         (marcadas.indexOf(p) >= 0 ? ' checked' : '') + '> ' + esc(p) + '</label>').join('') + '</div></div>';
             }
-            if (tipo === 'modelos' && !editando) {
-                html += '<div class="campo"><label>Con quién es la reunión (el aviso les llega a todas las modelos)</label>' +
-                    '<div class="pestanas" id="f-citar"><button type="button" class="pestana activa" data-citar="modelos">Modelos</button>' +
-                    '<button type="button" class="pestana" data-citar="jornada">Toda una jornada</button></div>' +
+            const privada = tipo === 'privada';
+            citar.una = privada;
+            citar.modo = 'modelos';
+            if (privada && citar.elegidas.size > 1) citar.elegidas.clear();
+            if ((tipo === 'modelos' || privada) && !editando) {
+                html += '<div class="campo"><label>' + (privada ? 'Con qué modelo (solo ella recibe el aviso y la invitación)'
+                        : 'Con quién es la reunión (el aviso les llega a todas las modelos)') + '</label>' +
+                    (privada ? '' : '<div class="pestanas" id="f-citar"><button type="button" class="pestana activa" data-citar="modelos">Modelos</button>' +
+                    '<button type="button" class="pestana" data-citar="jornada">Toda una jornada</button></div>') +
                     '<div id="f-sec-modelos"><div class="selector-modelos" id="f-modelos"><input class="buscar" type="search" placeholder="Buscar modelo…" autocomplete="off">' +
                     '<div class="opciones"></div></div><p class="citadas-elegidas" id="f-elegidas">Toca a las modelos que vas a citar.</p></div>' +
                     '<div id="f-sec-jornada" class="oculto"><select id="f-jornada">' + (ops.jornadas || []).map((j) =>
@@ -370,7 +379,10 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                         '<option' + (p === m.persona ? ' selected' : '') + '>' + esc(p) + '</option>').join('') + '</select></div>';
                 }
             }
-            if ((tipo === 'reunion' || tipo === 'managers' || tipo === 'modelos') && previo.meet_estudio) {
+            if (privada && !previo.meet_estudio) {
+                html += '<p class="nota" style="margin:0 0 12px">🔒 Se crea la sala de Meet con la cuenta del estudio, con invitación ' +
+                    'solo para quien la da y la modelo. Quien tenga la Admin abierta recibe la alerta para tomar las notas.</p>';
+            } else if ((tipo === 'reunion' || tipo === 'managers' || tipo === 'modelos' || privada) && previo.meet_estudio) {
                 html += '<p class="nota" style="margin:0 0 12px">📹 Ya tiene sala de Meet de la cuenta del estudio: si cambias la hora, la sala se mueve sola.</p>';
             } else if (tipo === 'reunion' || tipo === 'managers' || tipo === 'modelos') {
                 html += '<label class="crear-meet"><input type="checkbox" id="f-crear-meet"' + (editando ? '' : ' checked') + '> ' +
@@ -393,7 +405,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
             if (todos) todos.onchange = () => hoja.cuerpo.querySelectorAll('.f-persona').forEach((c) => { c.checked = todos.checked; });
         }
         // Reunión con modelos: varias (buscador) o una jornada entera.
-        const citar = { modo: 'modelos', elegidas: new Set() };
+        const citar = { modo: 'modelos', elegidas: new Set(), una: false };   // una: la privada
         function prepararCitadas() {
             const caja = $f('f-modelos');
             const sinTildes = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -408,12 +420,14 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                 opciones.querySelectorAll('.opcion').forEach((b) => {
                     b.onclick = () => {
                         const c = b.dataset.cedula;
-                        if (citar.elegidas.has(c)) citar.elegidas.delete(c); else citar.elegidas.add(c);
+                        if (citar.elegidas.has(c)) citar.elegidas.delete(c);
+                        else { if (citar.una) citar.elegidas.clear(); citar.elegidas.add(c); }
                         pintar();
                     };
                 });
                 const nombres = ops.modelos.filter((x) => citar.elegidas.has(x.cedula)).map((x) => x.nombre);
-                $f('f-elegidas').textContent = nombres.length ? 'Citadas (' + nombres.length + '): ' + nombres.join(', ')
+                $f('f-elegidas').textContent = citar.una ? (nombres.length ? 'Con: ' + nombres[0] : 'Toca a la modelo.')
+                    : nombres.length ? 'Citadas (' + nombres.length + '): ' + nombres.join(', ')
                     : 'Toca a las modelos que vas a citar.';
             }
             function conteo() {
@@ -462,7 +476,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                     cuerpo.tipo = tipo;
                     cuerpo.personas = hoja.cuerpo.querySelector('.f-persona') ? marcadas : [m.persona];
                     if ($f('f-modelos')) {
-                        if (citar.modo === 'jornada') cuerpo.jornada = $f('f-jornada').value;
+                        if (citar.modo === 'jornada' && !citar.una) cuerpo.jornada = $f('f-jornada').value;
                         else cuerpo.modelos = Array.from(citar.elegidas);
                     }
                     if ($f('f-responsable')) cuerpo.responsable = $f('f-responsable').value;
@@ -606,7 +620,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                     : '<span class="pildora alta">⏳ Esperando notas de Gemini</span>';
                 const entrar = r.enlace && (r.por_venir || !r.link_notas)
                     ? '<a class="pildora cian" href="' + esc(r.enlace) + '" target="_blank" rel="noopener">🎥 Entrar</a>' : '';
-                html += '<div class="reunion"><b>' + esc(r.titulo || quienes) + '</b>' +
+                html += '<div class="reunion"><b>' + (r.privada ? '🔒 ' : '') + esc(r.titulo || quienes) + '</b>' +
                     '<div class="linea">🕒 ' + esc(r.hora) + ' · 👥 ' + esc(r.monitor) + (r.codigo ? ' · 🔑 ' + esc(r.codigo) : '') + '</div>' +
                     (r.titulo ? '<div class="linea">' + esc(quienes) + '</div>' : '') + acta + entrar + '</div>';
             });

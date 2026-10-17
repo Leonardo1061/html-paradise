@@ -638,6 +638,7 @@ function tarjetaActividad(a) {
         '<div class="meta">' + escapar(a.cuando) + '</div>' +
         (a.tipo === 'modelos' ? '<div class="meta">Reunión con <b>' + escapar(a.responsable) + '</b>' +
             (a.para_mi ? ' · es para ti' : ' · puedes ir de refuerzo') + '</div>'
+            : a.tipo === 'privada' ? '<div class="meta">🔒 Reunión privada con <b>' + escapar(a.responsable) + '</b> · solo para ti</div>'
             : '<div class="meta">Reunión general: todas las modelos y el personal</div>') +
         (a.descripcion ? '<div class="detalle">' + escapar(a.descripcion) + '</div>' : '') +
         (a.meet ? '<div class="bm-fila" style="margin-top:8px"><a class="bm-secundario" target="_blank" rel="noopener" href="' +

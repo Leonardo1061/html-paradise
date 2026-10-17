@@ -1482,7 +1482,7 @@ function tarjetaActividad(a) {
         '<div style="display:flex;gap:8px;align-items:center"><b style="flex:1">' + escapar(a.icono + ' ' + a.titulo) + '</b>' +
         (sello ? '<span class="pildora urgente">' + sello + '</span>' : '') + '</div>' +
         '<div class="pie-descanso">' + escapar(a.texto_tipo + ' · ' + a.cuando) +
-        (a.tipo === 'modelos' ? ' · ' + escapar(a.responsable) + ' con ' + escapar(a.modelo) : '') + '</div>' +
+        (a.tipo === 'modelos' || a.tipo === 'privada' ? ' · ' + escapar(a.responsable) + ' con ' + escapar(a.modelo) : '') + '</div>' +
         (a.movida ? '<div class="pie-descanso" style="color:var(--ambar)">' + escapar(a.movida) + '</div>' : '') +
         (a.descripcion ? '<div class="pie-descanso">' + escapar(a.descripcion) + '</div>' : '') +
         (a.meet ? '<div class="botones" style="margin-top:8px"><a class="boton-secundario" target="_blank" rel="noopener" href="' +
