@@ -171,3 +171,36 @@
 
 /* «Visto por» (debajo de lo que escribió la modelo) y el visto del chat privado */
 .chat-meta .chat-visto { color: var(--soft); font-weight: 600; }
+
+/* Enlaces dentro del mensaje: se abren en otra pestaña (js/reacciones.js) */
+.chat-enlace { color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+.chat-msg.suyo .chat-enlace { color: var(--soft); }
+
+/* Reacciones: las fichas debajo de la burbuja y la barra al mantener presionado */
+.chat-reacciones { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 2px 0; }
+.chat-ficha {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 999px; padding: 1px 8px; font-size: 13px; line-height: 1.5; font-family: inherit;
+}
+.chat-ficha.mia { border-color: var(--violeta); background: rgba(139, 92, 246, .22); }
+.chat-barra-emojis {
+    position: fixed; z-index: 120; display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+    max-width: calc(100vw - 16px); background: var(--panel-alto); border: 1px solid var(--borde);
+    border-radius: 18px; padding: 5px 6px; box-shadow: 0 14px 34px rgba(0, 0, 0, .55);
+    animation: barra-emojis .12s ease-out;
+}
+.chat-barra-emojis .emoji {
+    background: none; border: 0; font-size: 24px; line-height: 1; padding: 5px; border-radius: 12px;
+    transition: transform .1s;
+}
+.chat-barra-emojis .emoji:hover, .chat-barra-emojis .emoji:active { transform: scale(1.25); }
+.chat-barra-emojis .emoji.mia { background: rgba(139, 92, 246, .3); }
+.chat-barra-emojis .accion {
+    background: rgba(255, 255, 255, .08); border: 0; color: var(--texto); font-family: inherit;
+    font-size: 12.5px; padding: 7px 10px; border-radius: 12px; margin-left: 2px;
+}
+@keyframes barra-emojis { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+/* En el teléfono, mantener el dedo abre la barra, no el menú del sistema. */
+@media (hover: none) {
+    .chat-burbuja { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+}

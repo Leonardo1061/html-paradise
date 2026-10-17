@@ -56,6 +56,10 @@ const esc = P.escapar;
 const CADA_MS = 5000;
 const TOPE_FOTO = 650000;            // base64; la API acepta 700 000
 const A = window.Adjuntos;
+// Reacciones y enlaces (2026-10-17): js/reacciones.js. Las reacciones son las
+// del chat con las modelos (el mismo mapa que el escritorio, llave
+// «monitor:Nombre»); en el privado y el grupo, mantener el dedo deja copiar.
+const R = window.Reacciones;
 
 function etiquetaDia(fecha) {
     if (!fecha) return '';
@@ -553,8 +557,21 @@ function montar(raiz) {
         }
         if (m.imagen) globo.appendChild(foto(m));
         if (m.adjunto) globo.appendChild(medio(m));
-        if (m.texto) globo.appendChild(document.createTextNode(m.texto));
+        if (m.texto) globo.appendChild(R.enlazar(m.texto));
         fila.appendChild(globo);
+        const real = !m.enviando && String(m.id || '').indexOf('local-') !== 0;
+        const conModelo = !privado && real && m.cedula;
+        if (!privado) {
+            const fichas = R.fila(m.reacciones, miClave(), conModelo ? (emoji) => reaccionar(m, emoji) : null);
+            if (fichas) fila.appendChild(fichas);
+        }
+        if (real) {
+            R.gestos(globo, () => ({
+                mia: (m.reacciones || {})[miClave()] || '',
+                alElegir: conModelo ? (emoji) => reaccionar(m, emoji) : null,
+                texto: m.texto || '', avisar: P.avisar,
+            }));
+        }
         const meta = document.createElement('div');
         meta.className = 'chat-meta';
         meta.textContent = m.enviando ? 'Enviando…' : (m.hora || '');
@@ -569,6 +586,43 @@ function montar(raiz) {
         }
         fila.appendChild(meta);
         return fila;
+    }
+
+    function miClave() {
+        return 'monitor:' + String((P.ficha() || {}).monitor || '').trim();
+    }
+
+    /* Pone, cambia o quita ("") su reacción en un mensaje del chat con la modelo. */
+    async function reaccionar(m, emoji) {
+        const clave = miClave();
+        const antes = m.reacciones || {};
+        m.reacciones = Object.assign({}, antes);
+        if (emoji) m.reacciones[clave] = emoji; else delete m.reacciones[clave];
+        pintarConversacion(false);
+        try {
+            const datos = await P.pedir('/api/personal/chat/' + encodeURIComponent(m.cedula) + '/reaccionar',
+                                        'POST', { id: m.id, emoji: emoji });
+            m.reacciones = datos.reacciones || {};
+        } catch (error) {
+            m.reacciones = antes;
+            P.avisar(error.message, 'malo');
+        }
+        if (estado.abierta && !estado.abierta.privado && estado.abierta.cedula === m.cedula) pintarConversacion(false);
+    }
+
+    /* Reacciones que cambiaron (web o escritorio): [{id, cedula, reacciones}]. */
+    function aplicarReacciones(lista) {
+        const abierta = estado.abierta;
+        if (!abierta || abierta.privado) return;
+        let repintar = false;
+        (lista || []).forEach((r) => {
+            if (r.cedula !== abierta.cedula) return;
+            const m = abierta.mensajes.find((x) => x.id === r.id);
+            if (!m || R.iguales(m.reacciones, r.reacciones)) return;
+            m.reacciones = r.reacciones || {};
+            repintar = true;
+        });
+        if (repintar) pintarConversacion(false);
     }
 
     /* Quiénes del grupo ya leyeron hasta la hora de este mensaje. */
@@ -698,6 +752,7 @@ function montar(raiz) {
                 else if (m.de_modelo) otros = true;
             });
             aplicarVistos(datos.vistos);
+            aplicarReacciones(datos.reacciones);
             if (aqui.length) {
                 const cerca = window.innerHeight + window.scrollY >= document.body.scrollHeight - 160;
                 pintarConversacion(cerca);

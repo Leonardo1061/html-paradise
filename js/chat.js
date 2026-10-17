@@ -33,6 +33,11 @@
  * escribieron después de `chat_visto_hasta`. Con el chat completo abierto
  * (sin `canalFijo`) ese cursor se guarda en cada vuelta: lo que ve ya no cuenta.
  *
+ * REACCIONES Y ENLACES (2026-10-17, js/reacciones.js): mantener el dedo sobre
+ * un mensaje saca la barra de emojis; la reacción es la misma que ve el
+ * monitor en el escritorio. La vuelta de 4 s trae las que cambiaron
+ * (`reacciones` en `/api/chat/nuevos`). Las direcciones del texto son enlaces.
+ *
  * LO QUE SE ADJUNTA (js/adjuntos.js, el mismo menú del chat del personal)
  * ------------------------------------------------------------------------
  * 📎 Galería (fotos y videos), Cámara (una foto) y Documento (PDF), y 🎤 la
@@ -49,6 +54,8 @@ const API = PARADISE.API_URL;
 const CADA_MS = 4000;
 const TOPE_FOTO = 650000;                       // base64; la API acepta 700 000
 const A = window.Adjuntos;
+const R = window.Reacciones;
+const MI_CLAVE = 'modelo';                      // su llave en `reacciones`
 
 function escapar(texto) {
     return String(texto == null ? '' : texto)
@@ -280,8 +287,11 @@ function montar(raiz, opciones) {
         }
         if (m.imagen) globo.appendChild(foto(m));
         if (m.adjunto) globo.appendChild(medio(m));
-        if (m.texto) globo.appendChild(document.createTextNode(m.texto));
+        if (m.texto) globo.appendChild(R.enlazar(m.texto));
         fila.appendChild(globo);
+        const real = !m.enviando && String(m.id || '').indexOf('local-') !== 0;
+        const fichas = R.fila(m.reacciones, MI_CLAVE, real ? (emoji) => reaccionar(m, emoji) : null);
+        if (fichas) fila.appendChild(fichas);
         const meta = document.createElement('div');
         meta.className = 'chat-meta';
         meta.textContent = m.enviando ? 'Enviando…' : (m.hora || '');
@@ -292,7 +302,30 @@ function montar(raiz, opciones) {
             meta.appendChild(visto);
         }
         fila.appendChild(meta);
+        if (real) {
+            R.gestos(globo, () => ({
+                mia: (m.reacciones || {})[MI_CLAVE] || '',
+                alElegir: (emoji) => reaccionar(m, emoji),
+                texto: m.texto || '', avisar: avisar,
+            }));
+        }
         return fila;
+    }
+
+    /* Pone, cambia o quita ("") su reacción. Se pinta con lo que guardó la API. */
+    async function reaccionar(m, emoji) {
+        const antes = m.reacciones || {};
+        m.reacciones = Object.assign({}, antes);
+        if (emoji) m.reacciones[MI_CLAVE] = emoji; else delete m.reacciones[MI_CLAVE];
+        pintarLista(false);
+        try {
+            const datos = await pedir('/api/chat/reaccionar', 'POST', { id: m.id, emoji: emoji });
+            m.reacciones = datos.reacciones || {};
+        } catch (error) {
+            m.reacciones = antes;
+            avisar(error.message, 'malo');
+        }
+        if ((m.canal_id || 'soporte') === estado.canal) pintarLista(false);
     }
 
     function foto(m) {
@@ -352,6 +385,12 @@ function montar(raiz, opciones) {
                 if (!m || (m.vistos || []).join('|') === (v.vistos || []).join('|')) return;
                 m.vistos = v.vistos;
                 if ((v.canal_id || 'soporte') === estado.canal) aqui = true;
+            });
+            (datos.reacciones || []).forEach((r) => {
+                const m = (estado.porCanal[r.canal_id || 'soporte'] || []).find((x) => x.id === r.id);
+                if (!m || R.iguales(m.reacciones, r.reacciones)) return;
+                m.reacciones = r.reacciones || {};
+                if ((r.canal_id || 'soporte') === estado.canal) aqui = true;
             });
             if (aqui) { const bajar = cercaDelFinal(); pintarLista(bajar); }
             pintarCanales();
