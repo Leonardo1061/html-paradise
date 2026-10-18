@@ -1324,7 +1324,7 @@ function abrirCampana() {
             return;
         }
         if (hoja.pestana !== 'nueva') return;
-        const imagenes = [];
+        const imagenes = [];         // {archivo, vista}: el original va a Drive (2026-10-18)
         cuerpo.innerHTML =
             '<div class="campo"><label>Para</label><select class="t-para">' +
             (datos.todo_el_personal && (datos.todo_el_personal.personas || []).length ?
@@ -1346,12 +1346,12 @@ function abrirCampana() {
         const pintarMinis = () => {
             const mini = $('.t-miniaturas');
             mini.innerHTML = '';
-            imagenes.forEach((src, i) => {
+            imagenes.forEach((imagen, i) => {
                 const envoltura = document.createElement('div');
                 envoltura.className = 'quitar-img';
                 envoltura.innerHTML = '<img alt=""><button title="Quitar">✕</button>';
-                envoltura.querySelector('img').src = src;
-                envoltura.querySelector('img').onclick = () => abrirVisor(src);
+                envoltura.querySelector('img').src = imagen.vista;
+                envoltura.querySelector('img').onclick = () => abrirVisor(imagen.vista);
                 envoltura.querySelector('button').onclick = () => { imagenes.splice(i, 1); pintarMinis(); };
                 mini.appendChild(envoltura);
             });
@@ -1362,7 +1362,7 @@ function abrirCampana() {
             e.target.value = '';
             for (const archivo of archivos) {
                 if (imagenes.length >= MAX_IMAGENES) { avisar('Como mucho ' + MAX_IMAGENES + ' imágenes.', 'malo'); break; }
-                try { imagenes.push(await comprimir(archivo)); } catch (error) { avisar(error.message, 'malo'); }
+                try { imagenes.push({ archivo: archivo, vista: await comprimir(archivo) }); } catch (error) { avisar(error.message, 'malo'); }
             }
             pintarMinis();
         };
@@ -1371,11 +1371,14 @@ function abrirCampana() {
             boton.disabled = true;
             boton.textContent = 'Enviando…';
             try {
-                const r = await pedir('/api/personal/tareas', 'POST', {
-                    asignada_a: $('.t-para').value, titulo: $('.t-titulo').value,
-                    descripcion: $('.t-desc').value, prioridad: $('.t-prioridad').value,
-                    imagenes: imagenes,
-                });
+                const formulario = new FormData();
+                formulario.append('asignada_a', $('.t-para').value);
+                formulario.append('titulo', $('.t-titulo').value);
+                formulario.append('descripcion', $('.t-desc').value);
+                formulario.append('prioridad', $('.t-prioridad').value);
+                formulario.append('vistas', JSON.stringify(imagenes.map((x) => x.vista)));
+                imagenes.forEach((x) => formulario.append('fotos', x.archivo, x.archivo.name || 'foto.jpg'));
+                const r = await pedirFormulario('/api/personal/tareas/nueva', formulario);
                 avisar(r.mensaje, 'bueno');
                 hoja.pestana = 'enviadas';
                 hoja.pintar();
