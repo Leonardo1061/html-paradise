@@ -724,7 +724,28 @@ function tarjeta(t) {
         b.onclick = () => abrirArchivo(t.id, i, a, b);
         fila.appendChild(b);
     });
+    // Ya respondido: lo puede borrar (para ella, el CEO y el personal).
+    if (t.puede_eliminar) {
+        const b = boton('🗑 Eliminar');
+        b.style.color = '#fca5a5';
+        b.onclick = () => eliminarTicket(t, b);
+        fila.appendChild(b);
+    }
     return caja;
+}
+
+async function eliminarTicket(t, b) {
+    if (!window.confirm('¿Eliminar el ticket «' + (t.asunto || '') + '»?\n\n' +
+        'Se borrará para siempre con toda su conversación, también para el CEO.')) return;
+    b.disabled = true;
+    try {
+        await pedir('/api/tickets/' + encodeURIComponent(t.id), 'DELETE');
+        estado.tickets = estado.tickets.filter((x) => x.id !== t.id);
+        avisar('Ticket eliminado.', 'bueno');
+        pintarGlobo();
+        if (estado.hoja && estado.hoja.tipo === 'campana') estado.hoja.pintar();
+        revisar(true);
+    } catch (error) { avisar(error.message, 'malo'); b.disabled = false; }
 }
 
 function boton(texto) {

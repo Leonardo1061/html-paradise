@@ -784,7 +784,14 @@ function abrirConversacion(t, alSalir) {
     });
     estado.reloj = setInterval(() => {
         if (document.visibilityState === 'visible' && estado.info && estado.info.puede_escribir) {
-            cargar().catch(() => {});
+            cargar().catch((error) => {
+                // La modelo borró su ticket (o alguien la tarea): se cierra.
+                if (error.codigo === 404) {
+                    const ticket = estado.info.tarea && estado.info.tarea.ticket;
+                    avisar((ticket ? 'Este ticket' : 'Esta tarea') + ' ya no existe: se eliminó.', 'malo');
+                    salir();
+                }
+            });
         }
     }, CADA_MS_CONVERSACION);
 }
