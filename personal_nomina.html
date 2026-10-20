@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Nómina · PARADISE</title>
+<!--
+  NÓMINA (CEO, Gerencia y Programación)
+  =====================================
+  El producido de todas las cuentas de Stripchat del estudio, en dólares, del
+  periodo de pago actual o del anterior (/api/nomina/estudio). La API lo lee
+  de Stripchat en el momento (con 10 minutos de caché); aquí no se guarda nada.
+  Abajo, las cuentas sin «Nick en la plataforma»: sin él no hay producido.
+  La pestaña solo sale si la API pone `nomina` en sus módulos.
+-->
+<link rel="manifest" href="manifest_personal.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE Staff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+<style>
+.contenido { max-width: 860px; }
+.periodos { display: flex; gap: 6px; margin-bottom: 14px; }
+.periodos button { border: 1px solid var(--borde); background: var(--panel); color: var(--tenue);
+        border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; }
+.periodos button.activo { background: var(--cian); border-color: var(--cian); color: #001018; }
+.total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.total .cifra { font-size: 28px; font-weight: 700; }
+.total .rotulo { font-size: 13px; color: var(--tenue); }
+.fila-nomina { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 0;
+        border-top: 1px solid var(--borde); cursor: pointer; }
+.fila-nomina:first-child { border-top: none; }
+.fila-nomina .nombre { font-weight: 600; font-size: 14px; }
+.fila-nomina .sub { font-size: 12px; color: var(--tenue); }
+.fila-nomina .usd { font-weight: 700; font-size: 15px; text-align: right; font-variant-numeric: tabular-nums; }
+.fila-nomina .usd.error { color: var(--ambar); font-weight: 500; font-size: 12px; max-width: 180px; }
+.detalle { grid-column: 1 / -1; font-size: 12.5px; color: var(--tenue); }
+.detalle div { display: flex; justify-content: space-between; padding: 2px 0; font-variant-numeric: tabular-nums; }
+.sin-nick { font-size: 13px; color: var(--tenue); line-height: 1.7; }
+h2.seccion { font-size: 15px; margin: 22px 0 8px; }
+</style>
+</head>
+<body>
+
+<main class="contenido">
+    <div class="titulo-pagina">
+        <h1>💵 Nómina · Stripchat</h1>
+        <p>Producido en dólares por cuenta (1 token = 0,05 USD). Toca una fila para ver el detalle.</p>
+    </div>
+    <div class="periodos">
+        <button data-periodo="actual" class="activo">Periodo actual</button>
+        <button data-periodo="anterior">Periodo anterior</button>
+    </div>
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Consultando Stripchat…</div>
+    <div id="resultado" class="oculto">
+        <div class="tarjeta total"><span class="rotulo" id="total-rotulo"></span><span class="cifra" id="total"></span></div>
+        <div class="tarjeta" id="lista"></div>
+        <h2 class="seccion" id="sin-nick-titulo"></h2>
+        <div class="tarjeta sin-nick" id="sin-nick"></div>
+    </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/personal.js"></script>
+<script>
+(function () {
+    'use strict';
+    const P = window.Personal;
+    const esc = P.escapar;
+    const $ = (id) => document.getElementById(id);
+    const dolares = (n) => '$' + Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let periodo = 'actual';
+
+    function detalle(f) {
+        return '<div class="detalle oculto">' + (f.detalle || []).map((d) =>
+            '<div><span>' + esc(d.concepto) + ' · ' + d.tokens.toLocaleString('es-CO') + ' tk</span><span>' +
+            dolares(d.usd) + '</span></div>').join('') +
+            '<div><span>' + esc(f.estudio || '') + '</span><span>' + (f.tokens || 0).toLocaleString('es-CO') + ' tokens</span></div></div>';
+    }
+
+    function pintar(datos) {
+        $('total-rotulo').textContent = 'Total ' + (periodo === 'actual' ? 'periodo actual' : 'periodo anterior') +
+            ' · ' + datos.filas.length + ' cuentas';
+        $('total').textContent = dolares(datos.total_usd);
+        $('lista').innerHTML = datos.filas.length ? datos.filas.map((f) =>
+            '<div class="fila-nomina"><div><div class="nombre">' + esc(f.nombre) + '</div>' +
+            '<div class="sub">' + esc(f.pagina) + ' · ' + esc(f.nick) + '</div></div>' +
+            (f.ok ? '<div class="usd">' + dolares(f.usd) + '</div>' + detalle(f)
+                  : '<div class="usd error">' + esc(f.error) + '</div>') + '</div>').join('')
+            : '<div class="vacio">Ninguna cuenta de Stripchat tiene nick todavía.</div>';
+        $('lista').querySelectorAll('.fila-nomina').forEach((fila) => {
+            fila.onclick = () => { const d = fila.querySelector('.detalle'); if (d) d.classList.toggle('oculto'); };
+        });
+        $('sin-nick-titulo').textContent = datos.sin_nick.length
+            ? 'Sin «Nick en la plataforma» (' + datos.sin_nick.length + ')' : '';
+        $('sin-nick').classList.toggle('oculto', !datos.sin_nick.length);
+        $('sin-nick').innerHTML = datos.sin_nick.map((f) =>
+            esc(f.nombre) + ' · ' + esc(f.pagina) + ' · ' + esc(f.cedula)).join('<br>') +
+            '<div style="margin-top:8px;color:var(--apagado)">Se llena en la Admin, en las redes de la modelo.</div>';
+    }
+
+    async function cargar() {
+        $('cargando').classList.remove('oculto');
+        $('resultado').classList.add('oculto');
+        try {
+            const datos = await P.pedir('/api/nomina/estudio?periodo=' + periodo);
+            pintar(datos);
+            $('resultado').classList.remove('oculto');
+        } catch (e) {
+            P.avisar(e.message, 'malo');
+        } finally {
+            $('cargando').classList.add('oculto');
+        }
+    }
+
+    document.querySelectorAll('.periodos button').forEach((boton) => {
+        boton.onclick = () => {
+            periodo = boton.dataset.periodo;
+            document.querySelectorAll('.periodos button').forEach((b) => b.classList.toggle('activo', b === boton));
+            cargar();
+        };
+    });
+
+    P.iniciar('nomina').then(cargar);
+})();
+</script>
+</body>
+</html>

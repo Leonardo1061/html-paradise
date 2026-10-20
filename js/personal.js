@@ -125,6 +125,8 @@ const MODULOS = [
     { id: 'cronograma', texto: 'CRONOGRAMA', simbolo: '🗓️', pagina: 'personal_cronograma.html' },
     // Solo el CEO: la API se lo añade a sus módulos (personal.es_ceo).
     { id: 'tickets', texto: 'MIS TICKETS', simbolo: '🎫', pagina: 'personal_tickets.html' },
+    // CEO, Gerencia y Programación: la API se lo añade (personal.ve_nomina).
+    { id: 'nomina', texto: 'NÓMINA', simbolo: '💵', pagina: 'personal_nomina.html' },
 ];
 
 function escapar(texto) {

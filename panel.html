@@ -214,6 +214,15 @@ button { font-family: inherit; cursor: pointer; }
     background: none; border: 0; color: #fff; text-decoration: underline;
     font-size: 13px; padding: 0; margin-top: 6px;
 }
+.pagina-producido { padding: 10px 0; border-top: 1px solid var(--borde); cursor: pointer; }
+.pagina-producido:first-child { border-top: none; padding-top: 0; }
+.pagina-producido .cabeza { display: flex; justify-content: space-between; font-size: 13px; color: var(--tenue); }
+.pagina-producido .cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.pagina-producido .rotulo { font-size: 11px; color: var(--tenue); }
+.pagina-producido .usd { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pagina-producido .nota { font-size: 12px; color: var(--apagado); margin-top: 4px; }
+.pagina-producido .detalle { font-size: 12px; color: var(--tenue); margin-top: 8px; }
+.pagina-producido .detalle div { display: flex; justify-content: space-between; padding: 2px 0; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 
@@ -239,6 +248,12 @@ button { font-family: inherit; cursor: pointer; }
         <h2 style="margin:0 0 4px;font-size:16px">🗓️ Capacitaciones y reuniones</h2>
         <div style="font-size:12px;color:var(--tenue);margin-bottom:10px">Ir es opcional: sirven de refuerzo.</div>
         <div id="lista-actividades"></div>
+    </div>
+    <!-- 💵 Su producido en dólares, página por página (js/panel.js, /api/nomina/mio) -->
+    <div id="producido" class="tarjeta oculto" style="margin:0 0 14px">
+        <h2 style="margin:0 0 4px;font-size:16px">💵 Mi producido</h2>
+        <div style="font-size:12px;color:var(--tenue);margin-bottom:10px">En dólares, por página. Toca una para ver el detalle.</div>
+        <div id="lista-producido"></div>
     </div>
     <div id="tablero" class="oculto"></div>
 </main>

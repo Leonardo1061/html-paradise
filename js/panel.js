@@ -259,6 +259,41 @@ PARADISE_BARRA.ponerExtra(() => {
 });
 
 // =======================================================================
+// 💵 MI PRODUCIDO (nómina): cada página con el periodo actual y el anterior
+// =======================================================================
+function dolares(n) {
+    return '$' + Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function cifraPeriodo(rotulo, p) {
+    return '<div><div class="rotulo">' + rotulo + '</div><div class="usd">' +
+        (p && p.ok ? dolares(p.usd) : '—') + '</div></div>';
+}
+
+function paginaProducido(f) {
+    const actual = f.actual || {};
+    const error = !actual.ok ? '<div class="nota">' + escapar(actual.error || '') + '</div>' : '';
+    const detalle = (actual.detalle || []).map((d) =>
+        '<div><span>' + escapar(d.concepto) + '</span><span>' + dolares(d.usd) + '</span></div>').join('');
+    return '<div class="pagina-producido"><div class="cabeza"><span>' + escapar(f.pagina) + '</span><span>' +
+        escapar(f.nick || '') + '</span></div><div class="cifras">' +
+        cifraPeriodo('Periodo actual', actual) + cifraPeriodo('Periodo anterior', f.anterior) + '</div>' + error +
+        (detalle ? '<div class="detalle oculto">' + detalle + '</div>' : '') + '</div>';
+}
+
+async function cargarProducido() {
+    if (!estado.token) return;
+    let datos;
+    try { datos = await pedir('/api/nomina/mio'); } catch (e) { return; }
+    const paginas = datos.paginas || [];
+    $('producido').classList.toggle('oculto', !paginas.length);
+    $('lista-producido').innerHTML = paginas.map(paginaProducido).join('');
+    $('lista-producido').querySelectorAll('.pagina-producido').forEach((caja) => {
+        caja.onclick = () => { const d = caja.querySelector('.detalle'); if (d) d.classList.toggle('oculto'); };
+    });
+}
+
+// =======================================================================
 // ARRANQUE
 // =======================================================================
 $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
@@ -269,6 +304,7 @@ $('btn-avisos').onclick = () => PARADISE_BARRA.abrirCampana();
 document.addEventListener('paradise:clave', () => { if (estado.datos) pintar(); });
 
 cargar();
+cargarProducido();
 
 // Enlaces viejos a panel.html#perfil: abren el cambio de contraseña.
 if (window.location.hash === '#perfil') {
