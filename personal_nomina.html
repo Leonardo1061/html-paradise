@@ -8,8 +8,9 @@
 <!--
   NÓMINA (CEO, Gerencia y Programación)
   =====================================
-  El producido de todas las cuentas de Stripchat del estudio, en dólares, del
-  periodo de pago actual o del anterior (/api/nomina/estudio). La API lo lee
+  El producido de todas las cuentas de Stripchat del estudio, en dólares, por
+  SEMANA de corte: domingo 12:00 am a sábado 11:59:59 pm (/api/nomina/estudio
+  ?semana=0 la en curso, 1 la anterior… hasta 12 atrás). La API lo lee
   de Stripchat en el momento (con 10 minutos de caché); aquí no se guarda nada.
   Abajo, las cuentas sin «Nick en la plataforma»: sin él no hay producido.
   La pestaña solo sale si la API pone `nomina` en sus módulos.
@@ -26,10 +27,9 @@
 <link rel="stylesheet" href="css/personal.css">
 <style>
 .contenido { max-width: 860px; }
-.periodos { display: flex; gap: 6px; margin-bottom: 14px; }
-.periodos button { border: 1px solid var(--borde); background: var(--panel); color: var(--tenue);
-        border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; }
-.periodos button.activo { background: var(--cian); border-color: var(--cian); color: #001018; }
+.periodos { margin-bottom: 14px; }
+.periodos select { width: 100%; border: 1px solid var(--borde); background: var(--panel); color: var(--texto);
+        border-radius: 999px; padding: 10px 14px; font-size: 14px; font-weight: 600; }
 .total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
 .total .cifra { font-size: 28px; font-weight: 700; }
 .total .rotulo { font-size: 13px; color: var(--tenue); }
@@ -51,12 +51,9 @@ h2.seccion { font-size: 15px; margin: 22px 0 8px; }
 <main class="contenido">
     <div class="titulo-pagina">
         <h1>💵 Nómina · Stripchat</h1>
-        <p>Producido en dólares por cuenta (1 token = 0,05 USD). Toca una fila para ver el detalle.</p>
+        <p>Producido en dólares por cuenta (1 token = 0,05 USD). Corte: sábado 11:59:59 pm. Toca una fila para ver el detalle.</p>
     </div>
-    <div class="periodos">
-        <button data-periodo="actual" class="activo">Periodo actual</button>
-        <button data-periodo="anterior">Periodo anterior</button>
-    </div>
+    <div class="periodos"><select id="semana" title="Semana de corte"></select></div>
     <div id="cargando" class="cargando"><span class="girando">◌</span> Consultando Stripchat…</div>
     <div id="resultado" class="oculto">
         <div class="tarjeta total"><span class="rotulo" id="total-rotulo"></span><span class="cifra" id="total"></span></div>
@@ -76,7 +73,21 @@ h2.seccion { font-size: 15px; margin: 22px 0 8px; }
     const esc = P.escapar;
     const $ = (id) => document.getElementById(id);
     const dolares = (n) => '$' + Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    let periodo = 'actual';
+    const SEMANAS_ATRAS = 12;
+
+    // Domingo a sábado, en la hora del teléfono (el estudio está en Colombia).
+    (function llenarSemanas() {
+        const hoy = new Date();
+        const domingo = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - hoy.getDay());
+        const corta = (d) => d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+        for (let i = 0; i <= SEMANAS_ATRAS; i++) {
+            const inicio = new Date(domingo); inicio.setDate(domingo.getDate() - 7 * i);
+            const fin = new Date(inicio); fin.setDate(inicio.getDate() + 6);
+            const nombre = i === 0 ? 'Esta semana (en curso)' : i === 1 ? 'Semana anterior' : 'Hace ' + i + ' semanas';
+            $('semana').insertAdjacentHTML('beforeend', '<option value="' + i + '">' + nombre + ' · ' +
+                corta(inicio) + ' – ' + corta(fin) + '</option>');
+        }
+    })();
 
     function detalle(f) {
         return '<div class="detalle oculto">' + (f.detalle || []).map((d) =>
@@ -86,7 +97,7 @@ h2.seccion { font-size: 15px; margin: 22px 0 8px; }
     }
 
     function pintar(datos) {
-        $('total-rotulo').textContent = 'Total ' + (periodo === 'actual' ? 'periodo actual' : 'periodo anterior') +
+        $('total-rotulo').textContent = 'Total ' + datos.semana.etiqueta + (datos.semana.en_curso ? ' (en curso)' : '') +
             ' · ' + datos.filas.length + ' cuentas';
         $('total').textContent = dolares(datos.total_usd);
         $('lista').innerHTML = datos.filas.length ? datos.filas.map((f) =>
@@ -110,7 +121,7 @@ h2.seccion { font-size: 15px; margin: 22px 0 8px; }
         $('cargando').classList.remove('oculto');
         $('resultado').classList.add('oculto');
         try {
-            const datos = await P.pedir('/api/nomina/estudio?periodo=' + periodo);
+            const datos = await P.pedir('/api/nomina/estudio?semana=' + $('semana').value);
             pintar(datos);
             $('resultado').classList.remove('oculto');
         } catch (e) {
@@ -120,13 +131,7 @@ h2.seccion { font-size: 15px; margin: 22px 0 8px; }
         }
     }
 
-    document.querySelectorAll('.periodos button').forEach((boton) => {
-        boton.onclick = () => {
-            periodo = boton.dataset.periodo;
-            document.querySelectorAll('.periodos button').forEach((b) => b.classList.toggle('activo', b === boton));
-            cargar();
-        };
-    });
+    $('semana').onchange = cargar;
 
     P.iniciar('nomina').then(cargar);
 })();

@@ -259,25 +259,28 @@ PARADISE_BARRA.ponerExtra(() => {
 });
 
 // =======================================================================
-// 💵 MI PRODUCIDO (nómina): cada página con el periodo actual y el anterior
+// 💵 MI PRODUCIDO (nómina): cada página con la semana en curso y la anterior.
+// La semana va del domingo 12:00 am al sábado 11:59:59 pm (el corte).
 // =======================================================================
 function dolares(n) {
     return '$' + Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function cifraPeriodo(rotulo, p) {
+function cifraSemana(semana, p) {
+    const rotulo = semana.en_curso ? 'Esta semana' : 'Semana anterior';
     return '<div><div class="rotulo">' + rotulo + '</div><div class="usd">' +
-        (p && p.ok ? dolares(p.usd) : '—') + '</div></div>';
+        (p && p.ok ? dolares(p.usd) : '—') + '</div><div class="rotulo">' +
+        escapar(semana.etiqueta.replace(/^del /, '')) + '</div></div>';
 }
 
-function paginaProducido(f) {
-    const actual = f.actual || {};
+function paginaProducido(f, semanas) {
+    const actual = (f.semanas || [])[0] || {};
     const error = !actual.ok ? '<div class="nota">' + escapar(actual.error || '') + '</div>' : '';
     const detalle = (actual.detalle || []).map((d) =>
         '<div><span>' + escapar(d.concepto) + '</span><span>' + dolares(d.usd) + '</span></div>').join('');
     return '<div class="pagina-producido"><div class="cabeza"><span>' + escapar(f.pagina) + '</span><span>' +
         escapar(f.nick || '') + '</span></div><div class="cifras">' +
-        cifraPeriodo('Periodo actual', actual) + cifraPeriodo('Periodo anterior', f.anterior) + '</div>' + error +
+        semanas.map((s, i) => cifraSemana(s, (f.semanas || [])[i])).join('') + '</div>' + error +
         (detalle ? '<div class="detalle oculto">' + detalle + '</div>' : '') + '</div>';
 }
 
@@ -287,7 +290,7 @@ async function cargarProducido() {
     try { datos = await pedir('/api/nomina/mio'); } catch (e) { return; }
     const paginas = datos.paginas || [];
     $('producido').classList.toggle('oculto', !paginas.length);
-    $('lista-producido').innerHTML = paginas.map(paginaProducido).join('');
+    $('lista-producido').innerHTML = paginas.map((f) => paginaProducido(f, datos.semanas || [])).join('');
     $('lista-producido').querySelectorAll('.pagina-producido').forEach((caja) => {
         caja.onclick = () => { const d = caja.querySelector('.detalle'); if (d) d.classList.toggle('oculto'); };
     });
