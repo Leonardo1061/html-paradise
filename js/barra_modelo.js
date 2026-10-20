@@ -1418,13 +1418,19 @@ function abrirKwiky() {
 
     const pendientes = () => lista.filter((x) => x.estado !== 'hecho');
 
+    // «dos», o el número si tiene Streamate_3 en adelante (la API manda `cantidad`).
+    const cuantasCuentas = () => {
+        const n = (cuentas && cuentas.cantidad) || 2;
+        return n === 2 ? 'dos' : String(n);
+    };
+
     const pintarInfo = () => {
         const info = $('.s-info');
         info.innerHTML = (faltan === VIDEOS_KWIKY
             ? 'Se guardará en <b></b>. Escoge exactamente <b></b> videos.'
             : 'La carpeta <b></b> quedó incompleta. Escoge ' +
               (faltan === 1 ? 'el <b></b> video que le falta.' : 'los <b></b> videos que le faltan.')) +
-            (para === 'ambos' ? ' Son para tus dos cuentas.' : '');
+            (para === 'ambos' ? ' Son para tus ' + cuantasCuentas() + ' cuentas.' : '');
         const negritas = info.querySelectorAll('b');
         negritas[0].textContent = carpeta || ('KWIKY VIDEOS › ' + numero);
         negritas[1].textContent = faltan;
@@ -1464,7 +1470,7 @@ function abrirKwiky() {
             caja.appendChild(b);
         });
         $('.s-para').classList.remove('bm-oculto');
-        $('.s-info').textContent = 'Tienes dos cuentas de Streamate: escoge para cuál son estos Kwikis.';
+        $('.s-info').textContent = 'Tienes ' + cuantasCuentas() + ' cuentas de Streamate: escoge para cuál son estos Kwikis.';
     };
 
     // Subir solo se enciende con justo los que faltan, ni uno más ni uno menos.
