@@ -11,7 +11,7 @@
   ======================
   La modelo creada en la Admin solo con cédula y jornada llega aquí nada más
   entrar, y no sale (js/barra_modelo.js la devuelve) hasta llenar lo
-  obligatorio: nombres, apellidos, correo, celular y una contraseña nueva.
+  obligatorio: nombres, apellidos, correo, celular, fecha de nacimiento y una contraseña nueva.
   Las de antes llegan desde la ⚙️ tuerca, y para ellas la contraseña no se
   pide aquí (la cambian con «Cambiar contraseña»).
 
@@ -166,8 +166,13 @@ h1 { margin: 10px 0 4px; font-size: 22px; letter-spacing: -.3px; }
         <div class="campo"><label for="correo">Correo de Gmail <b>*</b></label>
             <input id="correo" type="email" autocomplete="email" inputmode="email"
                    placeholder="tucorreo@gmail.com"></div>
-        <div class="campo"><label for="celular">Número celular <b>*</b></label>
-            <input id="celular" type="tel" autocomplete="tel" inputmode="tel"></div>
+        <div class="dos">
+            <div class="campo"><label for="celular">Número celular <b>*</b></label>
+                <input id="celular" type="tel" autocomplete="tel" inputmode="tel"></div>
+            <div class="campo"><label for="fecha_nacimiento">Fecha de nacimiento <b>*</b></label>
+                <input id="fecha_nacimiento" type="date" autocomplete="bday"
+                       min="1940-01-01"></div>
+        </div>
         <div id="claves" class="oculto">
             <div class="dos">
                 <div class="campo"><label for="password">Contraseña nueva <b>*</b></label>
@@ -382,7 +387,11 @@ async function cargar() {
         $('intro').textContent = error.message;
         return;
     }
-    ['nombres', 'apellidos', 'correo', 'celular'].forEach((c) => { $(c).value = ficha[c] || ''; });
+    ['nombres', 'apellidos', 'correo', 'celular', 'fecha_nacimiento'].forEach((c) => { $(c).value = ficha[c] || ''; });
+    // Nadie menor de edad: el calendario no ofrece fechas de hace menos de 18 años.
+    const tope = new Date();
+    tope.setFullYear(tope.getFullYear() - 18);
+    $('fecha_nacimiento').max = tope.toISOString().slice(0, 10);
     if (ficha.datos_completos) localStorage.removeItem('datos_pendientes');
     else localStorage.setItem('datos_pendientes', '1');
     pintarModo();
@@ -397,10 +406,11 @@ $('formulario').addEventListener('submit', async (evento) => {
     const cuerpo = {
         nombres: $('nombres').value, apellidos: $('apellidos').value,
         correo: $('correo').value, celular: $('celular').value,
+        fecha_nacimiento: $('fecha_nacimiento').value,
         password: pendiente ? $('password').value.trim() : '',
         repetida: pendiente ? $('repetida').value.trim() : '',
     };
-    const falta = ['nombres', 'apellidos', 'correo', 'celular'].concat(pendiente ? ['password', 'repetida'] : [])
+    const falta = ['nombres', 'apellidos', 'correo', 'celular', 'fecha_nacimiento'].concat(pendiente ? ['password', 'repetida'] : [])
         .find((c) => !String(cuerpo[c] || '').trim());
     if (falta) { avisar('Llena todos los campos obligatorios.', 'malo'); $(falta).focus(); return; }
     // Solo Gmail: con ese correo se la invita a las salas de Meet (la API repite la regla).
