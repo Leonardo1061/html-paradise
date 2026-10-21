@@ -8,17 +8,17 @@
 <!--
   NÓMINA (CEO, Gerencia y Programación)
   =====================================
-  El producido de todas las cuentas de Stripchat del estudio, en dólares, por
+  El producido de todas las cuentas de Stripchat y Chaturbate, en dólares, por
   SEMANA de corte: domingo 12:00 am a sábado 11:59:59 pm (/api/nomina/estudio
   ?semana=0 la en curso, 1 la anterior… hasta 12 atrás). La API lo lee
-  de Stripchat en el momento (con 10 minutos de caché); aquí no se guarda nada.
+  de cada plataforma en el momento (con caché); aquí no se guarda nada.
   Abajo, las cuentas sin «Nick en la plataforma»: sin él no hay producido.
   La pestaña solo sale si la API pone `nomina` en sus módulos.
 
   POR MODELO (2026-10-20): la suma de sus cuentas, el porcentaje que le toca
   (tramos, semana del cumpleaños, ajuste del CEO; nomina_porcentajes.py) y lo
   que se le paga. Solo el CEO edita: el porcentaje de cada modelo (✏️) y las
-  tablas de tramos (abajo). Hoy la suma es solo Stripchat.
+  tablas de tramos (abajo). La suma es Stripchat + Chaturbate.
 -->
 <link rel="manifest" href="manifest_personal.webmanifest">
 <link rel="apple-touch-icon" href="iconos/icono-192.png">
@@ -74,11 +74,11 @@ h2.seccion { font-size: 15px; margin: 22px 0 8px; }
 
 <main class="contenido">
     <div class="titulo-pagina">
-        <h1>💵 Nómina · Stripchat</h1>
+        <h1>💵 Nómina</h1>
         <p>Producido en dólares (1 token = 0,05 USD), el porcentaje de cada modelo y lo que se le paga. Corte: sábado 11:59:59 pm. Toca una cuenta para ver el detalle.</p>
     </div>
     <div class="periodos"><select id="semana" title="Semana de corte"></select></div>
-    <div id="cargando" class="cargando"><span class="girando">◌</span> Consultando Stripchat…</div>
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Consultando las plataformas…</div>
     <div id="resultado" class="oculto">
         <div class="tarjeta total"><span class="rotulo" id="total-rotulo"></span><span class="cifra" id="total"></span></div>
         <h2 class="seccion">Por modelo · porcentaje y pago</h2>
@@ -232,7 +232,7 @@ h2.seccion { font-size: 15px; margin: 22px 0 8px; }
             '<div class="sub">' + esc(f.pagina) + ' · ' + esc(f.nick) + '</div></div>' +
             (f.ok ? '<div class="usd">' + dolares(f.usd) + '</div>' + detalle(f)
                   : '<div class="usd error">' + esc(f.error) + '</div>') + '</div>').join('')
-            : '<div class="vacio">Ninguna cuenta de Stripchat tiene nick todavía.</div>';
+            : '<div class="vacio">Ninguna cuenta tiene nick todavía.</div>';
         $('lista').querySelectorAll('.fila-nomina').forEach((fila) => {
             fila.onclick = () => { const d = fila.querySelector('.detalle'); if (d) d.classList.toggle('oculto'); };
         });
