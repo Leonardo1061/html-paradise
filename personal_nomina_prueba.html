@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Prueba de plataformas · PARADISE</title>
+
+<!--
+  PRUEBA DE LAS APIS DE LAS PLATAFORMAS (nómina)
+  ==============================================
+  Solo diagnóstico, sin menú: llama a GET /api/nomina/{plataforma}/prueba con
+  la sesión del personal y enseña lo que responde la plataforma, para ver la
+  respuesta real antes de escribir la lectura de cada una.
+  Solo CEO, Gerencia y Programación (lo revisa la API).
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+<style>
+.contenido { max-width: 760px; padding: 16px; }
+.card { background: var(--panel); border: 1px solid var(--borde); border-radius: 18px; padding: 16px; margin-bottom: 16px; }
+.fila { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.fila input { flex: 1; min-width: 160px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--borde);
+        background: var(--panel-alto); color: var(--texto); font: inherit; }
+.fila button { padding: 10px 16px; border-radius: 999px; border: none; font: inherit; font-weight: 600; cursor: pointer;
+        background: #06b6d4; color: #000; }
+#salida { white-space: pre-wrap; word-break: break-word; font-size: 0.78rem; color: var(--texto);
+        background: var(--panel-alto); border-radius: 12px; padding: 12px; max-height: 70vh; overflow: auto; }
+</style>
+</head>
+<body>
+<main class="contenido">
+    <div class="card">
+        <h2 style="margin:0">💵 Prueba de plataformas</h2>
+        <p style="color:var(--apagado);font-size:0.85rem">Consulta la plataforma con las llaves del estudio guardadas en Render.
+            En Chaturbate el nick es opcional; en Stripchat es obligatorio.</p>
+        <div class="fila">
+            <select id="plataforma" style="padding:10px 12px;border-radius:12px;border:1px solid var(--borde);background:var(--panel-alto);color:var(--texto);font:inherit">
+                <option value="chaturbate">Chaturbate</option>
+                <option value="stripchat">Stripchat</option>
+            </select>
+            <input id="nick" placeholder="Nick de la modelo" autocomplete="off">
+            <button id="probar">Probar</button>
+            <button id="copiar">Copiar resultado</button>
+        </div>
+    </div>
+    <pre id="salida">Toca «Probar».</pre>
+</main>
+<script src="js/config.js"></script>
+<script src="js/personal.js"></script>
+<script>
+(function () {
+    'use strict';
+    const P = window.Personal;
+    const salida = document.getElementById('salida');
+    document.getElementById('probar').addEventListener('click', async () => {
+        salida.textContent = 'Consultando…';
+        const nick = document.getElementById('nick').value.trim();
+        try {
+            const plataforma = document.getElementById('plataforma').value;
+            const datos = await P.pedir('/api/nomina/' + plataforma + '/prueba' + (nick ? '?nick=' + encodeURIComponent(nick) : ''));
+            salida.textContent = JSON.stringify(datos, null, 2);
+        } catch (e) {
+            salida.textContent = 'Error: ' + e.message;
+        }
+    });
+    document.getElementById('copiar').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(salida.textContent); P.avisar('Copiado.'); }
+        catch (e) { P.avisar('No se pudo copiar: mantén presionado el texto.'); }
+    });
+})();
+</script>
+</body>
+</html>
