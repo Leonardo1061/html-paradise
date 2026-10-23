@@ -16,7 +16,9 @@
       🎓 Managers         capacitaciones del personal (cualquiera del personal)
       📞 Reunión con modelos  a una o varias modelos o a una jornada entera
       🔒 Reunión privada  quien la da y UNA modelo: la sala de Meet es solo para
-                          ellos dos y ninguna otra modelo recibe aviso
+                          ellos dos y ninguna otra modelo recibe aviso. Si aún no
+                          es modelo, solo su nombre (`invitada`); al darle accesos,
+                          ✏️ Cambiar y se la elige en la lista
       📣 Reunión general  (CEO y Gerencia)
   Las reuniones pueden crear su sala de Meet con la cuenta del estudio
   (theparadisemonitor): invita por correo y el acta de Gemini queda pegada a
@@ -284,7 +286,9 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                 esc(a.jornada_citada ? 'toda la jornada ' + a.jornada_citada : a.modelo) +
                 '</b>. Les llega a todas las modelos' + (a.meet ? ', con el link' : '') + '.</p>' : '') +
             (a.tipo === 'privada' ? '<p>Reunión privada de <b>' + esc(a.responsable) + '</b> con <b>' + esc(a.modelo) +
-                '</b>. La sala es solo para ellos dos: a ninguna otra modelo le llega el aviso.</p>' : '') +
+                '</b>. La sala es solo para ellos dos: a ninguna otra modelo le llega el aviso.</p>' +
+                (a.cedulas && a.cedulas.length ? '' : '<p class="nota">Aún sin accesos: no le llega a ninguna modelo. Cuando ' +
+                    'se los den, en ✏️ Cambiar tócala en la lista y le llega el aviso.</p>') : '') +
             (a.tipo === 'managers' ? '<p>Para: ' + esc(a.personas.join(', ')) + '</p>' : '') +
             (a.descripcion ? '<p>' + esc(a.descripcion) + '</p>' : '') +
             (a.meet ? '<p><a href="' + esc(a.meet) + '" target="_blank" rel="noopener">🎥 Enlace de la reunión</a></p>' : '') +
@@ -364,7 +368,9 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
             citar.una = privada;
             citar.modo = 'modelos';
             if (privada && citar.elegidas.size > 1) citar.elegidas.clear();
-            if ((tipo === 'modelos' || privada) && !editando) {
+            // La privada también se cambia al editar: así, a quien se citó solo con
+            // su nombre se le asigna su cédula cuando le dan los accesos.
+            if ((tipo === 'modelos' && !editando) || privada) {
                 html += '<div class="campo"><label>' + (privada ? 'Con qué modelo (solo ella recibe el aviso y la invitación)'
                         : 'Con quién es la reunión (el aviso les llega a todas las modelos)') + '</label>' +
                     (privada ? '' : '<div class="pestanas" id="f-citar"><button type="button" class="pestana activa" data-citar="modelos">Modelos</button>' +
@@ -373,8 +379,13 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                     '<div class="opciones"></div></div><p class="citadas-elegidas" id="f-elegidas">Toca a las modelos que vas a citar.</p></div>' +
                     '<div id="f-sec-jornada" class="oculto"><select id="f-jornada">' + (ops.jornadas || []).map((j) =>
                         '<option value="' + esc(j) + '">' + esc(j) + '</option>').join('') + '</select>' +
-                    '<p class="citadas-elegidas" id="f-conteo"></p></div></div>';
-                if (m.es_jefe) {
+                    '<p class="citadas-elegidas" id="f-conteo"></p></div></div>' +
+                    (privada ? '<div class="campo"><label>¿Aún no es modelo del estudio? Escribe su nombre (opcional)</label>' +
+                        '<input id="f-invitada" maxlength="80" placeholder="Ej: Lisbeth Montenegro" value="' +
+                        esc(editando && !(previo.cedulas || []).length ? previo.invitada || '' : '') + '">' +
+                        '<p class="citadas-elegidas">Con solo el nombre no le llega a ninguna modelo. Cuando le den sus accesos, ' +
+                        'entra a ✏️ Cambiar y tócala en la lista: le llega el aviso y la invitación.</p></div>' : '');
+                if (m.es_jefe && !editando) {
                     html += '<div class="campo"><label>Quién la da</label><select id="f-responsable">' + ops.personal.map((p) =>
                         '<option' + (p === m.persona ? ' selected' : '') + '>' + esc(p) + '</option>').join('') + '</select></div>';
                 }
@@ -406,6 +417,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
         }
         // Reunión con modelos: varias (buscador) o una jornada entera.
         const citar = { modo: 'modelos', elegidas: new Set(), una: false };   // una: la privada
+        if (editando && previo.tipo === 'privada') (previo.cedulas || []).forEach((c) => citar.elegidas.add(c));
         function prepararCitadas() {
             const caja = $f('f-modelos');
             const sinTildes = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -426,7 +438,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                     };
                 });
                 const nombres = ops.modelos.filter((x) => citar.elegidas.has(x.cedula)).map((x) => x.nombre);
-                $f('f-elegidas').textContent = citar.una ? (nombres.length ? 'Con: ' + nombres[0] : 'Toca a la modelo.')
+                $f('f-elegidas').textContent = citar.una ? (nombres.length ? 'Con: ' + nombres[0] : 'Toca a la modelo o escribe su nombre abajo.')
                     : nombres.length ? 'Citadas (' + nombres.length + '): ' + nombres.join(', ')
                     : 'Toca a las modelos que vas a citar.';
             }
@@ -469,8 +481,13 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
             boton.disabled = true;
             try {
                 let r;
+                const invitada = $f('f-invitada') ? $f('f-invitada').value.trim() : '';
                 if (editando) {
                     if (hoja.cuerpo.querySelector('.f-persona')) cuerpo.personas = marcadas;
+                    if (tipo === 'privada') {
+                        cuerpo.modelo = Array.from(citar.elegidas)[0] || '';
+                        if (!cuerpo.modelo) cuerpo.invitada = invitada;
+                    }
                     r = await P.pedir('/api/personal/cronograma/actividades/' + encodeURIComponent(previo.id), 'POST', cuerpo);
                 } else {
                     cuerpo.tipo = tipo;
@@ -479,6 +496,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                         if (citar.modo === 'jornada' && !citar.una) cuerpo.jornada = $f('f-jornada').value;
                         else cuerpo.modelos = Array.from(citar.elegidas);
                     }
+                    if (tipo === 'privada' && !citar.elegidas.size) cuerpo.invitada = invitada;
                     if ($f('f-responsable')) cuerpo.responsable = $f('f-responsable').value;
                     r = await P.pedir('/api/personal/cronograma/actividades', 'POST', cuerpo);
                 }
