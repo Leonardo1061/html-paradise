@@ -46,6 +46,17 @@
  * Usa la misma pantalla que el chat privado (`privado` y `grupo`), con el
  * nombre de quien escribe en cada burbuja, «✓✓ Visto por …» en lo suyo y los
  * mensajes de 20 en 20 con «Mostrar más». Su resumen viaja en /privado.
+ *
+ * «ADMINISTRATIVO» (Leonardo, 2026-10-23): el chat entre el personal se llama
+ * así en la web y en la Admin (antes «Personal»).
+ *
+ * PEGAR IMÁGENES (2026-10-23): Ctrl+V con una imagen copiada en el
+ * portapapeles la deja lista para enviar, como si se hubiera elegido en 📎.
+ *
+ * 📣 MENSAJE MASIVO (2026-10-23): el mismo mensaje en el chat INDIVIDUAL de
+ * cada modelo de una jornada (Mañana, Tarde, Noche, Satélites o Todas), solo
+ * a las que él puede escribir (/chat/modelos). El segundo clic confirma con
+ * cuántas lo recibirán; lo escribe la API (/chat/masivo).
  */
 
 (function () {
@@ -129,12 +140,13 @@ function montar(raiz) {
         '<section class="vista-lista">' +
         '  <div class="titulo-pagina"><h1>Chat</h1><p>Los chats que le llegan a tu rol.</p></div>' +
         '  <div class="equipo">' +
-        '    <div class="equipo-rotulo">🔒 Chat privado con el personal</div>' +
+        '    <div class="equipo-rotulo">🔒 Chat administrativo</div>' +
         '    <div class="fila-equipo"><span class="equipo-vacio">Cargando…</span></div>' +
         '  </div>' +
         '  <div class="botones" style="margin-bottom:12px">' +
         '    <input class="buscador" placeholder="Buscar modelo…">' +
         '    <button class="boton-secundario btn-nueva">✏️ Escribir a una modelo</button>' +
+        '    <button class="boton-secundario btn-masivo">📣 Mensaje masivo</button>' +
         '  </div>' +
         '  <div class="tarjeta lista-conv"><div class="vacio">Cargando…</div></div>' +
         '</section>' +
@@ -291,6 +303,82 @@ function montar(raiz) {
         }
     }
 
+    // ------------------------------------------------------ 📣 MENSAJE MASIVO
+    const JORNADAS_MASIVO = [['Mañana', 'Mañana'], ['Tarde', 'Tarde'], ['Noche', 'Noche'],
+                             ['Satelites', 'Satélites'], ['Todas', 'Todas']];
+    const sinTildes = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    async function mensajeMasivo() {
+        const capas = document.getElementById('capas-personal');
+        capas.innerHTML = '<div class="velo"></div><div class="hoja"><div class="hoja-cabecera">' +
+            '<h3>📣 Mensaje masivo<div class="sub">Le llega a cada modelo en su chat, como si le escribieras solo a ella.</div></h3>' +
+            '<button class="cerrar">✕</button></div><div class="hoja-cuerpo">' +
+            '<div class="campo"><label>Jornada</label><select class="m-jornada">' +
+            JORNADAS_MASIVO.map((j) => '<option value="' + esc(j[0]) + '">' + esc(j[1]) + '</option>').join('') +
+            '</select></div>' +
+            '<div class="campo"><label>Mensaje</label><textarea class="m-texto" maxlength="2000" ' +
+            'placeholder="Escribe el mensaje para todas…"></textarea></div>' +
+            '<div class="meta m-cuantas" style="margin-bottom:10px">Contando modelos…</div>' +
+            '<button class="boton-principal m-enviar" disabled>Enviar</button></div></div>';
+        const $ = (s) => capas.querySelector(s);
+        const cerrar = () => { capas.innerHTML = ''; };
+        $('.velo').onclick = cerrar;
+        $('.cerrar').onclick = cerrar;
+        let modelos = null;
+        let confirmar = false;
+        const destinatarias = () => {
+            const j = $('.m-jornada').value;
+            return (modelos || []).filter((m) => j === 'Todas' || sinTildes(m.jornada) === sinTildes(j));
+        };
+        const pintar = () => {
+            confirmar = false;
+            const boton = $('.m-enviar');
+            if (!modelos) return;
+            const n = destinatarias().length;
+            $('.m-cuantas').textContent = n ? 'Lo recibirán ' + n + (n === 1 ? ' modelo.' : ' modelos.')
+                : 'No hay modelos de esa jornada a las que puedas escribir.';
+            boton.textContent = 'Enviar';
+            boton.disabled = !n || !$('.m-texto').value.trim();
+        };
+        $('.m-jornada').onchange = pintar;
+        $('.m-texto').oninput = pintar;
+        $('.m-enviar').onclick = async () => {
+            const boton = $('.m-enviar');
+            const texto = $('.m-texto').value.trim();
+            const n = destinatarias().length;
+            if (!texto || !n) return;
+            if (!confirmar) {
+                // Segundo clic: se confirma viendo cuántas lo recibirán.
+                confirmar = true;
+                const jornada = $('.m-jornada').selectedOptions[0].textContent;
+                boton.textContent = '¿Seguro? Enviar a ' + n + (n === 1 ? ' modelo' : ' modelos') +
+                    (jornada === 'Todas' ? '' : ' de ' + jornada);
+                return;
+            }
+            boton.disabled = true;
+            boton.textContent = 'Enviando a ' + n + '…';
+            try {
+                const datos = await P.pedir('/api/personal/chat/masivo', 'POST',
+                                            { jornada: $('.m-jornada').value, texto: texto });
+                cerrar();
+                const fallidos = datos.fallidos || [];
+                P.avisar('📣 Enviado a ' + datos.enviados + (datos.enviados === 1 ? ' modelo.' : ' modelos.') +
+                         (fallidos.length ? ' No se pudo a: ' + fallidos.join(', ') + '.' : ''),
+                         fallidos.length ? 'malo' : undefined);
+                preguntar();
+            } catch (error) {
+                P.avisar(error.message, 'malo');
+                pintar();
+            }
+        };
+        try {
+            modelos = (await P.pedir('/api/personal/chat/modelos')).modelos || [];
+            pintar();
+        } catch (error) {
+            $('.m-cuantas').textContent = error.message;
+        }
+    }
+
     // ---------------------------------------------------------- CONVERSACIÓN
     function mostrar(vista) {
         el('.vista-lista').classList.toggle('oculto', vista !== 'lista');
@@ -358,7 +446,7 @@ function montar(raiz) {
                        ts: persona ? persona.ts : '' };
         estado.abierta = conv;
         el('.quien-conv .nombre').textContent = nombre;
-        el('.quien-conv .jornada').textContent = '🔒 Privado · ' + (persona ? persona.roles : '');
+        el('.quien-conv .jornada').textContent = '🔒 Administrativo · ' + (persona ? persona.roles : '');
         el('.vista-conv .chat-lista').innerHTML = '<div class="chat-vacio">Cargando…</div>';
         el('.fila-canal').classList.add('oculto');
         el('.chat-barra').classList.remove('oculto');
@@ -966,12 +1054,22 @@ function montar(raiz) {
     // -------------------------------------------------------------- eventos
     el('.buscador').oninput = (e) => { estado.filtro = e.target.value.trim(); pintarLista(); };
     el('.btn-nueva').onclick = elegirModelo;
+    el('.btn-masivo').onclick = mensajeMasivo;
     el('.btn-volver').onclick = () => {
         if (estado.desdeLista) { history.back(); return; }
         history.replaceState({}, '', window.location.pathname);      // llegó directo a un chat
         volver();
     };
     caja.addEventListener('input', () => { ajustarAltura(); actualizarBotones(); });
+    // Ctrl+V con una imagen en el portapapeles: lista para enviar, como la del 📎.
+    caja.addEventListener('paste', (e) => {
+        const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
+        const imagen = items.find((i) => i.kind === 'file' && i.type.indexOf('image/') === 0);
+        const archivo = imagen && imagen.getAsFile();
+        if (!archivo || !estado.abierta) return;
+        e.preventDefault();
+        alElegirArchivo(archivo);
+    });
     caja.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); enviar(); }
     });

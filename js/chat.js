@@ -546,6 +546,15 @@ function montar(raiz, opciones) {
 
     // ------------------------------------------------------------ eventos
     caja.addEventListener('input', () => { ajustarAltura(); actualizarBotones(); });
+    // Ctrl+V con una imagen en el portapapeles: lista para enviar, como la del 📎.
+    caja.addEventListener('paste', (e) => {
+        const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
+        const imagen = items.find((i) => i.kind === 'file' && i.type.indexOf('image/') === 0);
+        const archivo = imagen && imagen.getAsFile();
+        if (!archivo) return;
+        e.preventDefault();
+        alElegirArchivo(archivo);
+    });
     caja.addEventListener('keydown', (e) => {
         // En el ordenador Enter envía y Mayús+Enter salta de línea. En el
         // teléfono el teclado no tiene Mayús: allí se envía con ➤.
