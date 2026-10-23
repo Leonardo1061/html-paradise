@@ -4,6 +4,10 @@
  *
  *   SliderFotos.abrir(fuentes, indice, titulo)
  *
+ * Cada fuente es la URL de una foto, o {tipo: 'video', src, poster} para un
+ * video (TUS SESIONES de js/fotografia.js): se ve con sus controles y solo
+ * el del centro se pide; los de los lados muestran su portada.
+ *
  * Pantalla completa, una foto a la vez. Se pasa con el dedo (swipe) hacia
  * los lados y es INFINITO: después de la última vuelve la primera, y antes de
  * la primera, la última. La ✕ de arriba a la derecha lo cierra; también Esc,
@@ -33,6 +37,7 @@ const CSS = `
   padding: 56px 10px 46px; box-sizing: border-box; }
 .slider-fotos .casilla img { max-width: 100%; max-height: 100%; object-fit: contain;
   border-radius: 8px; pointer-events: none; -webkit-user-drag: none; }
+.slider-fotos .casilla video { max-width: 100%; max-height: 100%; border-radius: 8px; background: #000; }
 .slider-fotos .cerrar-slider { position: absolute; top: 10px; right: 10px; z-index: 2;
   width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
   background: rgba(255,255,255,.16); color: #fff; font-size: 22px; line-height: 44px; }
@@ -85,16 +90,39 @@ function abrir(fuentes, indice, titulo) {
         '<div class="contador"></div>';
     raiz.querySelector('.titulo-slider').textContent = titulo || '';
     const pista = raiz.querySelector('.pista');
-    const imagenes = raiz.querySelectorAll('.casilla img');
+    const casillas = raiz.querySelectorAll('.casilla');
     const contador = raiz.querySelector('.contador');
     if (total < 2) raiz.querySelectorAll('.flecha-slider').forEach((b) => b.remove());
 
     const enRango = (i) => ((i % total) + total) % total;
 
+    // Una foto reutiliza su <img>; un video se arma de nuevo (así el que
+    // sale de la vista deja de sonar).
+    function poner(casilla, fuente, delCentro) {
+        const f = typeof fuente === 'string' ? { src: fuente } : fuente;
+        if (f.tipo === 'video') {
+            const video = document.createElement('video');
+            video.controls = true;
+            video.playsInline = true;
+            video.preload = delCentro ? 'metadata' : 'none';
+            if (f.poster) video.poster = f.poster;
+            if (delCentro) video.src = f.src;
+            casilla.replaceChildren(video);
+            return;
+        }
+        let img = casilla.querySelector('img');
+        if (!img) {
+            img = document.createElement('img');
+            img.alt = '';
+            casilla.replaceChildren(img);
+        }
+        img.src = f.src;
+    }
+
     function llenar() {
-        imagenes[0].src = fuentes[enRango(actual - 1)];
-        imagenes[1].src = fuentes[actual];
-        imagenes[2].src = fuentes[enRango(actual + 1)];
+        poner(casillas[0], fuentes[enRango(actual - 1)], false);
+        poner(casillas[1], fuentes[actual], true);
+        poner(casillas[2], fuentes[enRango(actual + 1)], false);
         contador.textContent = total > 1 ? (actual + 1) + ' / ' + total : '';
         pista.style.transition = 'none';
         pista.style.transform = 'translateX(0)';
@@ -117,17 +145,27 @@ function abrir(fuentes, indice, titulo) {
     let inicioX = null;
     let inicioY = 0;
     let dx = 0;
+    // Sobre un video, la franja de abajo es de sus controles (la barra de
+    // avance también se arrastra de lado): ahí no se pasa de foto.
+    const FRANJA_CONTROLES = 64;
     raiz.addEventListener('pointerdown', (e) => {
         if (animando || e.target.closest('button')) return;
+        const video = e.target.closest('video');
+        if (video && e.clientY > video.getBoundingClientRect().bottom - FRANJA_CONTROLES) return;
         inicioX = e.clientX;
         inicioY = e.clientY;
         dx = 0;
         pista.style.transition = 'none';
-        raiz.setPointerCapture(e.pointerId);
+        // En un video se espera a que el dedo se mueva: un toque es play/pausa.
+        if (!video) raiz.setPointerCapture(e.pointerId);
     });
     raiz.addEventListener('pointermove', (e) => {
         if (inicioX === null || total < 2) return;
         dx = e.clientX - inicioX;
+        if (!raiz.hasPointerCapture(e.pointerId)) {
+            if (Math.abs(dx) < 12) return;
+            raiz.setPointerCapture(e.pointerId);
+        }
         pista.style.transform = 'translateX(' + dx + 'px)';
     });
     const soltar = (e) => {

@@ -19,6 +19,12 @@
  * Se comprimen AQUÍ, en el teléfono, antes de subirlas: un JPEG de cámara
  * pesa 3-5 MB y el documento de Firestore no admite más de 1 MB. Se prueba de
  * mejor a peor calidad hasta que todas juntas caben.
+ *
+ * TUS SESIONES
+ * ------------
+ * Los álbumes de Sesiones Multimedia de su Drive (`/api/fotografia/sesiones`).
+ * Cada foto o video llega como una ruta firmada de la API: un <img> o un
+ * <video> no pueden mandar el token, y la firma solo sirve para ese archivo.
  */
 
 (function () {
@@ -40,6 +46,7 @@ const estado = {
     diaElegido: null,               // 'AAAA-MM-DD'
     mias: [],
     estilos: null,
+    sesiones: null,                 // los álbumes de TUS SESIONES, al abrir la pestaña
     pendiente: null,                // {id, nombre, duracion, bloques} si viene de «Agendar» del portafolio
     actualizada: 0,
     cargandoMalla: false,
@@ -552,6 +559,98 @@ function abrirEstilo(estilo) {
 }
 
 // =======================================================================
+// TUS SESIONES
+// =======================================================================
+const DIAS_NUEVA = 7;
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+function fechaCorta(iso) {
+    const fecha = new Date(iso);
+    if (isNaN(fecha)) return '';
+    return fecha.getDate() + ' ' + MESES[fecha.getMonth()] + ' ' + fecha.getFullYear();
+}
+
+function cuantos(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+
+function textoCuenta(album) {
+    const partes = [];
+    if (album.fotos) partes.push(cuantos(album.fotos, 'foto', 'fotos'));
+    if (album.videos) partes.push(cuantos(album.videos, 'video', 'videos'));
+    return partes.join(' · ');
+}
+
+async function cargarSesiones() {
+    try {
+        const datos = await pedir('/api/fotografia/sesiones');
+        estado.sesiones = datos.sesiones || [];
+        pintarSesiones();
+    } catch (error) {
+        $('albumes').innerHTML = '<div class="cargando" style="grid-column:1/-1">No se pudieron cargar tus sesiones.<br><small>' +
+            escapar(error.message) + '</small></div>';
+    }
+}
+
+function pintarSesiones() {
+    const lista = estado.sesiones || [];
+    if (!lista.length) {
+        $('albumes').innerHTML = '<div class="vacio" style="grid-column:1/-1">Todavía no tienes sesiones de fotos. ' +
+            'Cuando Fotografía suba una, aparece aquí.</div>';
+        return;
+    }
+    const hace = Date.now() - DIAS_NUEVA * 86400000;
+    $('albumes').innerHTML = lista.map((a, i) =>
+        '<button class="album' + (i === 0 ? ' destacado' : '') + '" data-id="' + escapar(a.id) + '">' +
+            '<div class="portada"><img alt="" loading="lazy" src="' + escapar(API + a.portada) + '">' +
+                (new Date(a.fecha).getTime() > hace ? '<span class="nueva">NUEVA</span>' : '') +
+                '<span class="cuenta">' + escapar(textoCuenta(a)) + '</span></div>' +
+            '<div class="pie"><div class="nombre">' + escapar(a.nombre) + '</div>' +
+                '<div class="fecha">' + escapar(fechaCorta(a.fecha)) + '</div></div>' +
+        '</button>').join('');
+    document.querySelectorAll('.album').forEach((boton) => {
+        boton.onclick = () => abrirAlbum(lista.find((a) => a.id === boton.dataset.id));
+    });
+}
+
+/* El álbum abre en la hoja, en cuadrícula como un estilo del portafolio;
+   tocar una foto o un video abre el slider con todo el álbum. */
+async function abrirAlbum(album) {
+    if (!album) return;
+    abrirHoja(album.nombre, 'Tu sesión de fotos · ' + textoCuenta(album) + ' · ' + fechaCorta(album.fecha),
+        '<div class="galeria" id="galeria"><div class="vacio" style="grid-column:1/-1">' +
+            '<span class="girando">◌</span> Cargando…</div></div>');
+    const galeria = $('galeria');
+    try {
+        const datos = await pedir('/api/fotografia/sesiones/' + encodeURIComponent(album.id));
+        if (!galeria.isConnected) return;
+        const archivos = datos.archivos || [];
+        if (!archivos.length) {
+            galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">Esta sesión está vacía.</div>';
+            return;
+        }
+        const fuentes = archivos.map((a) => a.tipo === 'video'
+            ? { tipo: 'video', src: API + a.src, poster: API + a.mini }
+            : API + a.src);
+        galeria.innerHTML = '';
+        archivos.forEach((a, i) => {
+            const caja = document.createElement('div');
+            caja.className = 'medio';
+            const img = document.createElement('img');
+            img.alt = a.nombre;
+            img.loading = 'lazy';
+            img.src = API + a.mini;
+            img.onclick = () => window.SliderFotos.abrir(fuentes, i, album.nombre);
+            caja.appendChild(img);
+            if (a.tipo === 'video') caja.insertAdjacentHTML('beforeend', '<span class="play">▶</span>');
+            galeria.appendChild(caja);
+        });
+    } catch (error) {
+        if (galeria.isConnected) {
+            galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">' + escapar(error.message) + '</div>';
+        }
+    }
+}
+
+// =======================================================================
 // PESTAÑAS Y ARRANQUE
 // =======================================================================
 // El chat con Fotografía: el mismo componente de chat.html, fijo en ese canal.
@@ -564,6 +663,8 @@ function cambiarVista(vista) {
     $('tab-agenda').classList.toggle('activo', vista === 'agenda');
     $('tab-portafolio').classList.toggle('activo', vista === 'portafolio');
     $('tab-chat').classList.toggle('activo', vista === 'chat');
+    $('tab-sesiones').classList.toggle('activo', vista === 'sesiones');
+    $('vista-sesiones').classList.toggle('oculto', vista !== 'sesiones');
     $('vista-agenda').classList.toggle('oculto', vista !== 'agenda');
     $('vista-portafolio').classList.toggle('oculto', vista !== 'portafolio');
     $('vista-chat').classList.toggle('oculto', vista !== 'chat');
@@ -573,6 +674,8 @@ function cambiarVista(vista) {
         cargarAgenda(!!estado.semana);
     } else if (vista === 'portafolio' && estado.estilos === null) {
         cargarPortafolio();
+    } else if (vista === 'sesiones' && estado.sesiones === null) {
+        cargarSesiones();
     }
 }
 
@@ -585,12 +688,14 @@ $('nombre-barra').textContent = 'Fotografía';
 $('tab-agenda').onclick = () => cambiarVista('agenda');
 $('tab-portafolio').onclick = () => cambiarVista('portafolio');
 $('tab-chat').onclick = () => cambiarVista('chat');
+$('tab-sesiones').onclick = () => cambiarVista('sesiones');
 $('buscador').oninput = pintarPortafolio;
 $('sem-anterior').onclick = () => { if (estado.indice > 0) { estado.indice--; estado.diaElegido = null; cargarAgenda(); } };
 $('sem-siguiente').onclick = () => { estado.indice++; estado.diaElegido = null; cargarAgenda(); };
 $('btn-recargar').onclick = () => {
     if (estado.vista === 'agenda') cargarAgenda();
     else if (estado.vista === 'portafolio') { estado.estilos = null; cargarPortafolio(); }
+    else if (estado.vista === 'sesiones') { estado.sesiones = null; cargarSesiones(); }
 };
 
 $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
@@ -611,7 +716,8 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && estado.vista === 'agenda') cargarAgenda(true);
 });
 
-if (new URLSearchParams(window.location.search).get('vista') === 'chat') cambiarVista('chat');
+const vistaPedida = new URLSearchParams(window.location.search).get('vista');
+if (vistaPedida === 'chat' || vistaPedida === 'sesiones') cambiarVista(vistaPedida);
 else cargarAgenda();
 
 })();

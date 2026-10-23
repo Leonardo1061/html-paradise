@@ -20,6 +20,9 @@
     'fotografia'). Por ahora la recibe el monitor en el escritorio.
   - PORTAFOLIO: los estilos del catálogo de dirección de arte, con buscador.
     «Agendar» la lleva a la malla con el asunto ya escrito.
+  - TUS SESIONES: sus álbumes de Sesiones Multimedia (lo que Fotografía le
+    subió a su Drive), con portada; al abrir uno, fotos y videos en el slider
+    (sesiones_fotos.py de la API).
 
   Las reglas (la sede, quién puede cancelar qué) las decide la API: esta
   página pinta y pregunta.
@@ -85,13 +88,15 @@ button { font-family: inherit; cursor: pointer; }
 
 /* --------------------------------------------------------------- pestañas */
 .pestanas {
-    display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--borde);
+    display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--borde);
     border-radius: 14px; padding: 4px; margin-bottom: 16px;
 }
 .pestanas button {
     flex: 1; background: none; border: 0; color: var(--tenue); font-size: 14px;
     font-weight: 600; padding: 10px 0; border-radius: 11px;
 }
+.pestanas button { flex: 1 1 auto; min-width: 0; white-space: nowrap; padding-left: 6px; padding-right: 6px; }
+@media (max-width: 400px) { .pestanas button { font-size: 12.5px; } }
 .pestanas button.activo { background: var(--degradado); color: #fff; }
 
 .titulo-seccion {
@@ -221,6 +226,36 @@ button { font-family: inherit; cursor: pointer; }
 }
 .estilo .flecha { margin-left: auto; color: var(--apagado); font-size: 18px; flex: none; }
 
+/* ----------------------------------------------------------- tus sesiones */
+.albumes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (min-width: 640px) { .albumes { grid-template-columns: repeat(3, 1fr); } }
+.album {
+    background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio);
+    padding: 0; overflow: hidden; text-align: left; color: var(--texto);
+    display: flex; flex-direction: column; min-width: 0;
+}
+.album:active { transform: scale(.98); }
+.album .portada { aspect-ratio: 4 / 5; width: 100%; position: relative; background: var(--panel-alto); }
+.album .portada img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.album .cuenta {
+    position: absolute; right: 8px; bottom: 8px; background: rgba(0, 0, 0, .6); color: #fff;
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 99px;
+}
+.album .nueva {
+    position: absolute; left: 8px; top: 8px; background: var(--verde); color: #04140d;
+    font-size: 10px; font-weight: 700; letter-spacing: .5px; padding: 3px 7px; border-radius: 99px;
+}
+.album .pie { padding: 10px 12px 12px; }
+.album .nombre { font-size: 14px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.album .fecha { font-size: 11px; color: var(--tenue); margin-top: 3px; }
+.album.destacado { grid-column: 1 / -1; }
+.album.destacado .portada { aspect-ratio: 16 / 10; }
+.galeria .medio { position: relative; }
+.galeria .medio .play {
+    position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+    color: #fff; font-size: 26px; text-shadow: 0 2px 10px rgba(0, 0, 0, .7);
+}
+
 /* --------------------------------------------------------- barra inferior */
 .navegacion {
     position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
@@ -336,11 +371,12 @@ button { font-family: inherit; cursor: pointer; }
         <button class="activo" id="tab-agenda">Agenda</button>
         <button id="tab-portafolio">Portafolio</button>
         <button id="tab-chat">Chat</button>
+        <button id="tab-sesiones">Tus sesiones</button>
     </div>
 
     <section id="vista-agenda">
         <div id="pendiente"></div>
-        <div class="titulo-seccion">Tus sesiones <span class="linea"></span></div>
+        <div class="titulo-seccion">Tus citas <span class="linea"></span></div>
         <div id="mis-sesiones" class="mis-sesiones"><div class="vacio">Cargando…</div></div>
 
         <div class="titulo-seccion">Malla del fotógrafo <span class="linea"></span></div>
@@ -360,6 +396,10 @@ button { font-family: inherit; cursor: pointer; }
     </section>
 
     <section id="vista-chat" class="oculto"></section>
+
+    <section id="vista-sesiones" class="oculto">
+        <div id="albumes" class="albumes"><div class="cargando" style="grid-column:1/-1"><span class="girando">◌</span> Cargando tus sesiones…</div></div>
+    </section>
 </main>
 
 <nav class="navegacion">
