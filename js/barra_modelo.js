@@ -1770,10 +1770,37 @@ function boton_redondo(simbolo, titulo) {
     return b;
 }
 
+// =======================================================================
+// ⚡ «TU CUENTA NO SE ESTÁ REVISANDO» (Leonardo, 2026-10-23)
+// =======================================================================
+// Seis días después de que la Admin exporte las cuentas de Streamate, a la
+// modelo cuya cuenta nunca desbloqueó el Kwiky la API le dice que muestre
+// este aviso (kwiky_revision.py). Sale al entrar, una vez al día en cada
+// equipo, hasta que la cuenta se desbloquee.
+async function avisoKwiky() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    let visto = '';
+    try { visto = localStorage.getItem('pdz_aviso_kwiky') || ''; } catch (e) { visto = ''; }
+    if (visto === hoy) return;
+    let datos = null;
+    try { datos = await pedir('/api/streamate/aviso-kwiky'); } catch (e) { return; }
+    if (!datos || !datos.mostrar || estado.hoja) return;
+    try { localStorage.setItem('pdz_aviso_kwiky', hoy); } catch (e) { /* sin almacenamiento */ }
+    const hoja = abrirHoja('aviso-kwiky', '⚠️ Kwiky');
+    hoja.cuerpo.innerHTML =
+        '<div class="bm-kwiky-info s-texto" style="font-size:15px"></div>' +
+        '<button class="bm-principal s-chat">💬 Escribir al monitor</button>' +
+        '<button class="bm-secundario s-ok" style="width:100%;margin-top:8px">Entendido</button>';
+    hoja.cuerpo.querySelector('.s-texto').textContent = datos.texto;
+    hoja.cuerpo.querySelector('.s-chat').onclick = () => { window.location.href = 'chat.html'; };
+    hoja.cuerpo.querySelector('.s-ok').onclick = hoja.cerrar;
+}
+
 function montar() {
     estilos();
     montarCabecera();
     montarBurbuja();
+    setTimeout(avisoKwiky, 1500);
 
     const nav = document.getElementById('nav-ticket');
     if (nav) nav.onclick = abrirNuevo;
