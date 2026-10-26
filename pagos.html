@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Mis pagos · PARADISE</title>
+
+<!--
+  💳 MIS PAGOS · Los recibos de nómina de la modelo (2026-10-26)
+  ===============================================================
+  Las liquidaciones que la Admin (💵 CONTABILIDAD › Liquidación modelos)
+  dejó visibles con el ojo 👁 y en las que ella sale. Solo las suyas: la api
+  toma la cédula de la sesión (api/nomina_recibos.py).
+
+      GET /api/nomina/pagos         la tabla: fecha de pago y estado
+      GET /api/nomina/pagos/{id}    «Detalles»: el recibo, el mismo formato
+                                    de la Admin 2.0.8
+
+  Estado: Pagado (liquidación cerrada) o Pendiente. Se busca, se ordena por
+  columna y se pagina («Mostrar 5 registros»). «Reportar» abre 🎫 TICKET CEO
+  con el asunto del recibo ya escrito (js/barra_modelo.js).
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141318;
+    --panel-alto: #1b1a22;
+    --borde:      #2a2932;
+    --texto:      #f4f4f5;
+    --tenue:      #9b9ba3;
+    --apagado:    #6b6b73;
+
+    --violeta:    #8b5cf6;
+    --magenta:    #d946ef;
+    --verde:      #34d399;
+    --rojo:       #ef4444;
+    --ambar:      #fbbf24;
+
+    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --radio: 18px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 120px;
+}
+button, input, select { font-family: inherit; }
+button { cursor: pointer; }
+.oculto { display: none !important; }
+
+/* ------------------------------------------------------------------ barra */
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 900px; margin: 0 auto; }
+.marca {
+    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--degradado); font-size: 19px; color: #fff;
+    box-shadow: 0 8px 20px rgba(168, 85, 247, .35);
+}
+
+.contenido { padding: 6px 16px 0; max-width: 900px; margin: 0 auto; }
+
+/* ------------------------------------------------------------------ tabla */
+.tarjeta {
+    background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio);
+    padding: 16px;
+}
+.controles { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.controles label { font-size: 13px; color: var(--tenue); display: flex; align-items: center; gap: 6px; }
+.controles input, .controles select {
+    background: var(--panel-alto); color: var(--texto); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 8px 10px; font-size: 14px;
+}
+.controles input { width: 190px; max-width: 100%; }
+.envoltura { overflow-x: auto; }
+table.pagos { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.pagos th {
+    text-align: left; font-weight: 600; color: var(--tenue); font-size: 12px; padding: 10px 8px;
+    border-bottom: 1px solid var(--borde); white-space: nowrap; cursor: pointer; user-select: none;
+}
+table.pagos th.sin-orden { cursor: default; }
+table.pagos th .flecha { opacity: .35; margin-left: 4px; }
+table.pagos th.ordenado .flecha { opacity: 1; color: var(--magenta); }
+table.pagos td { padding: 11px 8px; border-bottom: 1px solid var(--borde); vertical-align: middle; }
+table.pagos tr:last-child td { border-bottom: 0; }
+.fecha { font-weight: 500; white-space: nowrap; }
+@media (max-width: 480px) {
+    .tarjeta { padding: 12px 10px; }
+    table.pagos { font-size: 13px; }
+    table.pagos td, table.pagos th { padding-left: 5px; padding-right: 5px; }
+    .acciones .boton { padding: 6px 9px; font-size: 12px; }
+}
+.sub { font-size: 11px; color: var(--apagado); }
+.estado {
+    display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+}
+.estado.pendiente { background: rgba(251, 191, 36, .16); color: var(--ambar); }
+.estado.pagado { background: rgba(52, 211, 153, .16); color: var(--verde); }
+.acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+.boton {
+    border: 1px solid var(--borde); background: var(--panel-alto); color: var(--texto);
+    border-radius: 10px; padding: 7px 11px; font-size: 13px; font-weight: 500;
+}
+.boton.principal { background: var(--degradado); border: 0; color: #fff; }
+.boton:disabled { opacity: .45; cursor: default; }
+.pie { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13px; color: var(--tenue); }
+.paginas { display: flex; gap: 6px; }
+.vacio { text-align: center; color: var(--tenue); padding: 26px 10px; font-size: 14px; line-height: 1.5; }
+
+/* ------------------------------------------------------------------ recibo */
+.capa {
+    position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .72);
+    display: flex; align-items: flex-start; justify-content: center; overflow-y: auto;
+    padding: calc(14px + env(safe-area-inset-top)) 10px 40px;
+}
+.hoja {
+    background: #fff; color: #1d1d22; border-radius: 16px; width: 100%; max-width: 980px;
+    padding: 18px; font-size: 13px;
+}
+.hoja-arriba { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
+.hoja-arriba .boton { background: #eef0f4; color: #1d1d22; border-color: #d5d8e0; }
+.hoja-arriba .boton.principal { background: var(--degradado); color: #fff; border: 0; }
+.recibo { display: grid; grid-template-columns: 64% 36%; gap: 14px; }
+.recibo h2 { margin: 0 0 4px; font-size: 19px; }
+.datos td { padding: 2px 10px 2px 0; }
+.datos td:first-child { color: #555; }
+.datos td:last-child { font-weight: 600; }
+.recibo h3 { font-size: 13px; margin: 14px 0 4px; }
+.recibo h4 { font-size: 13px; font-weight: 500; margin: 8px 0 2px; }
+.tabla { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.tabla th { background: #eef0f4; border-bottom: 1px solid #999; padding: 5px 4px; text-align: left; font-weight: 600; }
+.tabla td { border-bottom: 1px solid #ddd; padding: 5px 4px; }
+.tabla .der { text-align: right; white-space: nowrap; }
+.tabla tr.total td { font-weight: 700; }
+.nota { margin: 4px 0 0; color: #333; }
+.totales { border: 1px solid #bbb; border-collapse: collapse; width: 100%; }
+.totales td { padding: 7px 6px; border-bottom: 1px solid #ddd; }
+.totales td:last-child { text-align: right; white-space: nowrap; }
+.totales .cabeza { background: #eef0f4; }
+.totales .fuerte td { font-size: 16px; font-weight: 700; }
+.totales .sangria td:first-child { padding-left: 18px; color: #555; }
+.banco { color: #555; margin-top: 8px; }
+@media (max-width: 700px) {
+    .recibo { grid-template-columns: 1fr; }
+    .hoja { padding: 14px 12px; }
+    .tabla { font-size: 12px; }
+}
+
+/* --------------------------------------------------------- barra inferior */
+.navegacion {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 30; background: var(--degradado); border-radius: 20px;
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
+}
+@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
+.navegacion button {
+    flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 8px; font-weight: 600; letter-spacing: -.2px; padding: 4px 0; white-space: nowrap;
+}
+.navegacion button .simbolo { font-size: 19px; line-height: 1; }
+.navegacion button.activo { color: #fff; }
+.navegacion button.activo .simbolo {
+    background: rgba(255, 255, 255, .2); border-radius: 10px; padding: 4px 10px;
+}
+
+.aviso {
+    position: fixed; left: 16px; right: 16px; bottom: 100px; z-index: 90;
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 14px;
+    padding: 13px 15px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+}
+.aviso.malo { border-color: rgba(239, 68, 68, .55); }
+.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+@media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
+
+/* Imprimir / guardar como PDF: solo el recibo, en blanco. */
+@media print {
+    body { background: #fff; padding: 0; }
+    body.imprimiendo > *:not(.capa) { display: none !important; }
+    .capa { position: static; background: none; padding: 0; overflow: visible; }
+    .hoja { border-radius: 0; max-width: none; padding: 0; }
+    .hoja-arriba { display: none; }
+    .recibo { grid-template-columns: 64% 36%; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="barra">
+    <div class="marca">💳</div>
+    <div>
+        <div style="font-size:15px;font-weight:600">Mis pagos</div>
+        <div style="font-size:11px;color:var(--tenue)">Tus recibos de nómina</div>
+    </div>
+</div>
+
+<main class="contenido">
+    <div class="tarjeta">
+        <div class="controles">
+            <label>Mostrar
+                <select id="por-pagina">
+                    <option>5</option><option>10</option><option>25</option><option>50</option>
+                </select>
+                registros</label>
+            <label>Buscar <input id="buscar" type="search" autocomplete="off" placeholder="Fecha, estado…"></label>
+        </div>
+        <div class="envoltura">
+            <table class="pagos">
+                <thead><tr>
+                    <th data-orden="fecha_pago">Fecha de pago<span class="flecha">↕</span></th>
+                    <th data-orden="estado">Estado<span class="flecha">↕</span></th>
+                    <th class="sin-orden">Acciones</th>
+                </tr></thead>
+                <tbody id="filas"><tr><td colspan="3" class="vacio">Cargando tus pagos…</td></tr></tbody>
+            </table>
+        </div>
+        <div class="pie">
+            <div id="cuenta"></div>
+            <div class="paginas">
+                <button class="boton" id="anterior">‹ Anterior</button>
+                <button class="boton" id="siguiente">Siguiente ›</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<nav class="navegacion">
+    <button id="nav-programador"><span class="simbolo">🗓️</span>TUS SHOWS</button>
+    <button id="nav-fotografia"><span class="simbolo">📷</span>FOTOGRAFÍA</button>
+    <button id="nav-status"><span class="simbolo">📋</span>STATUS ROOM</button>
+    <button id="nav-subir"><span class="simbolo">📤</span>SUBIR CONTENIDO</button>
+    <button id="nav-ticket"><span class="simbolo">🎫</span>TICKET CEO</button>
+    <button class="activo" id="nav-pagos"><span class="simbolo">💳</span>MIS PAGOS</button>
+</nav>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/adjuntos.js"></script>
+<script src="js/barra_modelo.js"></script>
+<script>
+(function () {
+    'use strict';
+    if (!localStorage.getItem('token_sesion')) { window.location.href = PARADISE.URL_LOGIN; return; }
+    const $ = (id) => document.getElementById(id);
+    const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto',
+                   'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const ESTADO = { pendiente: 'Pendiente', pagado: 'Pagado' };
+    const vista = { pagos: [], orden: 'fecha_pago', sube: false, pagina: 0, porPagina: 5, filtro: '' };
+
+    let avisoActual = null;
+    function avisar(mensaje, tipo) {
+        if (avisoActual) avisoActual.remove();
+        const caja = document.createElement('div');
+        caja.className = 'aviso ' + (tipo || '');
+        caja.textContent = mensaje;
+        document.body.appendChild(caja);
+        avisoActual = caja;
+        setTimeout(() => { if (caja === avisoActual) { caja.remove(); avisoActual = null; } },
+                  tipo === 'malo' ? 6000 : 3200);
+    }
+
+    function escapar(texto) {
+        return String(texto == null ? '' : texto)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function pedir(ruta) {
+        const r = await fetch(PARADISE.API_URL + ruta, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token_sesion') }, cache: 'no-store',
+        });
+        if (r.status === 401) {
+            PARADISE.olvidar('token_sesion');
+            avisar('Tu sesión caducó. Entra otra vez.', 'malo');
+            setTimeout(() => { window.location.href = PARADISE.URL_LOGIN; }, 1500);
+            throw new Error('Tu sesión caducó.');
+        }
+        const datos = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(datos.detail || 'No se pudo cargar. Intenta otra vez.');
+        return datos;
+    }
+
+    // «2026-10-29» → «29-Octubre-2026» y «29/10/2026»
+    function fechaLarga(iso) {
+        const p = String(iso || '').split('-');
+        return p.length === 3 ? Number(p[2]) + '-' + MESES[Number(p[1]) - 1] + '-' + p[0] : (iso || '—');
+    }
+    function fechaCorta(iso) {
+        const p = String(iso || '').split('-');
+        return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : (iso || '—');
+    }
+    function pesos(valor, decimales) {
+        const n = Number(valor || 0);
+        return (n < 0 ? '-$ ' : '$ ') + Math.abs(n).toLocaleString('es-CO',
+            { minimumFractionDigits: decimales || 0, maximumFractionDigits: decimales || 0 });
+    }
+    function dolares(valor) {
+        return Number(valor || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ------------------------------------------------------------- la tabla
+    function filtrados() {
+        const f = vista.filtro.toLowerCase();
+        const lista = vista.pagos.filter((p) => !f || [fechaLarga(p.fecha_pago), fechaCorta(p.fecha_pago),
+            ESTADO[p.estado], 'liquidación #' + p.numero, p.conjunto].join(' ').toLowerCase().indexOf(f) >= 0);
+        const clave = vista.orden;
+        lista.sort((a, b) => {
+            const x = String(a[clave] || ''), y = String(b[clave] || '');
+            const c = x < y ? -1 : x > y ? 1 : (b.fecha_pago < a.fecha_pago ? -1 : 1);
+            return vista.sube ? c : -c;
+        });
+        return lista;
+    }
+
+    function pintar() {
+        const lista = filtrados();
+        const total = lista.length;
+        const paginas = Math.max(1, Math.ceil(total / vista.porPagina));
+        vista.pagina = Math.min(vista.pagina, paginas - 1);
+        const desde = vista.pagina * vista.porPagina;
+        const pedazo = lista.slice(desde, desde + vista.porPagina);
+        const cuerpo = $('filas');
+        if (!vista.pagos.length) {
+            cuerpo.innerHTML = '<tr><td colspan="3" class="vacio">Todavía no hay recibos publicados.<br>' +
+                'Cuando contabilidad publique tu liquidación, la verás aquí.</td></tr>';
+        } else if (!total) {
+            cuerpo.innerHTML = '<tr><td colspan="3" class="vacio">Ningún pago coincide con la búsqueda.</td></tr>';
+        } else {
+            cuerpo.innerHTML = pedazo.map((p) =>
+                '<tr><td><div class="fecha">' + escapar(fechaLarga(p.fecha_pago)) + '</div>' +
+                '<div class="sub">Liquidación #' + escapar(p.numero) + '</div></td>' +
+                '<td><span class="estado ' + escapar(p.estado) + '">' + escapar(ESTADO[p.estado] || p.estado) + '</span></td>' +
+                '<td><div class="acciones">' +
+                '<button class="boton principal" data-detalles="' + escapar(p.id) + '">Detalles</button>' +
+                '<button class="boton" data-reportar="' + escapar(p.id) + '">Reportar</button>' +
+                '</div></td></tr>').join('');
+        }
+        $('cuenta').textContent = total
+            ? 'Mostrando ' + (desde + 1) + ' a ' + (desde + pedazo.length) + ' de ' + total + ' registros'
+            : 'Mostrando 0 registros';
+        $('anterior').disabled = vista.pagina <= 0;
+        $('siguiente').disabled = vista.pagina >= paginas - 1;
+        document.querySelectorAll('th[data-orden]').forEach((th) => {
+            const activo = th.dataset.orden === vista.orden;
+            th.classList.toggle('ordenado', activo);
+            th.querySelector('.flecha').textContent = activo ? (vista.sube ? '↑' : '↓') : '↕';
+        });
+    }
+
+    $('filas').onclick = (e) => {
+        const detalles = e.target.closest('[data-detalles]');
+        const reportar = e.target.closest('[data-reportar]');
+        if (detalles) abrirRecibo(detalles.dataset.detalles);
+        if (reportar) reportarPago(vista.pagos.find((p) => p.id === reportar.dataset.reportar));
+    };
+    $('buscar').oninput = () => { vista.filtro = $('buscar').value.trim(); vista.pagina = 0; pintar(); };
+    $('por-pagina').onchange = () => { vista.porPagina = Number($('por-pagina').value); vista.pagina = 0; pintar(); };
+    $('anterior').onclick = () => { vista.pagina -= 1; pintar(); };
+    $('siguiente').onclick = () => { vista.pagina += 1; pintar(); };
+    document.querySelectorAll('th[data-orden]').forEach((th) => {
+        th.onclick = () => {
+            if (vista.orden === th.dataset.orden) vista.sube = !vista.sube;
+            else { vista.orden = th.dataset.orden; vista.sube = false; }
+            pintar();
+        };
+    });
+
+    // ------------------------------------------------------------- reportar
+    function reportarPago(p) {
+        if (!p || !window.PARADISE_BARRA) return;
+        window.PARADISE_BARRA.abrirNuevo({
+            tipo: /pago|n[oó]mina/i,
+            asunto: 'Reclamo de mi pago del ' + fechaLarga(p.fecha_pago) + ' (Liquidación #' + p.numero + ')',
+            detalle: 'Revisé mi recibo de la Liquidación #' + p.numero + ' (' + fechaCorta(p.inicio) + ' al ' +
+                fechaCorta(p.fin) + ', pago del ' + fechaCorta(p.fecha_pago) + ') y quiero reportar:\n\n',
+        });
+    }
+
+    // ------------------------------------------------------------- el recibo
+    function filaTabla(celdas) {
+        return '<tr>' + celdas.map((c) => '<td class="' + (c[1] || '') + '">' + c[0] + '</td>').join('') + '</tr>';
+    }
+    function cabeza(columnas) {
+        return '<tr>' + columnas.map((c) => '<th class="' + (c[1] || '') + '">' + c[0] + '</th>').join('') + '</tr>';
+    }
+
+    function htmlRecibo(r) {
+        const e = escapar;
+        const dato = (et, v) => '<tr><td>' + et + '</td><td>' + v + '</td></tr>';
+        let izq = '<h2>' + e(r.nombre) + '</h2><table class="datos">' +
+            dato('CC', e(r.cedula)) + dato('Sede', e(r.sede || '—')) + dato('Recibo Nro', e(r.recibo)) +
+            dato('Periodo', fechaCorta(r.inicio) + ' al ' + fechaCorta(r.fin)) +
+            dato('Fecha de pago', fechaCorta(r.fecha_pago)) +
+            dato('Dólar | Euro', pesos(r.dolar, 2) + ' | ' + (r.euro ? pesos(r.euro, 2) : '—')) +
+            dato('Porcentaje', e(r.porcentaje) + ' %' + (r.cumpleanos ? ' (semana de cumpleaños)' : '')) +
+            dato('Bonificaciones', pesos(r.bonos)) + '</table>';
+
+        izq += '<h3>Detalle ingresos por plataforma</h3><table class="tabla">' +
+            cabeza([['Plataforma'], ['Usuario'], ['Total USD', 'der'], ['Total en pesos', 'der']]);
+        r.plataformas.forEach((p) => {
+            izq += filaTabla([[e(p.plataforma)], [e(p.usuario)], [dolares(p.usd), 'der'], [pesos(p.cop), 'der']]);
+        });
+        if (!r.plataformas.length) izq += filaTabla([['Sin producción en este periodo'], [''], [''], ['']]);
+        izq += '<tr class="total"><td>Total</td><td></td><td class="der">' + dolares(r.total_usd) +
+            '</td><td class="der">' + pesos(r.bruto) + '</td></tr></table>';
+
+        izq += '<h3>Deducciones</h3><h4>Préstamos</h4><table class="tabla">' +
+            cabeza([['Préstamo'], ['Debía', 'der'], ['Abona', 'der'], ['Pendiente', 'der']]);
+        r.prestamos.forEach((p) => {
+            izq += filaTabla([[e(p.motivo)], [pesos(p.debia), 'der'], [pesos(p.abona), 'der'], [pesos(p.pendiente), 'der']]);
+        });
+        if (!r.prestamos.length) izq += filaTabla([['Sin préstamos en este pago'], [''], [''], ['']]);
+        izq += '</table>';
+
+        izq += '<h4>Productos en deuda y abonos</h4><table class="tabla">' +
+            cabeza([['Producto'], ['Cantidad', 'der'], ['Debía', 'der'], ['Abona', 'der'], ['Debe', 'der']]);
+        r.productos.forEach((p) => {
+            izq += filaTabla([[e(p.producto)], [e(p.cantidad), 'der'], [pesos(p.debia), 'der'],
+                              [pesos(p.abona), 'der'], [pesos(p.debe), 'der']]);
+        });
+        if (!r.productos.length) izq += filaTabla([['No debe productos'], [''], [''], [''], ['']]);
+        izq += '</table>';
+        if (r.productos.length) {
+            izq += '<p class="nota">Total que queda en deuda: <b>' + pesos(r.queda_productos) +
+                '</b> · Total abonado en este pago: <b>' + pesos(r.abonado_productos) + '</b></p>';
+        }
+        if (r.otros.length) {
+            izq += '<h4>Otros descuentos</h4><table class="tabla">' + cabeza([['Motivo'], ['Valor', 'der']]);
+            r.otros.forEach((o) => { izq += filaTabla([[e(o.motivo)], [pesos(o.valor), 'der']]); });
+            izq += '</table>';
+        }
+
+        const menos = (v) => (v ? pesos(-v) : pesos(0));
+        const total = (et, v, clase) => '<tr class="' + (clase || '') + '"><td>' + et + '</td><td>' + v + '</td></tr>';
+        let der = '<table class="totales"><tr class="cabeza"><td colspan="2"><b>THE PARADISE STUDIO</b><br>' +
+            e(r.etiqueta) + '<br><span class="estado ' + e(r.estado) + '">' + e(ESTADO[r.estado] || r.estado) +
+            '</span></td></tr>' +
+            total('Total bruto', pesos(r.bruto)) + total('Bonificaciones', pesos(r.bonos)) +
+            total('Deducciones', menos(r.deducciones)) +
+            total('· Préstamos', menos(r.d_prestamos), 'sangria') +
+            total('· Productos', menos(r.d_productos), 'sangria') +
+            total('· Otros', menos(r.d_otros), 'sangria') +
+            total('Total a pagar', pesos(r.neto), 'fuerte') + '</table>';
+        if (r.banco && r.banco.termina_en) {
+            der += '<p class="banco">Se consigna en tu cuenta terminada en ' + e(r.banco.termina_en) + '</p>';
+        }
+        return '<div class="recibo"><div>' + izq + '</div><div>' + der + '</div></div>';
+    }
+
+    async function abrirRecibo(id) {
+        const capa = document.createElement('div');
+        capa.className = 'capa';
+        capa.innerHTML = '<div class="hoja"><div class="hoja-arriba">' +
+            '<button class="boton r-reportar">Reportar</button>' +
+            '<button class="boton r-imprimir">🖨 Imprimir / PDF</button>' +
+            '<button class="boton principal r-cerrar">Cerrar</button></div>' +
+            '<div class="r-cuerpo" style="padding:30px 0;text-align:center;color:#555">Cargando el recibo…</div></div>';
+        document.body.appendChild(capa);
+        const cerrar = () => { capa.remove(); document.removeEventListener('keydown', tecla); };
+        const tecla = (e) => { if (e.key === 'Escape') cerrar(); };
+        document.addEventListener('keydown', tecla);
+        capa.onclick = (e) => { if (e.target === capa) cerrar(); };
+        capa.querySelector('.r-cerrar').onclick = cerrar;
+        capa.querySelector('.r-imprimir').onclick = () => {
+            document.body.classList.add('imprimiendo');
+            window.print();
+            document.body.classList.remove('imprimiendo');
+        };
+        capa.querySelector('.r-reportar').onclick = () => {
+            cerrar();
+            reportarPago(vista.pagos.find((p) => p.id === id));
+        };
+        try {
+            const r = await pedir('/api/nomina/pagos/' + encodeURIComponent(id));
+            const cuerpo = capa.querySelector('.r-cuerpo');
+            cuerpo.removeAttribute('style');
+            cuerpo.innerHTML = htmlRecibo(r);
+        } catch (error) {
+            capa.querySelector('.r-cuerpo').textContent = error.message;
+        }
+    }
+
+    async function cargar() {
+        try {
+            const datos = await pedir('/api/nomina/pagos');
+            vista.pagos = datos.pagos || [];
+        } catch (error) {
+            $('filas').innerHTML = '<tr><td colspan="3" class="vacio">' + escapar(error.message) + '</td></tr>';
+            return;
+        }
+        pintar();
+    }
+
+    $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
+    $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
+    $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
+    $('nav-pagos').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    cargar();
+})();
+</script>
+</body>
+</html>

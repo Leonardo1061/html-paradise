@@ -1,6 +1,6 @@
 /* ===========================================================================
  * PARADISE · La barra de la modelo: cabecera fija, 💬 burbuja del chat,
- *            🎫 TICKET CEO y 📤 SUBIR CONTENIDO
+ *            🎫 TICKET CEO, 📤 SUBIR CONTENIDO y 💳 MIS PAGOS
  * ===========================================================================
  *
  * Va en TODAS las páginas de la modelo (panel, chat, plan, fotografía y
@@ -61,6 +61,11 @@
  * Desde 2026-10-16, en las dos pestañas: la pantalla no se apaga mientras
  * sube (Wake Lock), un corte de conexión se reintenta solo al volver y al
  * final sale una alerta grande (y notificación si la página no está a la vista).
+ *
+ * Y 💳 MIS PAGOS (2026-10-26): la barra pone el botón `nav-pagos` a la
+ * derecha de TICKET CEO en todas las páginas y lleva a pagos.html (los
+ * recibos de nómina, api: nomina_recibos.py). Su «Reportar» abre el ticket
+ * con PARADISE_BARRA.abrirNuevo({asunto, detalle, tipo}).
  *
  * Todo el aspecto vive aquí (clases `bm-`), para verse igual en las cinco
  * páginas aunque cada una tenga su hoja de estilos.
@@ -304,6 +309,9 @@ function estilos() {
     const css = document.createElement('style');
     css.id = 'bm-estilos';
     css.textContent = `
+/* Seis botones abajo (con 💳 MIS PAGOS): en el teléfono el texto va en dos líneas. */
+.navegacion.bm-nav6 button { white-space: normal; line-height: 1.15; text-align: center; padding-left: 1px; padding-right: 1px; }
+@media (min-width: 760px) { .navegacion.bm-nav6 { width: 600px; } .navegacion.bm-nav6 button { white-space: nowrap; } }
 .bm-redondo {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
     background: #1b1a22; border: 1px solid #2a2932; color: #f4f4f5; font-size: 17px;
@@ -817,7 +825,9 @@ function abrirCampana() {
 // =======================================================================
 // 🎫 NUEVO TICKET
 // =======================================================================
-function abrirNuevo() {
+function abrirNuevo(opciones) {
+    // «Reportar» de Mis pagos lo abre con el asunto y el detalle ya escritos.
+    const pre = (opciones && !(opciones instanceof Event)) ? opciones : {};
     const A = window.Adjuntos;
     const hoja = abrirHoja('nuevo', '🎫 Ticket al CEO');
     const fotos = [];                // {archivo, vista}
@@ -850,11 +860,19 @@ function abrirNuevo() {
         otra = datos.otra || otra;
         $('.t-tipo').innerHTML = '<option value="">Elige el tipo…</option>' +
             (datos.tipos || []).map((t) => '<option>' + escapar(t) + '</option>').join('');
+        if (pre.tipo) {
+            const tipo = (datos.tipos || []).find((t) => pre.tipo.test(t));
+            if (tipo) $('.t-tipo').value = tipo;
+            $('.t-tipo').onchange();
+        }
     }).catch(() => { $('.t-tipo').innerHTML = '<option value="">No se pudo cargar. Cierra y vuelve a abrir.</option>'; });
     $('.t-tipo').onchange = () => {
         $('.t-etiqueta-asunto').textContent = $('.t-tipo').value === otra ? 'Asunto (obligatorio con «OTRA»)'
             : 'Asunto (opcional)';
     };
+
+    if (pre.asunto) $('.t-asunto').value = pre.asunto;
+    if (pre.detalle) $('.t-detalle').value = pre.detalle;
 
     const pintarAdjuntos = () => {
         const caja = $('.bm-adjuntos');
@@ -1796,6 +1814,22 @@ async function avisoKwiky() {
     hoja.cuerpo.querySelector('.s-ok').onclick = hoja.cerrar;
 }
 
+// 💳 MIS PAGOS (2026-10-26): el sexto botón de la barra de abajo, a la
+// derecha de TICKET CEO. Se pone aquí para no tocar las cinco páginas;
+// pagos.html ya lo trae marcado como activo.
+function montarNavPagos(navTicket) {
+    if (!navTicket) return;
+    let boton = document.getElementById('nav-pagos');
+    if (!boton) {
+        boton = document.createElement('button');
+        boton.id = 'nav-pagos';
+        boton.innerHTML = '<span class="simbolo">💳</span>MIS PAGOS';
+        navTicket.insertAdjacentElement('afterend', boton);
+    }
+    if (!boton.classList.contains('activo')) boton.onclick = () => { window.location.href = 'pagos.html'; };
+    navTicket.parentElement.classList.add('bm-nav6');
+}
+
 function montar() {
     estilos();
     montarCabecera();
@@ -1806,6 +1840,7 @@ function montar() {
     if (nav) nav.onclick = abrirNuevo;
     const navSubir = document.getElementById('nav-subir');
     if (navSubir) navSubir.onclick = abrirSubir;
+    montarNavPagos(nav);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarHoja(); });
 
     revisar(true).then(() => {
