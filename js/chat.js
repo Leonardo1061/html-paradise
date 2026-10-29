@@ -51,7 +51,7 @@
 'use strict';
 
 const API = PARADISE.API_URL;
-const CADA_MS = 4000;
+const CADA_MS = 10000;                      // eran 4 s (lecturas de Firestore, 2026-10-29)
 const TOPE_FOTO = 650000;                       // base64; la API acepta 700 000
 const A = window.Adjuntos;
 const R = window.Reacciones;

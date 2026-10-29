@@ -64,7 +64,7 @@
 
 const P = window.Personal;
 const esc = P.escapar;
-const CADA_MS = 5000;
+const CADA_MS = 12000;               // eran 5 s (lecturas de Firestore, 2026-10-29)
 const TOPE_FOTO = 650000;            // base64; la API acepta 700 000
 const A = window.Adjuntos;
 // Reacciones y enlaces (2026-10-17): js/reacciones.js. Las reacciones son las

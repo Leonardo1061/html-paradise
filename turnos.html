@@ -1074,8 +1074,13 @@ async function cargarDatos() {
 
 // Se refresca cada minuto, pero NUNCA se pisan los cambios sin guardar:
 // los pendientes viven en `pendiente` y se repintan encima de lo que llegue.
+// Solo con la pestaña a la vista (2026-10-29): abierta de fondo seguía
+// preguntando cada minuto y era lo que más lecturas gastaba de toda la base.
 cargarDatos();
-setInterval(cargarDatos, 60000);
+setInterval(() => { if (document.visibilityState === 'visible') cargarDatos(); }, 60000);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') cargarDatos();
+});
 </script>
 
     <nav class="navegacion">

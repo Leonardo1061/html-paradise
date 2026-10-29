@@ -87,8 +87,9 @@ const API = PARADISE.API_URL;
 const MAX_FOTOS = 6;                 // los de tickets.py
 const MAX_ARCHIVOS = 4;
 const TOPE_VISTA = 880000;           // base64; la API acepta 900 000
-const CADA_MS = 60000;
-const CHAT_CADA_MS = 30000;
+// Eran 60 s y 30 s: se alargaron para gastar menos lecturas (2026-10-29).
+const CADA_MS = 90000;
+const CHAT_CADA_MS = 60000;
 const ES_CHAT = /(^|\/)chat(\.html)?$/.test(window.location.pathname);
 
 const estado = {

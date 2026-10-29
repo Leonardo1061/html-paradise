@@ -106,7 +106,7 @@
 const API = PARADISE.API_URL;
 const CLAVE_TOKEN = 'token_personal';
 const CLAVE_FICHA = 'ficha_personal';
-const CADA_MS_TAREAS = 30000;
+const CADA_MS_TAREAS = 60000;        // eran 30 s (lecturas de Firestore, 2026-10-29)
 const TOPE_IMAGEN = 880000;          // base64; la API acepta 900 000
 const MAX_IMAGENES = 6;
 const FILTROS_TAREA = [
