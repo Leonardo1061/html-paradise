@@ -94,7 +94,7 @@
     }
 
     // ＋ CREAR MODELO: solo cédula y jornada; ella llena el resto en la web.
-    function abrirCrearModelo(jornadas) {
+    function abrirCrearModelo(jornadas, tipos) {
         const capa = document.createElement('div');
         capa.className = 'capa-conversacion';
         capa.innerHTML = '<div class="velo"></div><div class="hoja">' +
@@ -108,7 +108,9 @@
 
         function formulario() {
             cuerpo.innerHTML =
-                '<div class="campo"><label>Cédula *</label>' +
+                '<div class="campo"><label>Tipo de documento *</label><select class="c-tipo">' +
+                    tipos.map((t) => '<option>' + esc(t) + '</option>').join('') + '</select></div>' +
+                '<div class="campo"><label>Número de documento *</label>' +
                     '<input class="c-cedula" inputmode="numeric" autocomplete="off" placeholder="Solo números"></div>' +
                 '<div class="campo"><label>Jornada *</label><select class="c-jornada">' +
                     '<option value="">Elige la jornada</option>' +
@@ -118,17 +120,18 @@
                 '<button class="boton-principal c-crear">Crear modelo</button>';
             const cedula = cuerpo.querySelector('.c-cedula');
             const jornada = cuerpo.querySelector('.c-jornada');
+            const tipo = cuerpo.querySelector('.c-tipo');
             cedula.focus();
             cuerpo.querySelector('.c-crear').onclick = async (e) => {
                 const limpia = cedula.value.replace(/\D/g, '');
-                if (!limpia) { P.avisar('Escribe la cédula.', 'malo'); cedula.focus(); return; }
+                if (!limpia) { P.avisar('Escribe el número de documento.', 'malo'); cedula.focus(); return; }
                 if (!jornada.value) { P.avisar('Elige la jornada.', 'malo'); jornada.focus(); return; }
-                if (!confirm('¿La cédula ' + limpia + ' está bien escrita?\n\n' +
+                if (!confirm('¿' + tipo.value + ' ' + limpia + ' está bien escrito?\n\n' +
                              'Es el ID de la modelo y no se puede cambiar después.')) return;
                 e.target.disabled = true;
                 try {
                     const r = await P.pedir('/api/personal/modelos', 'POST',
-                                            { cedula: limpia, jornada: jornada.value });
+                                            { cedula: limpia, jornada: jornada.value, tipo_documento: tipo.value });
                     resultado(r);
                 } catch (error) {
                     P.avisar(error.message, 'malo');
@@ -155,9 +158,11 @@
 
     P.iniciar('inicio').then(async (yo) => {
         const jornadasCrear = yo.jornadas_crear || [];
+        // Una API vieja no manda los tipos: solo cédula de ciudadanía.
+        const tiposDocumento = yo.tipos_documento || ['Cédula de ciudadanía'];
         if (jornadasCrear.length) {
             $('btn-crear-modelo').classList.remove('oculto');
-            $('btn-crear-modelo').onclick = () => abrirCrearModelo(jornadasCrear);
+            $('btn-crear-modelo').onclick = () => abrirCrearModelo(jornadasCrear, tiposDocumento);
         }
         // La campana llega por su lado (personal.js): se escucha desde ya.
         document.addEventListener('personal:tareas', (e) => pintarTareas(e.detail || []));
