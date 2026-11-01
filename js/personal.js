@@ -1493,8 +1493,8 @@ function abrirCampana() {
             (datos.monitores || []).map((m) => '<option value="' + escapar(m.nombre) + '">' +
                 escapar(m.nombre) + ' · ' + escapar(m.roles) + '</option>').join('') + '</select></div>' +
             '<div class="campo"><label>' + (tarea ? 'Día' : 'Días') + '</label><div class="dias-programar">' +
-            semana.dias.map((d) => '<button type="button" class="dia-programar" data-fecha="' + d.fecha + '"' +
-                (d.pasado ? ' disabled' : '') + ' title="' + escapar(d.nombre) + '">' + escapar(d.nombre[0]) + '</button>').join('') +
+            semana.dias.map((d, i) => '<button type="button" class="dia-programar" data-fecha="' + d.fecha + '"' +
+                (d.pasado ? ' disabled' : '') + ' title="' + escapar(d.nombre) + '">' + 'LMXJVSD'[i] + '</button>').join('') +
             '</div></div>' +
             '<div class="aviso-descanso oculto"></div>' +
             '<div class="fila-campos"><div class="campo"><label>Le aparece a las</label><select class="t-hora">' +
