@@ -68,6 +68,8 @@
  * Al asignar se puede elegir «👥 Todo el personal» (menos CEO, Gerencia y
  * Fotografía). La primera persona que pulsa «En curso» la toma: a las demás
  * les sale en curso con «La está haciendo X», sin botones ni conversación.
+ * Quien la toma es el único que la sigue viendo: a los demás les desaparece
+ * (2026-11-01). «🗓 Semana» deja tareas programadas para un día (pintarSemana).
  * En «Enviadas», «📊 Por persona» enseña cuántas hizo y cuántas no realizó
  * cada uno (este mes, el pasado o todo); tocar a alguien filtra sus tareas.
  *
@@ -389,7 +391,8 @@ function tarjetaTarea(t, recibida, alCambiar) {
             (t.de_personal ? ' (personal)' : '') +
             (t.enviado_por ? ' · ✍ lo envió ' + escapar(t.enviado_por) : '') +
             (t.tipo_solicitud ? ' · ' + escapar(t.tipo_solicitud) : '') :
-            recibida ? 'De ' + escapar(t.creada_por || '¿?') + (t.para_todos ? ' · 👥 para todo el personal' : '') :
+            recibida ? 'De ' + escapar(t.creada_por || '¿?') + (!t.para_todos ? '' :
+                t.tomada_por === ficha().monitor ? ' · la tomaste tú' : ' · 👥 para todo el personal') :
             t.para_todos ? '👥 Todo el personal (' + (t.n_grupo || '¿?') + ')' +
                 (t.tomada_por ? ' · la tomó ' + escapar(t.tomada_por) : ' · sin tomar') :
             'Para ' + escapar(t.asignada_a || '¿?')) +
@@ -458,6 +461,14 @@ function tarjetaTarea(t, recibida, alCambiar) {
         caja.insertBefore(r, caja.querySelector('.miniaturas'));
     }
     // Desde 2026-10-12 el ticket también es una conversación hasta que el CEO lo finaliza.
+    // El CEO la relee ya finalizado, en solo lectura: ahí busca lo que respondió.
+    if (t.ticket && !t.abierta && recibida && t.num_respuestas) {
+        const b = document.createElement('button');
+        b.className = 'boton-secundario boton-conversacion';
+        b.textContent = '💬 Ver la conversación (' + t.num_respuestas + ')';
+        b.onclick = () => abrirConversacion(t, alCambiar);
+        botones.appendChild(b);
+    }
     if (t.con_conversacion !== false && (!t.ticket || t.abierta)) {
         const b = document.createElement('button');
         b.className = 'boton-principal boton-conversacion';
@@ -474,7 +485,20 @@ function tarjetaTarea(t, recibida, alCambiar) {
                          t.hecha_por ? '👥 La hizo ' : '👥 La tomó ') + t.tomada_por;
         caja.insertBefore(r, caja.querySelector('.miniaturas'));
     }
-    if (recibida && t.abierta && !deOtro) {
+    if (recibida && t.abierta && t.para_todos && !t.tomada_por) {
+        // Para todo el personal: la primera persona que la toma se la queda.
+        const nota = document.createElement('div');
+        nota.className = 'meta';
+        nota.textContent = 'Es para todo el personal: la primera persona que la tome se la queda.';
+        caja.insertBefore(nota, caja.querySelector('.miniaturas'));
+        boton('🙋 Tomaré esta tarea', async () => {
+            if (!confirm('¿La tomas tú? A los demás les desaparece.')) {
+                botones.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+                return;
+            }
+            try { await cambiar('en curso'); } catch (error) { alCambiar(); throw error; }
+        });
+    } else if (recibida && t.abierta && !deOtro) {
         if (t.estado !== 'en curso') boton('▶ En curso', () => cambiar('en curso'));
         if (!t.ticket && t.estado !== 'hecha') boton('✓ Hecha', () => cambiar('hecha'));
     }
@@ -1007,6 +1031,7 @@ function abrirCampana() {
         '    <div class="pestanas">' +
         '      <button class="pestana" data-p="recibidas">Para mí</button>' +
         (yo.puede_asignar ? '<button class="pestana" data-p="enviadas">Enviadas</button>' +
+                            '<button class="pestana" data-p="semana">🗓 Semana</button>' +
                             '<button class="pestana" data-p="nueva">＋ Asignar</button>' : '') +
         (esCeo() ? '' : '<button class="pestana" data-p="tickets">🎫 Mis tickets</button>') +
         '    </div><div class="cuerpo-pestana"></div>' +
@@ -1025,11 +1050,13 @@ function abrirCampana() {
         personas: [],
         historial: null,             // {filtro, tareas, hay_mas}: las cerradas de «Para mí»
         tipo: '',                    // el CEO: solo los tickets de este tipo de solicitud
+        semana: '',                  // «Semana»: el lunes que se está viendo
         pintar() {
             capas.querySelectorAll('.pestana').forEach((b) => b.classList.toggle('activa', b.dataset.p === hoja.pestana));
             if (hoja.pestana === 'recibidas') pintarRecibidas();
             else if (hoja.pestana === 'enviadas') pintarEnviadas();
             else if (hoja.pestana === 'tickets') pintarMisTickets();
+            else if (hoja.pestana === 'semana') pintarSemana();
             else pintarNueva();
         },
     };
@@ -1388,6 +1415,202 @@ function abrirCampana() {
                 boton.textContent = 'Asignar tarea';
             }
         };
+    }
+
+    // =================================================================
+    // 🗓 SEMANA: las tareas programadas (Leonardo, 2026-11-01)
+    // =================================================================
+    /* Lo que quien asigna dejó listo, de lunes a domingo. La tarea sale el día
+     * elegido (api/tareas_programadas.py); hasta entonces nadie la ve. */
+    async function pintarSemana() {
+        cuerpo.innerHTML = '<div class="cargando"><span class="girando">◌</span></div>';
+        let datos;
+        try {
+            datos = await pedir('/api/personal/tareas/programadas?semana=' + encodeURIComponent(hoja.semana || ''));
+        } catch (error) {
+            cuerpo.innerHTML = '<div class="vacio">' + escapar(error.message) + '</div>';
+            return;
+        }
+        if (hoja.pestana !== 'semana') return;
+        hoja.semana = datos.lunes;
+        cuerpo.innerHTML =
+            '<div class="navega-semana"><button class="boton-secundario anterior" title="Semana anterior">‹</button>' +
+            '<b>' + escapar(datos.etiqueta) + '</b>' +
+            '<button class="boton-secundario siguiente" title="Semana siguiente">›</button></div>' +
+            (datos.lunes !== datos.esta_semana ? '<button class="boton-secundario hoy-semana">Esta semana</button>' : '');
+        const ir = (lunes) => { hoja.semana = lunes; pintarSemana(); };
+        cuerpo.querySelector('.anterior').onclick = () => ir(datos.anterior);
+        cuerpo.querySelector('.siguiente').onclick = () => ir(datos.siguiente);
+        const hoy = cuerpo.querySelector('.hoy-semana');
+        if (hoy) hoy.onclick = () => ir(datos.esta_semana);
+        datos.dias.forEach((dia) => {
+            const caja = document.createElement('div');
+            caja.className = 'dia-semana' + (dia.pasado ? ' pasado' : '');
+            caja.innerHTML = '<div class="cabeza-dia"><b>' + escapar(dia.nombre) + ' ' + dia.numero + '</b>' +
+                (dia.pasado ? '' : '<button class="boton-secundario mas-dia" title="Programar tarea este día">+</button>') + '</div>';
+            const mas = caja.querySelector('.mas-dia');
+            if (mas) mas.onclick = () => formularioProgramada(datos, dia.fecha, null);
+            dia.tareas.forEach((t) => {
+                const fila = document.createElement('button');
+                fila.className = 'programada' + (t.salio ? ' salio' : '');
+                fila.innerHTML = '<span class="titulo-programada"></span><small></small>';
+                fila.querySelector('.titulo-programada').textContent = t.titulo;
+                fila.querySelector('small').textContent = t.para_texto + ' · ' + t.hora_texto +
+                    (t.repetir ? ' · cada semana' : '') + (t.salio ? ' · ya salió' : '') +
+                    (t.error ? ' · ⚠️ ' + t.error : '');
+                if (t.salio) {
+                    fila.onclick = () => { hoja.pestana = 'enviadas'; hoja.pintar(); };
+                } else {
+                    fila.onclick = () => formularioProgramada(datos, t.fecha, t);
+                }
+                caja.appendChild(fila);
+            });
+            cuerpo.appendChild(caja);
+        });
+    }
+
+    /* El formulario de una programada: nueva (varios días) o una que ya existe
+     * (un solo día). `fecha` es el día desde el que se abrió. */
+    async function formularioProgramada(semana, fecha, tarea) {
+        cuerpo.innerHTML = '<div class="cargando"><span class="girando">◌</span></div>';
+        let datos;
+        try { datos = await pedir('/api/personal/tareas/destinatarios'); } catch (error) {
+            cuerpo.innerHTML = '<div class="vacio">' + escapar(error.message) + '</div>';
+            return;
+        }
+        if (hoja.pestana !== 'semana') return;
+        const imagenes = [];
+        const marcados = new Set([fecha]);
+        const volver = () => pintarSemana();
+        const opcionTodos = datos.todo_el_personal && (datos.todo_el_personal.personas || []).length ?
+            '<option value="' + escapar(datos.todo_el_personal.valor) + '">' +
+            escapar(datos.todo_el_personal.texto) + ' (' + datos.todo_el_personal.personas.length + ')</option>' : '';
+        cuerpo.innerHTML =
+            '<div class="titulo-seccion">' + (tarea ? 'Cambiar tarea programada' : 'Programar tarea') + '</div>' +
+            '<div class="campo"><label>Título</label><input class="t-titulo" maxlength="200" placeholder="Qué hay que hacer"></div>' +
+            '<div class="campo"><label>Detalle (opcional)</label><textarea class="t-desc" maxlength="4000"></textarea></div>' +
+            '<div class="campo"><label>Para</label><select class="t-para">' + opcionTodos +
+            (datos.monitores || []).map((m) => '<option value="' + escapar(m.nombre) + '">' +
+                escapar(m.nombre) + ' · ' + escapar(m.roles) + '</option>').join('') + '</select></div>' +
+            '<div class="campo"><label>' + (tarea ? 'Día' : 'Días') + '</label><div class="dias-programar">' +
+            semana.dias.map((d, i) => '<button type="button" class="dia-programar" data-fecha="' + d.fecha + '"' +
+                (d.pasado ? ' disabled' : '') + ' title="' + escapar(d.nombre) + '">' + 'LMXJVSD'[i] + '</button>').join('') +
+            '</div></div>' +
+            '<div class="aviso-descanso oculto"></div>' +
+            '<div class="fila-campos"><div class="campo"><label>Le aparece a las</label><select class="t-hora">' +
+            semana.horas.map((h) => '<option value="' + h.valor + '">' + escapar(h.texto) + '</option>').join('') +
+            '</select></div><div class="campo"><label>Prioridad</label><select class="t-prioridad">' +
+            (datos.prioridades || ['Normal']).map((p) => '<option>' + escapar(p) + '</option>').join('') + '</select></div></div>' +
+            '<label class="casilla-repetir"><input type="checkbox" class="t-repetir"> Repetir cada semana</label>' +
+            (tarea ? (tarea.num_imagenes ? '<div class="meta">🖼️ ' + tarea.num_imagenes + ' imagen(es) adjunta(s)</div>' : '') :
+                '<div class="campo"><label>Imágenes (opcional, hasta ' + MAX_IMAGENES + ')</label>' +
+                '<button class="boton-secundario t-adjuntar">📎 Adjuntar imagen</button>' +
+                '<input type="file" class="t-archivo oculto" accept="image/*" multiple>' +
+                '<div class="miniaturas t-miniaturas"></div></div>') +
+            '<button class="boton-principal t-enviar"></button>' +
+            (tarea && tarea.repetir ? '<button class="boton-secundario t-solo-esta">Quitar solo esta semana</button>' : '') +
+            (tarea ? '<button class="boton-secundario t-eliminar">🗑 Eliminar</button>' : '') +
+            '<button class="boton-secundario t-volver">Volver</button>';
+        const $ = (s) => cuerpo.querySelector(s);
+        $('.t-hora').value = tarea ? tarea.hora : semana.hora_por_defecto;
+        if (tarea) {
+            $('.t-titulo').value = tarea.titulo;
+            $('.t-desc').value = tarea.descripcion;
+            $('.t-para').value = tarea.para;
+            $('.t-prioridad').value = tarea.prioridad;
+            $('.t-repetir').checked = tarea.repetir;
+        }
+        function pintarDias() {
+            cuerpo.querySelectorAll('.dia-programar').forEach((b) => b.classList.toggle('elegido', marcados.has(b.dataset.fecha)));
+            const enviar = $('.t-enviar');
+            enviar.textContent = tarea ? 'Guardar cambios' :
+                (marcados.size === 1 ? 'Programar tarea' : 'Programar ' + marcados.size + ' tareas');
+            const descansan = semana.dias.filter((d) => marcados.has(d.fecha) &&
+                (d.descansan || []).indexOf($('.t-para').value) >= 0);
+            const aviso = $('.aviso-descanso');
+            aviso.classList.toggle('oculto', !descansan.length);
+            aviso.textContent = descansan.length ? $('.t-para').value + ' descansa el ' +
+                descansan.map((d) => d.nombre.toLowerCase()).join(' y el ') +
+                '. Puedes guardarla igual: el recordatorio lo espera hasta su turno.' : '';
+        }
+        cuerpo.querySelectorAll('.dia-programar').forEach((b) => {
+            b.onclick = () => {
+                if (tarea) marcados.clear();
+                if (marcados.has(b.dataset.fecha)) marcados.delete(b.dataset.fecha);
+                else marcados.add(b.dataset.fecha);
+                pintarDias();
+            };
+        });
+        $('.t-para').onchange = pintarDias;
+        pintarDias();
+        $('.t-volver').onclick = volver;
+        if (!tarea) {
+            const pintarMinis = () => {
+                const mini = $('.t-miniaturas');
+                mini.innerHTML = '';
+                imagenes.forEach((imagen, i) => {
+                    const envoltura = document.createElement('div');
+                    envoltura.className = 'quitar-img';
+                    envoltura.innerHTML = '<img alt=""><button title="Quitar">✕</button>';
+                    envoltura.querySelector('img').src = imagen.vista;
+                    envoltura.querySelector('button').onclick = () => { imagenes.splice(i, 1); pintarMinis(); };
+                    mini.appendChild(envoltura);
+                });
+            };
+            $('.t-adjuntar').onclick = () => $('.t-archivo').click();
+            $('.t-archivo').onchange = async (e) => {
+                const archivos = Array.from(e.target.files || []);
+                e.target.value = '';
+                for (const archivo of archivos) {
+                    if (imagenes.length >= MAX_IMAGENES) { avisar('Como mucho ' + MAX_IMAGENES + ' imágenes.', 'malo'); break; }
+                    try { imagenes.push({ archivo: archivo, vista: await comprimir(archivo) }); } catch (error) { avisar(error.message, 'malo'); }
+                }
+                pintarMinis();
+            };
+        }
+        $('.t-enviar').onclick = async () => {
+            const boton = $('.t-enviar');
+            if (!marcados.size) { avisar('Marca al menos un día.', 'malo'); return; }
+            boton.disabled = true;
+            try {
+                let r;
+                if (tarea) {
+                    r = await pedir('/api/personal/tareas/programadas/' + encodeURIComponent(tarea.id), 'POST', {
+                        titulo: $('.t-titulo').value, para: $('.t-para').value, descripcion: $('.t-desc').value,
+                        prioridad: $('.t-prioridad').value, hora: $('.t-hora').value,
+                        fecha: Array.from(marcados)[0], fecha_original: tarea.fecha, repetir: $('.t-repetir').checked });
+                } else {
+                    const formulario = new FormData();
+                    formulario.append('titulo', $('.t-titulo').value);
+                    formulario.append('para', $('.t-para').value);
+                    formulario.append('descripcion', $('.t-desc').value);
+                    formulario.append('prioridad', $('.t-prioridad').value);
+                    formulario.append('hora', $('.t-hora').value);
+                    formulario.append('fechas_elegidas', JSON.stringify(Array.from(marcados)));
+                    formulario.append('repetir', $('.t-repetir').checked ? '1' : '');
+                    formulario.append('vistas', JSON.stringify(imagenes.map((x) => x.vista)));
+                    imagenes.forEach((x) => formulario.append('fotos', x.archivo, x.archivo.name || 'foto.jpg'));
+                    r = await pedirFormulario('/api/personal/tareas/programadas', formulario);
+                }
+                avisar(r.mensaje, 'bueno');
+                volver();
+            } catch (error) {
+                avisar(error.message, 'malo');
+                boton.disabled = false;
+            }
+        };
+        const quitar = async (cuerpoPedido, pregunta) => {
+            if (!confirm(pregunta)) return;
+            try {
+                const r = await pedir('/api/personal/tareas/programadas/' + encodeURIComponent(tarea.id) + '/borrar', 'POST', cuerpoPedido);
+                avisar(r.mensaje, 'bueno');
+                volver();
+            } catch (error) { avisar(error.message, 'malo'); }
+        };
+        if ($('.t-solo-esta')) $('.t-solo-esta').onclick = () => quitar({ fecha: tarea.fecha, solo_esta: true },
+            '¿Quitarla solo de esta semana? Las siguientes siguen.');
+        if ($('.t-eliminar')) $('.t-eliminar').onclick = () => quitar({ fecha: tarea.fecha, solo_esta: false },
+            tarea.repetir ? '¿Eliminarla de todas las semanas?' : '¿Eliminar esta tarea programada?');
     }
 
     hoja.pintar();

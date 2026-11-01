@@ -45,6 +45,15 @@
             <button class="redondo tuerca-tipos" id="tipos" title="Añadir, modificar o eliminar tipos de solicitud">⚙</button>
         </div>
     </div>
+    <!-- Todos los tickets de una persona: lo que se le ha respondido (2026-11-01). -->
+    <div class="filtro-personas">
+        <label for="buscar-persona">Persona</label>
+        <div class="fila-persona">
+            <input id="buscar-persona" type="search" placeholder="Buscar modelo o personal…" autocomplete="off">
+            <button class="redondo oculto" id="quitar-persona" title="Quitar el filtro de persona">✕</button>
+        </div>
+        <div id="opciones-persona" class="opciones-persona oculto"></div>
+    </div>
     <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando…</div>
     <div id="lista"></div>
     <div class="botones oculto" id="pie" style="margin-top:12px">
@@ -61,23 +70,29 @@
     const P = window.Personal;
     const $ = (id) => document.getElementById(id);
     let cargados = 0;
+    let persona = '';
+    let personas = { modelos: [], personal: [], total: 0 };
+    const sinTildes = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
     async function cargar(reiniciar) {
         if (reiniciar) cargados = 0;
         $('mas').disabled = true;
         try {
             const datos = await P.pedir('/api/personal/tickets?desde=' + cargados +
-                                        '&tipo=' + encodeURIComponent($('filtro-tipo').value));
+                                        '&tipo=' + encodeURIComponent($('filtro-tipo').value) +
+                                        '&persona=' + encodeURIComponent(persona));
+            personas = datos.personas || personas;
             $('cargando').classList.add('oculto');
             if (reiniciar) $('lista').innerHTML = '';
             (datos.tickets || []).forEach((t) => {
                 $('lista').appendChild(P.tarjetaTarea(t, true, () => { cargar(true); P.revisarTareas(true); }));
             });
             cargados += (datos.tickets || []).length;
-            if (!datos.total) $('lista').innerHTML = '<div class="vacio">' + ($('filtro-tipo').value
-                ? 'No hay tickets de ese tipo.' : 'Todavía no te ha llegado ningún ticket.') + '</div>';
+            if (!datos.total) $('lista').innerHTML = '<div class="vacio">' + (persona || $('filtro-tipo').value
+                ? 'No hay tickets con ese filtro.' : 'Todavía no te ha llegado ningún ticket.') + '</div>';
             $('subtitulo').textContent = datos.total
-                ? 'Viendo ' + cargados + ' de ' + datos.total + ', lo más reciente arriba.'
+                ? 'Viendo ' + cargados + ' de ' + datos.total +
+                  (persona ? ' de ' + persona + ' (' + personas.total + ' en total)' : '') + ', lo más reciente arriba.'
                 : 'Lo que te han escrito las modelos, lo más reciente arriba.';
             $('pie').classList.toggle('oculto', !datos.hay_mas);
         } catch (error) {
@@ -87,6 +102,42 @@
     }
 
     $('mas').onclick = () => cargar(false);
+
+    function elegirPersona(nombre) {
+        persona = nombre;
+        const buscar = $('buscar-persona');
+        buscar.value = nombre;
+        buscar.readOnly = !!nombre;
+        buscar.classList.toggle('elegida', !!nombre);
+        $('quitar-persona').classList.toggle('oculto', !nombre);
+        $('opciones-persona').classList.add('oculto');
+        cargar(true);
+    }
+
+    function pintarOpciones() {
+        const caja = $('opciones-persona');
+        const filtro = sinTildes($('buscar-persona').value.trim());
+        if (persona) { caja.classList.add('oculto'); return; }
+        const grupo = (titulo, lista) => {
+            const filas = lista.filter((p) => !filtro || sinTildes(p.nombre).indexOf(filtro) >= 0);
+            return filas.length ? '<div class="grupo-persona">' + titulo + '</div>' + filas.map((p) =>
+                '<button type="button" class="opcion-persona" data-nombre="' + P.escapar(p.nombre) + '"><span>' +
+                P.escapar(p.nombre) + '</span><small>' + p.cuantos + (p.cuantos === 1 ? ' ticket' : ' tickets') +
+                '</small></button>').join('') : '';
+        };
+        const html = grupo('Modelos', personas.modelos) + grupo('Personal', personas.personal);
+        caja.innerHTML = html || '<div class="vacio">Nadie con ese nombre tiene tickets.</div>';
+        caja.classList.remove('oculto');
+        caja.querySelectorAll('.opcion-persona').forEach((b) => {
+            b.onclick = () => elegirPersona(b.dataset.nombre);
+        });
+    }
+    $('buscar-persona').onfocus = pintarOpciones;
+    $('buscar-persona').oninput = pintarOpciones;
+    $('quitar-persona').onclick = () => elegirPersona('');
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.filtro-personas')) $('opciones-persona').classList.add('oculto');
+    });
     async function cargarTipos() {
         try {
             const datos = await P.pedir('/api/personal/tickets/tipos');

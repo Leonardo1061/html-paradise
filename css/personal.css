@@ -316,3 +316,38 @@ button { cursor: pointer; }
 .filtro-tipo option { background: var(--panel); color: var(--texto); text-transform: none; }
 .tuerca-tipos { font-size: 20px; }
 @media (max-width: 520px) { .titulo-pagina { flex-wrap: wrap; } .acciones-tickets { width: 100%; justify-content: flex-end; } }
+
+/* ---------------------------------------------- 🗓 Semana: tareas programadas */
+.navega-semana { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.navega-semana .boton-secundario { width: 44px; height: 44px; padding: 0; flex: none; }
+.hoy-semana { margin-bottom: 10px; }
+.dia-semana { border: 1px solid var(--borde); border-radius: 14px; padding: 10px; margin-bottom: 8px; background: var(--panel-alto); }
+.dia-semana.pasado { opacity: .7; }
+.cabeza-dia { display: flex; align-items: center; justify-content: space-between; min-height: 36px; font-size: 13.5px; }
+.cabeza-dia .mas-dia { width: 36px; height: 36px; padding: 0; color: var(--soft); font-weight: 700; flex: none; }
+.programada { display: block; width: 100%; text-align: left; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 10px; background: var(--panel); color: var(--texto); }
+.programada .titulo-programada { display: block; font-size: 13px; font-weight: 600; }
+.programada small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--tenue); }
+.programada.salio { opacity: .75; }
+.dias-programar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.dia-programar { height: 44px; border: 1px solid var(--borde); border-radius: 12px; background: var(--panel-alto); color: var(--texto); font-weight: 700; }
+.dia-programar.elegido { background: var(--cian); border-color: var(--cian); color: #04242c; }
+.dia-programar:disabled { opacity: .35; }
+.aviso-descanso { margin-bottom: 14px; padding: 9px 11px; border-radius: 12px; background: rgba(251, 191, 36, .14); color: var(--ambar); font-size: 12.5px; line-height: 1.4; }
+.fila-campos { display: flex; gap: 8px; }
+.fila-campos .campo { flex: 1 1 0; min-width: 0; }
+.casilla-repetir { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-bottom: 10px; font-size: 14px; }
+.casilla-repetir input { width: 20px; height: 20px; }
+.t-solo-esta, .t-eliminar, .t-volver { width: 100%; margin-top: 8px; }
+
+/* ------------------------------------------------- Mis tickets: por persona */
+.filtro-personas { position: relative; margin-bottom: 14px; }
+.filtro-personas label { display: block; font-size: 12px; color: var(--tenue); margin-bottom: 6px; }
+.fila-persona { display: flex; align-items: center; gap: 8px; }
+.fila-persona input { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 12px; background: var(--panel-alto); color: var(--texto); font-size: 14px; }
+.fila-persona input:focus { outline: none; border-color: var(--cian); }
+.fila-persona input.elegida { border-color: var(--cian); font-weight: 600; }
+.opciones-persona { position: absolute; z-index: 20; left: 0; right: 0; margin-top: 6px; max-height: 320px; overflow-y: auto; border: 1px solid var(--borde); border-radius: 14px; background: var(--panel-alto); box-shadow: 0 12px 30px rgba(0, 0, 0, .45); }
+.grupo-persona { padding: 9px 12px 5px; font-size: 11px; font-weight: 700; color: var(--tenue); }
+.opcion-persona { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-top: 1px solid var(--borde); background: transparent; color: var(--texto); font-size: 14px; text-align: left; }
+.opcion-persona small { color: var(--tenue); font-size: 12px; }
