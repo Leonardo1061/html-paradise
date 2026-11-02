@@ -351,3 +351,45 @@ button { cursor: pointer; }
 .grupo-persona { padding: 9px 12px 5px; font-size: 11px; font-weight: 700; color: var(--tenue); }
 .opcion-persona { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-top: 1px solid var(--borde); background: transparent; color: var(--texto); font-size: 14px; text-align: left; }
 .opcion-persona small { color: var(--tenue); font-size: 12px; }
+
+/* ------------------------------------------------- burbuja del chat flotante */
+.burbuja-chat {
+    position: fixed; z-index: 29; width: 56px; height: 56px; border-radius: 50%; border: 0; padding: 0;
+    background: var(--degradado); color: #fff; font-size: 24px; display: grid; place-items: center;
+    box-shadow: 0 10px 26px rgba(6, 182, 212, .45); cursor: grab; touch-action: none; user-select: none;
+    -webkit-user-select: none; transition: left .18s ease, top .18s ease;
+}
+.burbuja-chat.arrastrando { cursor: grabbing; transition: none; transform: scale(1.06); }
+.burbuja-chat .globo { top: -3px; right: -3px; }
+
+/* ---------------------------------------------------- faltas y Seguimiento Interno */
+.dato.con-faltas { background: rgba(239, 68, 68, .12); border-color: var(--rojo); }
+.dato.con-faltas .rotulo, .dato.con-faltas .pie { color: #fecaca; }
+.dato.con-faltas .cifra { color: #fca5a5; }
+.tarjeta-falta { margin-bottom: 10px; padding: 14px; }
+.tarjeta-falta.sin-ver { border-color: var(--rojo); background: rgba(239, 68, 68, .1); }
+.tarjeta-falta.anulada { opacity: .65; }
+.cabeza-falta { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.tipo-falta { font-size: 13.5px; margin-top: 4px; }
+.detalle-falta { font-size: 13.5px; line-height: 1.5; margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nota-falta { font-size: 12px; color: var(--tenue); margin-top: 6px; }
+.version-falta { font-size: 13px; line-height: 1.5; margin-top: 8px; padding: 9px 11px; border-radius: 10px; background: var(--panel-alto); overflow-wrap: anywhere; }
+.botones-falta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.botones-falta .boton-secundario { flex: 1 1 140px; min-height: 44px; }
+.filtros-seguimiento { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center; }
+.filtros-seguimiento select, .filtros-seguimiento input {
+    flex: 1 1 150px; min-width: 0; height: 44px; padding: 0 10px; border-radius: 12px; font-family: inherit; font-size: 14px;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto); color-scheme: dark;
+}
+.filtros-seguimiento label { display: flex; align-items: center; gap: 6px; flex: 1 1 170px; font-size: 12px; color: var(--tenue); }
+.nota-seguimiento { font-size: 12px; color: var(--tenue); line-height: 1.5; margin: 12px 2px; }
+.linea1.envuelve { white-space: normal; }
+.rejilla-capturas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.ronda-captura { padding: 10px; }
+.hora-captura { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.pantallas-captura { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pantalla-captura {
+    aspect-ratio: 16 / 10; padding: 0; border: 1px solid var(--borde); border-radius: 8px; overflow: hidden;
+    background: var(--panel-alto); color: var(--tenue); font-size: 11px; font-family: inherit; cursor: zoom-in;
+}
+.pantalla-captura img { display: block; width: 100%; height: 100%; object-fit: cover; }

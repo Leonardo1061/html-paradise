@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Seguimiento Interno · PARADISE</title>
+
+<!--
+  SEGUIMIENTO INTERNO (solo el CEO)
+  =================================
+  Histórico de faltas, resumen de actividades y pantallazos del personal
+  (/api/personal/seguimiento). La pestaña solo sale si la API pone `seguimiento`
+  en sus módulos, y la API solo lo hace con el rol CEO. Los pantallazos los toma
+  la Admin de escritorio: aquí solo se miran.
+-->
+
+<link rel="manifest" href="manifest_personal.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE Staff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+</head>
+
+<body>
+
+<main class="contenido">
+    <div class="titulo-pagina">
+        <h1>Seguimiento Interno</h1>
+        <p>Lo ve solo el CEO.</p>
+    </div>
+    <div class="pestanas" id="pestanas">
+        <button class="pestana activa" data-p="faltas">Faltas</button>
+        <button class="pestana" data-p="actividades">Actividades</button>
+        <button class="pestana" data-p="pantallazos">Pantallazos</button>
+    </div>
+    <div id="cuerpo"><div class="cargando"><span class="girando">◌</span> Cargando…</div></div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/personal.js"></script>
+<script src="js/seguimiento_personal.js"></script>
+</body>
+</html>

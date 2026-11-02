@@ -10,8 +10,8 @@
   INICIO DEL PERSONAL ADMINISTRATIVO
   ==================================
   Lo que le toca hoy a quien ha entrado: sus tareas (la campana 🔔), las
-  sesiones de fotos del día y cómo están los cuartos. Los chats que esperan
-  respuesta se ven en CHAT (aquí solo el globo de la barra). Cada número sale de la API (/api/personal/resumen y
+  sesiones de fotos del día, cómo están los cuartos y sus faltas del mes. Los chats que esperan
+  respuesta se ven en el CHAT (aquí solo el globo de la burbuja). Cada número sale de la API (/api/personal/resumen y
   /api/personal/chat/conversaciones) con las reglas del escritorio: a cada
   uno le salen solo los chats y las modelos que su rol le deja ver.
 
@@ -226,6 +226,21 @@
             datos.appendChild(dato('Cuartos ocupados', (e.OCUPADA || 0) + '/' + resumen.cuartos.total,
                 (e.DISPONIBLE || 0) + ' disponibles' + (e.MANTENIMIENTO ? ' · ' + e.MANTENIMIENTO + ' en mant.' : ''),
                 () => { window.location.href = 'personal_status.html'; }));
+        }
+
+        // ⚠️ Las faltas del mes (Seguimiento Interno). El CEO no recibe faltas.
+        if (resumen.faltas) {
+            const pintarFaltas = (r) => {
+                const nueva = dato('Faltas', r.mes,
+                    r.mes ? 'Este mes' + (r.sin_ver ? ' · ' + r.sin_ver + ' sin ver' : '') : 'Sin faltas este mes',
+                    () => P.abrirCampana('faltas'));
+                nueva.id = 'tarjeta-faltas';
+                nueva.classList.toggle('con-faltas', r.mes > 0);
+                const vieja = $('tarjeta-faltas');
+                if (vieja) vieja.replaceWith(nueva); else datos.appendChild(nueva);
+            };
+            pintarFaltas(resumen.faltas);
+            document.addEventListener('personal:faltas', (e) => pintarFaltas(e.detail));
         }
 
         pintarTareas(P.tareas());

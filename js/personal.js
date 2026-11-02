@@ -121,7 +121,8 @@ const FILTROS_TAREA = [
 
 const MODULOS = [
     { id: 'inicio', texto: 'INICIO', simbolo: '▦', pagina: 'personal_panel.html' },
-    { id: 'chat', texto: 'CHAT', simbolo: '💬', pagina: 'personal_chat.html' },
+    // Solo el CEO, donde estaba CHAT. El chat ya no va aquí: es la burbuja flotante.
+    { id: 'seguimiento', texto: 'SEGUIMIENTO', simbolo: '🔍', pagina: 'personal_seguimiento.html' },
     { id: 'fotografia', texto: 'FOTOGRAFÍA', simbolo: '📷', pagina: 'personal_fotografia.html' },
     { id: 'status', texto: 'STATUS ROOM', simbolo: '📋', pagina: 'personal_status.html' },
     { id: 'cronograma', texto: 'CRONOGRAMA', simbolo: '🗓️', pagina: 'personal_cronograma.html' },
@@ -286,7 +287,7 @@ function pintarGlobo() {
     const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length +
         campana.misTickets.filter((t) => t.nuevo).length +
         (campana.descanso && campana.descanso.pendiente ? 1 : 0) +
-        (campana.misDatos ? 1 : 0) +
+        (campana.misDatos ? 1 : 0) + (campana.faltas || 0) +
         campana.actividades.filter(actividadSuena).length;
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
@@ -319,6 +320,12 @@ async function revisarTareas(forzar) {
         const datos = await pedir('/api/personal/tareas');
         campana.tareas = datos.tareas || [];
         campana.respuestas = datos.respuestas || [];
+        const faltasAntes = campana.faltas || 0;
+        campana.faltas = datos.faltas_sin_ver || 0;
+        if (campana.faltas > faltasAntes && campana.conocidas) {
+            pitar();
+            avisar('⚠️ Te notificaron una falta. Está en la 🔔 campana.', 'malo');
+        }
         const antes = campana.descanso;
         campana.descanso = datos.descanso || null;
         const faltabanDatos = campana.misDatos;
@@ -1021,7 +1028,7 @@ function tarjetaMiTicket(t, alCambiar) {
     return caja;
 }
 
-function abrirCampana() {
+function abrirCampana(pestanaInicial) {
     const yo = ficha();
     const capas = document.getElementById('capas-personal');
     capas.innerHTML =
@@ -1033,7 +1040,8 @@ function abrirCampana() {
         (yo.puede_asignar ? '<button class="pestana" data-p="enviadas">Enviadas</button>' +
                             '<button class="pestana" data-p="semana">🗓 Semana</button>' +
                             '<button class="pestana" data-p="nueva">＋ Asignar</button>' : '') +
-        (esCeo() ? '' : '<button class="pestana" data-p="tickets">🎫 Mis tickets</button>') +
+        (esCeo() ? '' : '<button class="pestana" data-p="tickets">🎫 Mis tickets</button>' +
+                        '<button class="pestana" data-p="faltas">⚠️ Faltas</button>') +
         '    </div><div class="cuerpo-pestana"></div>' +
         '  </div></div>';
     const cuerpo = capas.querySelector('.cuerpo-pestana');
@@ -1042,7 +1050,8 @@ function abrirCampana() {
     capas.querySelector('.cerrar').onclick = cerrar;
 
     const hoja = {
-        pestana: 'recibidas',
+        // Algunos botones la abren como onclick y aquí llega el evento: solo vale un texto.
+        pestana: typeof pestanaInicial === 'string' ? pestanaInicial : 'recibidas',
         filtro: 'pendientes',
         persona: '',                 // «Enviadas»: solo las de esta persona
         resumen: false,              // «Enviadas»: viendo «📊 Por persona»
@@ -1057,6 +1066,7 @@ function abrirCampana() {
             else if (hoja.pestana === 'enviadas') pintarEnviadas();
             else if (hoja.pestana === 'tickets') pintarMisTickets();
             else if (hoja.pestana === 'semana') pintarSemana();
+            else if (hoja.pestana === 'faltas') pintarFaltas();
             else pintarNueva();
         },
     };
@@ -1099,6 +1109,78 @@ function abrirCampana() {
         fila.appendChild(selector);
         // El editor de los tipos vive en el módulo MIS TICKETS (Leonardo, 2026-10-12).
         cuerpo.appendChild(fila);
+    }
+
+    /* «⚠️ Faltas»: las que le notificó el CEO (seguimiento_interno.py de la API). */
+    async function pintarFaltas() {
+        cuerpo.innerHTML = '<div class="cargando"><span class="girando">◌</span> Cargando…</div>';
+        let datos;
+        try {
+            datos = await pedir('/api/personal/seguimiento/faltas/mias');
+        } catch (error) {
+            cuerpo.innerHTML = '<div class="vacio">' + escapar(error.message) + '</div>';
+            return;
+        }
+        if (hoja.pestana !== 'faltas') return;
+        campana.faltas = datos.resumen.sin_ver;
+        pintarGlobo();
+        document.dispatchEvent(new CustomEvent('personal:faltas', { detail: datos.resumen }));
+        cuerpo.innerHTML = datos.faltas.length ? '' : '<div class="vacio">No tienes faltas. 🎉</div>';
+        datos.faltas.forEach((f) => cuerpo.appendChild(tarjetaFaltaPropia(f)));
+    }
+
+    function tarjetaFaltaPropia(f) {
+        const caja = document.createElement('div');
+        caja.className = 'tarjeta tarjeta-falta' + (f.anulada ? ' anulada' : f.vista ? '' : ' sin-ver');
+        const pasos = f.anulada ? '' :
+            (f.vista ? '' : '<button class="boton-secundario marcar-vista">Marcar como vista</button>') +
+            (f.version ? '' : '<button class="boton-secundario dar-version">Dar mi versión</button>');
+        caja.innerHTML =
+            '<div class="cabeza-falta"><b>' + escapar(f.tipo) + '</b>' +
+            (f.anulada ? '<span class="pildora">Anulada</span>' : f.vista ? '' : '<span class="pildora urgente">Nueva</span>') + '</div>' +
+            (f.sesion ? '<div class="nota-falta">Sesión: ' + escapar(f.sesion) + '</div>' : '') +
+            '<div class="detalle-falta">' + escapar(f.detalle) + '</div>' +
+            (f.anulada && f.motivo_anulacion ? '<div class="version-falta"><b>Motivo de la anulación:</b> ' + escapar(f.motivo_anulacion) + '</div>' : '') +
+            (f.version ? '<div class="version-falta"><b>Tu versión:</b> ' + escapar(f.version) + '</div>' : '') +
+            '<div class="nota-falta">De ' + escapar(f.creada_por) + ' · ' + escapar(f.fecha) +
+            (f.vista_en ? ' · Vista: ' + escapar(f.vista_en) : '') + '</div>' +
+            (pasos ? '<div class="botones-falta">' + pasos + '</div>' : '');
+        const vista = caja.querySelector('.marcar-vista');
+        if (vista) {
+            vista.onclick = async () => {
+                vista.disabled = true;
+                try {
+                    await pedir('/api/personal/seguimiento/faltas/' + encodeURIComponent(f.id) + '/vista', 'POST');
+                    pintarFaltas();
+                } catch (error) { avisar(error.message, 'malo'); vista.disabled = false; }
+            };
+        }
+        const version = caja.querySelector('.dar-version');
+        if (version) {
+            version.onclick = () => {
+                const zona = document.createElement('div');
+                zona.className = 'campo';
+                zona.style.marginTop = '10px';
+                zona.innerHTML = '<label>Tu versión. Una vez enviada no se puede cambiar.</label>' +
+                    '<textarea maxlength="2000"></textarea>' +
+                    '<button class="boton-principal" style="margin-top:8px">Enviar mi versión</button>';
+                caja.appendChild(zona);
+                version.remove();
+                const area = zona.querySelector('textarea');
+                area.focus();
+                zona.querySelector('button').onclick = async (e) => {
+                    if (!area.value.trim()) { avisar('Escribe tu versión.', 'malo'); return; }
+                    e.target.disabled = true;
+                    try {
+                        await pedir('/api/personal/seguimiento/faltas/' + encodeURIComponent(f.id) + '/version', 'POST',
+                                    { texto: area.value.trim() });
+                        avisar('Tu versión quedó guardada.', 'bueno');
+                        pintarFaltas();
+                    } catch (error) { avisar(error.message, 'malo'); e.target.disabled = false; }
+                };
+            };
+        }
+        return caja;
     }
 
     /* «🎫 Mis tickets»: lo que le mandó al CEO, y el formulario para uno nuevo. */
@@ -1777,8 +1859,7 @@ function pintarBarras(actual, yo) {
     nav.dataset.botones = visibles.length;
     nav.innerHTML = visibles.map((m) =>
         '<button class="' + (m.id === actual ? 'activo' : '') + '" data-pagina="' + m.pagina + '" data-id="' + m.id + '">' +
-        '<span class="simbolo">' + m.simbolo + '</span>' + m.texto +
-        (m.id === 'chat' ? '<span class="globo oculto" id="globo-chat">0</span>' : '') + '</button>').join('');
+        '<span class="simbolo">' + m.simbolo + '</span>' + m.texto + '</button>').join('');
     nav.querySelectorAll('button').forEach((b) => {
         b.onclick = () => {
             if (b.dataset.id === actual) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1791,13 +1872,101 @@ function pintarBarras(actual, yo) {
         capas.id = 'capas-personal';
         document.body.appendChild(capas);
     }
+    pintarBurbujaChat(actual, yo);
 }
 
-function globoChat(n) {
+/* 💬 LA BURBUJA DEL CHAT (Leonardo, 2026-11-01): como la de Messenger. Se arrastra
+ * con el dedo o el mouse, al soltarla se pega al borde más cercano y recuerda su
+ * sitio en este dispositivo. Un toque sin arrastrar abre el chat. Vive dentro de
+ * la web: no puede flotar sobre otras apps del teléfono. */
+const LADO_BURBUJA = 56;
+const MARGEN_BURBUJA = 12;
+const CLAVE_BURBUJA = 'burbuja_chat_personal';
+const CLAVE_GLOBO_CHAT = 'globo_chat_personal';
+
+function leerLocal(clave) {
+    try { return localStorage.getItem(clave); } catch (e) { return null; }
+}
+
+function guardarLocal(clave, valor) {
+    try { localStorage.setItem(clave, valor); } catch (e) { /* solo es comodidad */ }
+}
+
+function pintarBurbujaChat(actual, yo) {
+    const existente = document.getElementById('burbuja-chat');
+    if (actual === 'chat' || (yo.modulos || []).indexOf('chat') < 0) {
+        if (existente) existente.remove();
+        return;
+    }
+    if (existente) return;
+    const burbuja = document.createElement('button');
+    burbuja.id = 'burbuja-chat';
+    burbuja.className = 'burbuja-chat';
+    burbuja.title = 'Chat';
+    burbuja.setAttribute('aria-label', 'Abrir el chat');
+    burbuja.innerHTML = '💬<span class="globo oculto" id="globo-chat">0</span>';
+    document.body.appendChild(burbuja);
+
+    let sitio = { lado: 'der', altura: 0.68 };
+    try { sitio = Object.assign(sitio, JSON.parse(leerLocal(CLAVE_BURBUJA) || '{}')); } catch (e) { /* el de siempre */ }
+
+    // Ni encima de la barra de arriba ni de la de abajo.
+    const topeArriba = () => 70;
+    const topeAbajo = () => Math.max(topeArriba(), window.innerHeight - LADO_BURBUJA - 96);
+    const limitar = (y) => Math.min(topeAbajo(), Math.max(topeArriba(), y));
+    const xDe = (lado) => (lado === 'izq' ? MARGEN_BURBUJA : window.innerWidth - LADO_BURBUJA - MARGEN_BURBUJA);
+    function colocar() {
+        burbuja.style.left = xDe(sitio.lado) + 'px';
+        burbuja.style.top = limitar(sitio.altura * window.innerHeight) + 'px';
+    }
+    colocar();
+    window.addEventListener('resize', colocar);
+
+    let toque = null;
+    burbuja.addEventListener('pointerdown', (e) => {
+        burbuja.setPointerCapture(e.pointerId);
+        const caja = burbuja.getBoundingClientRect();
+        toque = { x: e.clientX, y: e.clientY, dx: e.clientX - caja.left, dy: e.clientY - caja.top, movio: false };
+        burbuja.classList.add('arrastrando');
+    });
+    burbuja.addEventListener('pointermove', (e) => {
+        if (!toque) return;
+        if (Math.abs(e.clientX - toque.x) + Math.abs(e.clientY - toque.y) > 6) toque.movio = true;
+        if (!toque.movio) return;
+        burbuja.style.left = Math.max(0, Math.min(window.innerWidth - LADO_BURBUJA, e.clientX - toque.dx)) + 'px';
+        burbuja.style.top = limitar(e.clientY - toque.dy) + 'px';
+    });
+    const soltar = () => {
+        if (!toque) return;
+        const movio = toque.movio;
+        toque = null;
+        burbuja.classList.remove('arrastrando');
+        if (!movio) { window.location.href = 'personal_chat.html'; return; }
+        const caja = burbuja.getBoundingClientRect();
+        sitio = { lado: caja.left + LADO_BURBUJA / 2 < window.innerWidth / 2 ? 'izq' : 'der',
+                  altura: caja.top / window.innerHeight };
+        guardarLocal(CLAVE_BURBUJA, JSON.stringify(sitio));
+        colocar();
+    };
+    burbuja.addEventListener('pointerup', soltar);
+    burbuja.addEventListener('pointercancel', () => { toque = null; burbuja.classList.remove('arrastrando'); colocar(); });
+    // Con teclado también abre (el clic del mouse ya lo resolvió `soltar`).
+    burbuja.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'personal_chat.html'; }
+    });
+    pintarGloboChat(parseInt(leerLocal(CLAVE_GLOBO_CHAT) || '0', 10) || 0);
+}
+
+function pintarGloboChat(n) {
     const globo = document.getElementById('globo-chat');
     if (!globo) return;
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
+}
+
+function globoChat(n) {
+    guardarLocal(CLAVE_GLOBO_CHAT, String(n || 0));
+    pintarGloboChat(n);
 }
 
 /* Arranca la página: comprueba la sesión, pinta las barras y la campana.
@@ -1822,7 +1991,10 @@ async function iniciar(actual) {
     revisarTareas(true).then(() => {
         // El aviso de un ticket nuevo abre aquí con ?tareas=1.
         const parametros = new URLSearchParams(window.location.search);
-        if (parametros.get('tareas')) {
+        if (parametros.get('faltas')) {
+            history.replaceState(null, '', window.location.pathname);
+            abrirCampana('faltas');
+        } else if (parametros.get('tareas')) {
             history.replaceState(null, '', window.location.pathname);
             abrirCampana();
             // El aviso de un mensaje en una tarea abre directo su conversación.
