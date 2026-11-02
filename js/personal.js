@@ -287,7 +287,7 @@ function pintarGlobo() {
     const n = campana.tareas.filter(cuentaEnCampana).length + campana.respuestas.length +
         campana.misTickets.filter((t) => t.nuevo).length +
         (campana.descanso && campana.descanso.pendiente ? 1 : 0) +
-        (campana.misDatos ? 1 : 0) + (campana.faltas || 0) +
+        (campana.misDatos ? 1 : 0) + (campana.faltas || 0) + (campana.productos || 0) +
         campana.actividades.filter(actividadSuena).length;
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
@@ -298,8 +298,12 @@ function pintarGlobo() {
 /* ¿Esta actividad enciende el globo? Nueva, a 15 min o corrida. */
 function actividadSuena(a) { return a.nuevo || a.pronto || !!a.movida; }
 
-/* ¿Es el CEO? (la API le pone el módulo de MIS TICKETS). */
-function esCeo() { return (ficha().modulos || []).indexOf('tickets') >= 0; }
+/* ¿Es la persona del CEO? Programación tiene sus vistas, pero recibe faltas y manda tickets.
+ * Una ficha guardada antes de 2026-11-01 no trae `es_ceo`: ahí vale el módulo de MIS TICKETS. */
+function esCeo() {
+    const yo = ficha();
+    return yo.es_ceo === undefined ? (yo.modulos || []).indexOf('tickets') >= 0 : !!yo.es_ceo;
+}
 
 /* Los tickets que esta persona le mandó al CEO: su respuesta enciende el globo. */
 async function revisarMisTickets() {
@@ -322,6 +326,12 @@ async function revisarTareas(forzar) {
         campana.respuestas = datos.respuestas || [];
         const faltasAntes = campana.faltas || 0;
         campana.faltas = datos.faltas_sin_ver || 0;
+        const productosAntes = campana.productos || 0;
+        campana.productos = datos.productos_pendientes || 0;
+        if (campana.productos > productosAntes && campana.conocidas) {
+            pitar();
+            avisar('🛍 Hay un producto por aprobar. Está en la 🔔 campana.');
+        }
         if (campana.faltas > faltasAntes && campana.conocidas) {
             pitar();
             avisar('⚠️ Te notificaron una falta. Está en la 🔔 campana.', 'malo');
@@ -505,7 +515,7 @@ function tarjetaTarea(t, recibida, alCambiar) {
             }
             try { await cambiar('en curso'); } catch (error) { alCambiar(); throw error; }
         });
-    } else if (recibida && t.abierta && !deOtro) {
+    } else if (recibida && t.abierta && !deOtro && !t.solo_lectura) {
         if (t.estado !== 'en curso') boton('▶ En curso', () => cambiar('en curso'));
         if (!t.ticket && t.estado !== 'hecha') boton('✓ Hecha', () => cambiar('hecha'));
     }
@@ -1042,6 +1052,7 @@ function abrirCampana(pestanaInicial) {
                             '<button class="pestana" data-p="nueva">＋ Asignar</button>' : '') +
         (esCeo() ? '' : '<button class="pestana" data-p="tickets">🎫 Mis tickets</button>' +
                         '<button class="pestana" data-p="faltas">⚠️ Faltas</button>') +
+        (yo.ve_vistas_ceo ? '<button class="pestana" data-p="productos">🛍 Productos</button>' : '') +
         '    </div><div class="cuerpo-pestana"></div>' +
         '  </div></div>';
     const cuerpo = capas.querySelector('.cuerpo-pestana');
@@ -1067,6 +1078,7 @@ function abrirCampana(pestanaInicial) {
             else if (hoja.pestana === 'tickets') pintarMisTickets();
             else if (hoja.pestana === 'semana') pintarSemana();
             else if (hoja.pestana === 'faltas') pintarFaltas();
+            else if (hoja.pestana === 'productos') pintarProductos();
             else pintarNueva();
         },
     };
@@ -1109,6 +1121,61 @@ function abrirCampana(pestanaInicial) {
         fila.appendChild(selector);
         // El editor de los tipos vive en el módulo MIS TICKETS (Leonardo, 2026-10-12).
         cuerpo.appendChild(fila);
+    }
+
+    /* «🛍 Productos»: lo que el personal le asignó a una modelo y espera al CEO
+     * (productos_aprobacion.py de la API). No es deuda hasta que diga APROBAR. */
+    async function pintarProductos() {
+        cuerpo.innerHTML = '<div class="cargando"><span class="girando">◌</span> Cargando…</div>';
+        let datos;
+        try {
+            datos = await pedir('/api/personal/productos');
+        } catch (error) {
+            cuerpo.innerHTML = '<div class="vacio">' + escapar(error.message) + '</div>';
+            return;
+        }
+        if (hoja.pestana !== 'productos') return;
+        campana.productos = datos.puede_decidir ? datos.solicitudes.length : 0;
+        pintarGlobo();
+        cuerpo.innerHTML = datos.solicitudes.length ? '' : '<div class="vacio">No hay productos por aprobar. 🎉</div>';
+        datos.solicitudes.forEach((s) => cuerpo.appendChild(tarjetaProducto(s, datos.puede_decidir)));
+    }
+
+    function tarjetaProducto(s, puedeDecidir) {
+        const pesos = (n) => '$ ' + Number(n || 0).toLocaleString('es-CO');
+        const caja = document.createElement('div');
+        caja.className = 'tarjeta tarjeta-falta sin-ver';
+        caja.innerHTML =
+            '<div class="cabeza-falta"><b>' + escapar(s.producto) + '</b><span class="pildora urgente">Por aprobar</span></div>' +
+            '<div class="detalle-falta">Para <b>' + escapar(s.modelo) + '</b> · ' + s.cantidad + ' × ' + pesos(s.precio_unitario) +
+            ' = <b>' + pesos(s.total) + '</b></div>' +
+            '<div class="nota-falta">' + (s.cuotas ? s.cuotas + ' cuotas de ' + pesos(Math.ceil(s.total / s.cuotas))
+                                                  : 'Sin cuotas: la nómina descuenta todo') +
+            ' · Entrega ' + escapar(s.fecha_entrega) +
+            (s.descontar && s.sede ? ' · Baja el stock de ' + escapar(s.sede) : '') + '</div>' +
+            (s.notas ? '<div class="version-falta"><b>Notas:</b> ' + escapar(s.notas) + '</div>' : '') +
+            '<div class="nota-falta">Lo asignó ' + escapar(s.por) + ' · ' + escapar(s.cuando) + '</div>' +
+            (puedeDecidir ? '<div class="botones-falta"><button class="boton-principal aprobar">APROBAR</button>' +
+                            '<button class="boton-secundario rechazar">RECHAZAR</button></div>'
+                          : '<div class="nota-falta">Lo aprueba o lo rechaza el CEO.</div>');
+        const decidir = async (accion, cuerpoPedido) => {
+            caja.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+            try {
+                const r = await pedir('/api/personal/productos/' + encodeURIComponent(s.id) + '/' + accion, 'POST', cuerpoPedido);
+                avisar(r.mensaje, 'bueno');
+            } catch (error) { avisar(error.message, 'malo'); }
+            pintarProductos();
+        };
+        if (puedeDecidir) {
+            const aprobar = caja.querySelector('.aprobar');
+            aprobar.onclick = () => decidir('aprobar', {});
+            const rechazar = caja.querySelector('.rechazar');
+            rechazar.onclick = () => {
+                const motivo = prompt('¿Por qué se rechaza? (opcional; le llega a ' + s.por + ')', '');
+                if (motivo !== null) decidir('rechazar', { motivo: motivo });
+            };
+        }
+        return caja;
     }
 
     /* «⚠️ Faltas»: las que le notificó el CEO (seguimiento_interno.py de la API). */
@@ -1994,6 +2061,9 @@ async function iniciar(actual) {
         if (parametros.get('faltas')) {
             history.replaceState(null, '', window.location.pathname);
             abrirCampana('faltas');
+        } else if (parametros.get('productos')) {
+            history.replaceState(null, '', window.location.pathname);
+            abrirCampana(ficha().ve_vistas_ceo ? 'productos' : undefined);
         } else if (parametros.get('tareas')) {
             history.replaceState(null, '', window.location.pathname);
             abrirCampana();
