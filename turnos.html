@@ -164,6 +164,8 @@
                 font-size: 0.78rem; cursor: pointer; user-select: none; transition: 0.15s; }
         .dia-asiste { background: var(--degradado); color: #fff; border: 1px solid transparent; }
         .dia-falta { background-color: var(--panel-alto); color: var(--apagado); border: 1px dashed var(--borde); }
+        .dia-descanso { background: #fbbf24; color: #2b1d00; border: 1px solid transparent; }
+        .nota-descanso-listo { color: #a5d6a7; font-weight: 600; }
 
         /* ===================== GRILLAS SEMANALES ===================== */
         .titulo-grilla { margin: 18px 0 10px; font-size: 0.95rem; font-weight: 600; color: var(--texto);
@@ -204,6 +206,7 @@
         #btn-guardar { width: 100%; background: var(--degradado); color: #fff; border: none;
             padding: 15px; border-radius: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; }
         #btn-guardar:disabled { opacity: .6; cursor: wait; }
+        #btn-guardar.bloqueado { background: var(--borde); color: #c9c9d1; opacity: 1; cursor: not-allowed; }
         #texto-pendiente { color: var(--texto-tenue); font-size: 0.74rem; text-align: center;
             margin-bottom: 8px; font-weight: 500; }
 
@@ -435,6 +438,11 @@ let jornadaVista = "Mañana";
 // Días marcados por jornada. Por defecto NADA: está ausente.
 let diasMarcados = { "Mañana": [], "Tarde": [], "Noche": [] };
 
+// Quien tiene cupo en la Mañana no marca días: viene toda la semana y escoge
+// su descanso (Leonardo, 2026-11-04). Sus jornadas oficiales salen de aquí.
+let diaDescanso = null;
+let programacionGuardada = false;
+
 /* Cambios pendientes de guardar. Tres tipos, con su etiqueta. */
 let pendiente = {
     cuarto: null,        // { room, estado, jornada }
@@ -514,9 +522,43 @@ function esSupernumeraria(nombre) {
     return (perfiles[nombre] || {}).jornada === "Supernumerario";
 }
 
+function usaDescanso() { return esOficialEn("Mañana"); }
+
+function aplicarDescanso() {
+    jornadasOficiales().forEach(j => { diasMarcados[j] = DIAS.filter(d => d !== diaDescanso); });
+}
+
+/* Lee lo que ya guardó: el día que falta en su jornada oficial es el descanso.
+   Sin nada guardado, o con la programación automática de 7 días, aún no tiene. */
+function cargarDescanso(previa) {
+    if (!usaDescanso()) return;
+    const faltan = previa && previa.dias
+        ? DIAS.filter(d => !(previa.dias[jornadasOficiales()[0]] || []).includes(d)) : [];
+    diaDescanso = faltan.length === 1 ? faltan[0] : null;
+    programacionGuardada = diaDescanso !== null;
+    aplicarDescanso();
+}
+
+function elegirDescanso(dia) {
+    diaDescanso = diaDescanso === dia ? null : dia;
+    aplicarDescanso();
+    programacionGuardada = false;
+    pendiente.programacion = true;
+    renderizarBloquesJornadas();
+    renderizarGrillas();
+    actualizarBarraGuardar();
+}
+
 function textoPerfil() {
     const p = miPerfil();
     const tipo = p.doble_jornada_tipo || "";
+    const oficiales = jornadasOficiales();
+    if (usaDescanso()) {
+        const quien = oficiales.length > 1
+            ? `Eres de <b>doble jornada ${oficiales.join(" y ")}</b>: ya estás marcada como <b>ASISTIRÉ</b> en ${oficiales.length === 2 ? "las dos" : "todas"} toda la semana. Solo falta que <b>escojas tu día de descanso</b>, que aplica a ${oficiales.length === 2 ? "ambas jornadas" : "todas"}.`
+            : `Tu jornada oficial es <b>Mañana</b>: ya estás marcada como <b>ASISTIRÉ</b> toda la semana. Solo falta que <b>escojas tu día de descanso</b>.`;
+        return `${quien} También puedes marcar otra jornada, pero solo sabrás si quedaste a partir de las ${HORA_CONFIRMACION}.`;
+    }
     const cierre = `Puedes marcar también en otra jornada, pero solo sabrás si quedaste a partir de las <b>${HORA_CONFIRMACION}</b>.`;
 
     if (tipo) {
@@ -571,8 +613,13 @@ function renderizarBloquesJornadas() {
         const totalOficiales = conteoOficiales[jornada] || 0;
         const pendientesJor = faltantes[jornada] || 0;
 
+        const conDescanso = oficial && usaDescanso();
         let nota;
-        if (oficial) {
+        if (conDescanso) {
+            nota = diaDescanso
+                ? `<div class="nota-jornada nota-descanso-listo">Descansas el ${diaDescanso}${jornadasOficiales().length > 1 ? ` en ${jornadasOficiales().length === 2 ? "las dos" : "todas tus"} jornadas` : ""}. Toca otro día si quieres cambiarlo.</div>`
+                : `<div class="nota-jornada nota-espera">Toca el día que vas a descansar.</div>`;
+        } else if (oficial) {
             nota = `<div class="nota-jornada">Cupo asegurado. Marca los días que vendrás.</div>`;
         } else {
             nota = `<div class="nota-jornada nota-espera">
@@ -586,6 +633,13 @@ function renderizarBloquesJornadas() {
         let dias = '';
         DIAS.forEach(dia => {
             const viene = diasMarcados[jornada].includes(dia);
+            if (conDescanso) {
+                dias += `<div class="dia-btn ${viene ? 'dia-asiste' : 'dia-descanso'}"
+                              onclick="alternarDia('${jornada}','${dia}')">
+                            ${dia}<br><small>${viene ? 'ASISTIRÉ' : 'DESCANSO'}</small>
+                         </div>`;
+                return;
+            }
             dias += `<div class="dia-btn ${viene ? 'dia-asiste' : 'dia-falta'}"
                           onclick="alternarDia('${jornada}','${dia}')">
                         ${dia}<br><small>${viene ? 'VENDRÉ' : 'AUSENTE'}</small>
@@ -607,6 +661,7 @@ function renderizarBloquesJornadas() {
 }
 
 function alternarDia(jornada, dia) {
+    if (usaDescanso() && esOficialEn(jornada)) return elegirDescanso(dia);
     const lista = diasMarcados[jornada];
     const i = lista.indexOf(dia);
     if (i >= 0) lista.splice(i, 1); else lista.push(dia);
@@ -801,12 +856,22 @@ function renderizarTodo() {
    pedía el estudio: antes se guardaba solo y nadie sabía cuándo.
    ==================================================================== */
 function etiquetaGuardar() {
+    if (usaDescanso() && !diaDescanso && (pendiente.programacion || viendoProxima)) {
+        return { boton: "Escoge tu descanso para guardar",
+                 nota: "Te falta escoger tu día de descanso.", bloqueado: true };
+    }
     const tipos = [];
     if (pendiente.cuarto) tipos.push("cuarto");
     if (pendiente.statusActual.length) tipos.push("status");
     if (pendiente.programacion) tipos.push("programacion");
 
-    if (tipos.length === 0) return null;
+    if (tipos.length === 0) {
+        if (viendoProxima && usaDescanso() && programacionGuardada) {
+            return { boton: "Programación guardada",
+                     nota: "Puedes cambiarla hasta el sábado a las 12 del mediodía.", bloqueado: true };
+        }
+        return null;
+    }
     if (tipos.length > 1) return { boton: "Guardar todos los cambios", nota: "Tienes varios cambios sin guardar." };
     if (tipos[0] === "cuarto") {
         const entrega = pendiente.cuarto.estado === "DISPONIBLE";
@@ -820,6 +885,10 @@ function etiquetaGuardar() {
         return { boton: "Guardar Cambios en Status Actual",
                  nota: `${pendiente.statusActual.length} cupo(s) de la semana publicada.` };
     }
+    if (usaDescanso()) {
+        return { boton: "Guardar Programación",
+                 nota: `${jornadasOficiales().length > 1 ? "Doble turno 6 días" : "Asistes 6 días"} y descansas el ${diaDescanso}.` };
+    }
     return { boton: "Guardar Programación", nota: "Programación de la próxima semana." };
 }
 
@@ -827,7 +896,10 @@ function actualizarBarraGuardar() {
     const barra = document.getElementById('barra-guardar');
     const info = etiquetaGuardar();
     if (!info) { barra.classList.remove('visible'); document.body.classList.remove('guardando'); return; }
-    document.getElementById('btn-guardar').textContent = info.boton;
+    const boton = document.getElementById('btn-guardar');
+    boton.textContent = info.boton;
+    boton.disabled = !!info.bloqueado;
+    boton.classList.toggle('bloqueado', !!info.bloqueado);
     document.getElementById('texto-pendiente').textContent = info.nota;
     barra.classList.add('visible');
     document.body.classList.add('guardando');     // esconde la barra de navegación
@@ -835,9 +907,12 @@ function actualizarBarraGuardar() {
 
 async function guardarCambios() {
     const boton = document.getElementById('btn-guardar');
+    const info = etiquetaGuardar();
+    if (!info || info.bloqueado) return;
     boton.disabled = true;
     const textoOriginal = boton.textContent;
     boton.textContent = "Guardando...";
+    let sinCuarto = [];
 
     try {
         if (pendiente.cuarto) {
@@ -869,17 +944,26 @@ async function guardarCambios() {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nombre: modeloActual, dias: diasMarcados, motivo: document.getElementById('pre-motivo').value })
             });
-            if (!r.ok) throw new Error("La fase de programación está cerrada.");
+            if (!r.ok) {
+                const detalle = await r.json().catch(() => ({}));
+                throw new Error(r.status === 403 ? "La fase de programación está cerrada."
+                                                 : (detalle.detail || "No se pudo guardar la programación."));
+            }
+            const resultado = await r.json().catch(() => ({}));
+            sinCuarto = resultado.sin_cuarto || [];
+            programacionGuardada = true;
         }
 
         pendiente = { cuarto: null, statusActual: [], programacion: false };
-        mostrarToast("✅ ¡Cambios guardados correctamente!", "exito");
+        if (sinCuarto.length) mostrarToast(`⚠️ Guardado, pero no quedó cuarto libre: ${sinCuarto.join(", ")}. Avísale al monitor.`, "error");
+        else mostrarToast("✅ ¡Cambios guardados correctamente!", "exito");
         await cargarDatos();
     } catch (e) {
         mostrarToast("⚠️ " + e.message, "error");
         boton.textContent = textoOriginal;
     } finally {
         boton.disabled = false;
+        actualizarBarraGuardar();
     }
 }
 
@@ -1060,6 +1144,10 @@ async function cargarDatos() {
             if (previa && previa.dias) {
                 JORNADAS.forEach(j => { diasMarcados[j] = (previa.dias[j] || []).slice(); });
                 if (previa.motivo) document.getElementById('pre-motivo').value = previa.motivo;
+            }
+            cargarDescanso(previa);
+            if (jornadasOficiales().length > 1) {
+                document.getElementById('lbl-jornada').textContent = `Jornada: ${jornadasOficiales().join(" y ")}`;
             }
             perfilCargado = true;
         }
