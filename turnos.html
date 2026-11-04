@@ -416,7 +416,16 @@ if (!modeloActual) window.location.href = URL_LOGIN;
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const JORNADAS = ['Mañana', 'Tarde', 'Noche'];
-const TOTAL_CUARTOS = 12;
+const TOTAL_CUARTOS = 10;
+
+/* Filas de la grilla: 10, o más si esa semana aún queda alguien en el 11 o el
+   12. La API ya quitó las casillas vacías de más; desde el domingo no queda ninguna. */
+function filasDe(bd) {
+    let tope = TOTAL_CUARTOS;
+    Object.values(bd || {}).forEach(jornadas => Object.values(jornadas || {}).forEach(cuartos =>
+        Object.keys(cuartos || {}).forEach(r => { tope = Math.max(tope, parseInt(r, 10) || 0); })));
+    return tope;
+}
 const HORA_CONFIRMACION = "12:00:01 PM del sábado";
 
 document.getElementById('lbl-nombre').textContent = modeloActual;
@@ -498,6 +507,7 @@ function miPerfil() { return perfiles[modeloActual] || {}; }
 
 function jornadasOficiales() {
     const p = miPerfil();
+    if (p.aire_libre) return [];
     if (Array.isArray(p.jornadas_oficiales) && p.jornadas_oficiales.length) return p.jornadas_oficiales;
     const tipo = p.doble_jornada_tipo || "";
     if (tipo) return tipo.split('-').filter(j => JORNADAS.includes(j));
@@ -553,6 +563,9 @@ function textoPerfil() {
     const p = miPerfil();
     const tipo = p.doble_jornada_tipo || "";
     const oficiales = jornadasOficiales();
+    if (p.aire_libre) {
+        return `Estás en <b>Aire Libre</b>: no tienes cupo asegurado en ninguna jornada. Puedes programarte en cualquiera y entrarás si queda un cupo libre; solo sabrás si quedaste a partir de las <b>${HORA_CONFIRMACION}</b>. También puedes tomar un cupo disponible de la semana en curso.`;
+    }
     if (usaDescanso()) {
         const quien = oficiales.length > 1
             ? `Eres de <b>doble jornada ${oficiales.join(" y ")}</b>: ya estás marcada como <b>ASISTIRÉ</b> en ${oficiales.length === 2 ? "las dos" : "todas"} toda la semana. Solo falta que <b>escojas tu día de descanso</b>, que aplica a ${oficiales.length === 2 ? "ambas jornadas" : "todas"}.`
@@ -711,7 +724,7 @@ function renderizarCuartosHoy() {
             cont.innerHTML += `<div class="room-row"><div class="r-num">${c.room}</div><div class="r-name">${nombreVisible}</div><div class="r-state ${clase}" ${click}>${texto}</div></div>`;
         });
     } else {
-        for (let i = 1; i <= TOTAL_CUARTOS; i++) {
+        for (let i = 1, filas = filasDe(semanaActual); i <= filas; i++) {
             const raw = (semanaActual[nombreDiaHoy] && semanaActual[nombreDiaHoy][jorSel] && semanaActual[nombreDiaHoy][jorSel][String(i)]) || "";
             const nom = raw.split("::")[0];
             cont.innerHTML += `<div class="room-row"><div class="r-num">${i}</div><div class="r-name" style="color:${nom ? '#444' : '#AAA'}">${nom || "---"}</div><div class="r-state ${nom ? "estado-ocupada" : "estado-neutro"}">${nom ? "PROGRAMADA" : "CUPO"}</div></div>`;
@@ -748,7 +761,7 @@ function generarGrilla(bd, jornada, modo) {
     let html = '<div class="semana-scroll">';
     DIAS.forEach(dia => {
         html += `<div class="dia-columna"><div class="dia-titulo">${dia}</div>`;
-        for (let i = 1; i <= TOTAL_CUARTOS; i++) {
+        for (let i = 1, filas = filasDe(bd); i <= filas; i++) {
             const raw = (bd[dia] && bd[dia][jornada] && bd[dia][jornada][String(i)]) || "";
             const ocupante = raw.split("::")[0];
             const enEspera = raw.includes("::PENDIENTE");

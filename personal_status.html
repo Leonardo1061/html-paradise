@@ -150,7 +150,7 @@
     const P = window.Personal;
     const esc = P.escapar;
     const $ = (id) => document.getElementById(id);
-    const TOTAL_CUARTOS = 12;
+    const TOTAL_CUARTOS = 10;
     const estado = { datos: null, modelos: null };
 
     // La jornada de ahora, igual que turnos.html: 7-13 mañana, 13-20 tarde, resto noche.
@@ -189,7 +189,7 @@
             });
         } else {
             const fila = (d.semana[d.hoy] || {})[jornada] || [];
-            for (let i = 0; i < TOTAL_CUARTOS; i++) {
+            for (let i = 0, filas = Math.max(TOTAL_CUARTOS, fila.length); i < filas; i++) {
                 const nom = (fila[i] || {}).nombre || '';
                 html += '<div class="room-row"><div class="r-num">' + (i + 1) + '</div><div class="r-name" style="color:' +
                     (nom ? 'var(--texto)' : 'var(--apagado)') + '">' + esc(nom || '---') + '</div><div class="r-state ' +
@@ -215,7 +215,7 @@
         d.dias.forEach((dia) => {
             html += '<div class="dia-columna"><div class="dia-titulo' + (dia === d.hoy ? ' hoy' : '') + '">' + esc(dia) + '</div>';
             const fila = (d.semana[dia] || {})[jornada] || [];
-            for (let i = 1; i <= TOTAL_CUARTOS; i++) {
+            for (let i = 1, filas = Math.max(TOTAL_CUARTOS, fila.length); i <= filas; i++) {
                 const cupo = fila[i - 1] || {};
                 const nombre = cupo.nombre || '';
                 const datos = 'data-dia="' + esc(dia) + '" data-room="' + i + '" data-nombre="' + esc(nombre) + '"';
