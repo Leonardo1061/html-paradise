@@ -150,7 +150,8 @@
     const P = window.Personal;
     const esc = P.escapar;
     const $ = (id) => document.getElementById(id);
-    const TOTAL_CUARTOS = 10;
+    // Del 1 al 11 menos el 2. Igual en api/reglas_cuartos.py.
+    const CUARTOS = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     const estado = { datos: null, modelos: null };
 
     // La jornada de ahora, igual que turnos.html: 7-13 mañana, 13-20 tarde, resto noche.
@@ -189,9 +190,10 @@
             });
         } else {
             const fila = (d.semana[d.hoy] || {})[jornada] || [];
-            for (let i = 0, filas = Math.max(TOTAL_CUARTOS, fila.length); i < filas; i++) {
-                const nom = (fila[i] || {}).nombre || '';
-                html += '<div class="room-row"><div class="r-num">' + (i + 1) + '</div><div class="r-name" style="color:' +
+            for (const i of CUARTOS) {
+                const cupoHoy = fila.find((c) => c.numero === i) || {};
+                const nom = (cupoHoy.nombre || '') + (cupoHoy.companera ? ' + ' + cupoHoy.companera : '');
+                html += '<div class="room-row"><div class="r-num">' + i + '</div><div class="r-name" style="color:' +
                     (nom ? 'var(--texto)' : 'var(--apagado)') + '">' + esc(nom || '---') + '</div><div class="r-state ' +
                     (nom ? 'estado-programada' : 'estado-neutro') + '">' + (nom ? 'PROGRAMADA' : 'CUPO') + '</div></div>';
             }
@@ -215,8 +217,8 @@
         d.dias.forEach((dia) => {
             html += '<div class="dia-columna"><div class="dia-titulo' + (dia === d.hoy ? ' hoy' : '') + '">' + esc(dia) + '</div>';
             const fila = (d.semana[dia] || {})[jornada] || [];
-            for (let i = 1, filas = Math.max(TOTAL_CUARTOS, fila.length); i <= filas; i++) {
-                const cupo = fila[i - 1] || {};
+            for (const i of CUARTOS) {
+                const cupo = fila.find((c) => c.numero === i) || {};
                 const nombre = cupo.nombre || '';
                 const datos = 'data-dia="' + esc(dia) + '" data-room="' + i + '" data-nombre="' + esc(nombre) + '"';
                 if (!nombre) { html += '<div class="turno-bloque bg-verde" ' + datos + '>➕ DISPONIBLE</div>'; continue; }
@@ -224,7 +226,8 @@
                 const fija = String(p.cuarto_fijo) === String(i);
                 const satelite = norm(p.jornada) === 'satelites';
                 const extra = norm(p.jornada) === 'supernumerario';
-                const visible = (satelite ? '🛰 ' : extra ? '➕ ' : '') + esc(nombre.toUpperCase());
+                const visible = (satelite ? '🛰 ' : extra ? '➕ ' : '') + esc(nombre.toUpperCase()) +
+                    (cupo.companera ? ' + ' + esc(cupo.companera.toUpperCase()) : '');
                 let clase = 'bg-morado', texto = visible;
                 if (cupo.en_espera) { clase = 'bg-espera-otra'; texto = visible + ' (espera)'; }
                 else if (fija) { clase = 'bg-fija'; texto = 'R' + i + ': ' + visible; }
