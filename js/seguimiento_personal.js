@@ -13,6 +13,7 @@ const P = window.Personal;
 const esc = P.escapar;
 const API = '/api/personal/seguimiento';
 const RONDAS_POR_PAGINA = 12;
+const MAX_ADJUNTOS = 4;
 const cuerpo = document.getElementById('cuerpo');
 
 const estado = { pestana: 'faltas', personas: [], tipos: [], turno: 0 };
@@ -83,10 +84,12 @@ function tarjetaFalta(f) {
         '<div class="tipo-falta">' + esc(f.tipo) + '</div>' +
         (f.sesion ? '<div class="nota-falta">Sesión: ' + esc(f.sesion) + '</div>' : '') +
         '<div class="detalle-falta">' + esc(f.detalle) + '</div>' +
+        '<div class="zona-adjuntos"></div>' +
         (f.version ? '<div class="version-falta"><b>Su versión:</b> ' + esc(f.version) + '</div>' : '') +
         (f.anulada ? '<div class="version-falta"><b>Motivo:</b> ' + esc(f.motivo_anulacion) + '</div>' : '') +
         '<div class="nota-falta">Fecha del hecho: ' + esc(f.fecha) + (f.vista_en ? ' · Vista: ' + esc(f.vista_en) : '') + '</div>' +
         (f.anulada ? '' : '<button class="boton-secundario anular" style="margin-top:10px">Anular</button>');
+    caja.querySelector('.zona-adjuntos').replaceWith(P.adjuntosDeFalta(f));
     const anular = caja.querySelector('.anular');
     if (anular) {
         anular.onclick = async () => {
@@ -117,6 +120,8 @@ function abrirNuevaFalta() {
         '<div class="campo"><label>Fecha del hecho *</label><input class="n-fecha" type="date" value="' + hoy() + '" max="' + hoy() + '"></div>' +
         '<div class="campo n-caja-sesion"><label>Sesión programada</label><select class="n-sesion"><option value="">Cargando…</option></select></div>' +
         '<div class="campo"><label>Detalle *</label><textarea class="n-detalle" maxlength="2000" placeholder="Qué pasó"></textarea></div>' +
+        '<div class="campo"><label>Fotos o documentos (opcional, hasta ' + MAX_ADJUNTOS + ')</label>' +
+        '<input class="n-archivos" type="file" multiple accept="' + P.ACEPTA_ARCHIVOS + '"></div>' +
         '<button class="boton-principal n-enviar" style="background:var(--rojo)">Notificar</button></div></div>';
     document.getElementById('capas-personal').appendChild(capa);
     const $ = (c) => capa.querySelector(c);
@@ -144,18 +149,27 @@ function abrirNuevaFalta() {
     $('.n-enviar').onclick = async (e) => {
         if (!$('.n-persona').value) { P.avisar('Elige a la persona.', 'malo'); return; }
         if (!$('.n-detalle').value.trim()) { P.avisar('Escribe el detalle.', 'malo'); return; }
-        e.target.disabled = true;
+        const archivos = Array.from($('.n-archivos').files);
+        if (archivos.length > MAX_ADJUNTOS) { P.avisar('Como mucho ' + MAX_ADJUNTOS + ' archivos por falta.', 'malo'); return; }
+        const formulario = new FormData();
+        formulario.append('persona', $('.n-persona').value);
+        formulario.append('tipo', $('.n-tipo').value);
+        formulario.append('fecha', $('.n-fecha').value);
+        formulario.append('detalle', $('.n-detalle').value.trim());
+        formulario.append('sesion', $('.n-sesion').value || '');
+        archivos.forEach((a) => formulario.append('archivos', a, a.name || 'archivo'));
+        const boton = e.target;
+        boton.disabled = true;
+        if (archivos.length) boton.textContent = 'Subiendo…';
         try {
-            const r = await P.pedir(API + '/faltas', 'POST', {
-                persona: $('.n-persona').value, tipo: $('.n-tipo').value, fecha: $('.n-fecha').value,
-                detalle: $('.n-detalle').value.trim(), sesion: $('.n-sesion').value || '',
-            });
+            const r = await P.pedirFormulario(API + '/faltas/con_adjuntos', formulario);
             P.avisar(r.mensaje, 'bueno');
             cerrar();
             pintarFaltas();
         } catch (error) {
             P.avisar(error.message, 'malo');
-            e.target.disabled = false;
+            boton.disabled = false;
+            boton.textContent = 'Notificar';
         }
     };
 }

@@ -208,6 +208,44 @@ function abrirVisor(src) {
     document.body.appendChild(visor);
 }
 
+/* Los archivos de una falta. Se bajan al tocarlos: la lista no le pide nada a Drive. */
+function adjuntosDeFalta(falta) {
+    const zona = document.createElement('div');
+    if ((falta.adjuntos || []).length) zona.className = 'botones-falta';
+    (falta.adjuntos || []).forEach((a, indice) => {
+        const boton = document.createElement('button');
+        boton.className = 'boton-secundario';
+        const iconos = { imagen: '🖼️ ', video: '🎬 ', pdf: '📄 ' };
+        boton.textContent = (iconos[a.tipo] || '📎 ') + (a.titulo || a.nombre || 'Archivo');
+        boton.onclick = async () => {
+            // Video y PDF en otra pestaña (se abre en el toque, o el navegador la bloquea);
+            // la foto en el visor; Excel y demás se descargan con su nombre.
+            const ventana = a.tipo === 'video' || a.tipo === 'pdf' ? window.open('', '_blank') : null;
+            boton.disabled = true;
+            try {
+                const url = await pedirArchivo('/api/personal/seguimiento/faltas/' +
+                                               encodeURIComponent(falta.id) + '/adjunto/' + indice);
+                if (ventana) ventana.location.href = url;
+                else if (a.tipo === 'imagen') abrirVisor(url);
+                else {
+                    const enlace = document.createElement('a');
+                    enlace.href = url;
+                    enlace.download = a.titulo || a.nombre || 'archivo';
+                    document.body.appendChild(enlace);
+                    enlace.click();
+                    enlace.remove();
+                }
+            } catch (error) {
+                if (ventana) ventana.close();
+                avisar(error.message, 'malo');
+            }
+            boton.disabled = false;
+        };
+        zona.appendChild(boton);
+    });
+    return zona;
+}
+
 function aDataUrl(b64) {
     return String(b64 || '').indexOf('data:') === 0 ? b64 : 'data:image/jpeg;base64,' + b64;
 }
@@ -1207,11 +1245,13 @@ function abrirCampana(pestanaInicial) {
             (f.anulada ? '<span class="pildora">Anulada</span>' : f.vista ? '' : '<span class="pildora urgente">Nueva</span>') + '</div>' +
             (f.sesion ? '<div class="nota-falta">Sesión: ' + escapar(f.sesion) + '</div>' : '') +
             '<div class="detalle-falta">' + escapar(f.detalle) + '</div>' +
+            '<div class="zona-adjuntos"></div>' +
             (f.anulada && f.motivo_anulacion ? '<div class="version-falta"><b>Motivo de la anulación:</b> ' + escapar(f.motivo_anulacion) + '</div>' : '') +
             (f.version ? '<div class="version-falta"><b>Tu versión:</b> ' + escapar(f.version) + '</div>' : '') +
             '<div class="nota-falta">De ' + escapar(f.creada_por) + ' · ' + escapar(f.fecha) +
             (f.vista_en ? ' · Vista: ' + escapar(f.vista_en) : '') + '</div>' +
             (pasos ? '<div class="botones-falta">' + pasos + '</div>' : '');
+        caja.querySelector('.zona-adjuntos').replaceWith(adjuntosDeFalta(f));
         const vista = caja.querySelector('.marcar-vista');
         if (vista) {
             vista.onclick = async () => {
@@ -2113,7 +2153,8 @@ function selectorModelos(contenedor, modelos, alElegir) {
 
 window.Personal = {
     selectorModelos: selectorModelos,
-    iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, avisar: avisar,
+    iniciar: iniciar, pedir: pedir, pedirArchivo: pedirArchivo, pedirFormulario: pedirFormulario,
+    adjuntosDeFalta: adjuntosDeFalta, ACEPTA_ARCHIVOS: ACEPTA_ARCHIVOS, avisar: avisar,
     escapar: escapar, abrirVisor: abrirVisor, abrirConversacion: abrirConversacion, aDataUrl: aDataUrl, comprimir: comprimir,
     abrirCampana: abrirCampana, abrirTiposSolicitud: abrirTiposSolicitud, globoChat: globoChat, guardarFicha: guardarFicha, ficha: ficha,
     tarjetaTarea: tarjetaTarea, revisarTareas: revisarTareas, tarjetaDescanso: tarjetaDescanso,
