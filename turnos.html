@@ -116,14 +116,13 @@
         .btn-amarillo:active, .btn-negro:active { transform: scale(0.98); }
 
         /* ===================== CUARTOS DE HOY ===================== */
-        .room-row { display: grid; grid-template-columns: 38px 1fr 96px; border: 1px solid var(--borde);
+        .room-row { display: grid; grid-template-columns: 38px 1fr; border: 1px solid var(--borde);
                 border-bottom: none; align-items: center; overflow: hidden; }
         .room-row:first-child { border-radius: 12px 12px 0 0; }
         .room-row:last-child { border-bottom: 1px solid var(--borde); border-radius: 0 0 12px 12px; }
         .room-row > div { padding: 11px 5px; text-align: center; font-size: 0.82rem;
                 border-right: 1px solid var(--borde); }
         .r-num { font-weight: 700; background-color: var(--panel-alto); color: var(--acento); }
-        .r-name { text-align: left !important; text-transform: uppercase; font-weight: 600; color: var(--texto); }
         .r-state { font-weight: 600; font-size: 0.73rem; }
         .estado-ocupada { background-color: rgba(244, 67, 54, .16); color: #ff8a80; }
         .estado-salida { background-color: rgba(255, 152, 0, .16); color: #ffd180; }
@@ -317,8 +316,6 @@
                 <span><div class="caja-color" style="background:var(--naranja);"></div> Tu turno</span>
                 <span><div class="caja-color" style="background:var(--fijo);"></div> Fijo</span>
                 <span><div class="caja-color" style="background:#FFF;"></div> En espera</span>
-                <span><div class="caja-color" style="background:var(--satelite);"></div> 🛰 Satélite</span>
-                <span><div class="caja-color" style="background:var(--extra);"></div> ➕ Supernumeraria</span>
             </div>
 
             <!-- Selector de jornada del status YA PUBLICADO.
@@ -525,12 +522,6 @@ function esOficialEn(jornada) { return jornadasOficiales().includes(jornada); }
 function misParejas() { return miPerfil().parejas || []; }
 function esMioOdeMiPareja(nombre) { return nombre === modeloActual || misParejas().includes(nombre); }
 
-/* Una satélite trabaja desde su casa: no ocupa cuarto del estudio por
-   derecho propio. Se pinta de otro color para no confundirla con las de
-   dentro, y lleva el icono 🛰 por si el color no se distingue bien en un
-   móvil a pleno sol. */
-function esSatelite(nombre) { return categoria(nombre) === "Satelites"; }
-
 /* En Tropic e Imperio la franja dice si es satélite o supernumeraria. */
 function categoria(nombre) {
     const p = perfiles[nombre] || {};
@@ -538,11 +529,6 @@ function categoria(nombre) {
 }
 
 function nombreJornada(jornada) { return PREFIJO_ESTUDIO + jornada; }
-
-/* Una supernumeraria cubre huecos: no tiene jornada propia, así que en
-   cualquiera de las tres va a lista de espera. Es distinta de una satélite
-   —esa trabaja desde su casa— y por eso lleva su propio color. */
-function esSupernumeraria(nombre) { return categoria(nombre) === "Supernumerario"; }
 
 function usaDescanso() { return jornadasOficiales().length > 0; }
 
@@ -708,29 +694,24 @@ function renderizarCuartosHoy() {
                 clase = "estado-neutro"; texto = c.estado;
             }
 
-            const pareja = ((perfiles[c.nombre] || {}).parejas || [])[0];
-            const nombreVisible = elegida ? modeloActual : (c.nombre ? c.nombre + (pareja ? ` + ${pareja}` : "") : "");
-            cont.innerHTML += `<div class="room-row"><div class="r-num">${c.room}</div><div class="r-name">${nombreVisible}</div><div class="r-state ${clase}" ${click}>${texto}</div></div>`;
+            cont.innerHTML += `<div class="room-row"><div class="r-num">${c.room}</div><div class="r-state ${clase}" ${click}>${texto}</div></div>`;
         });
     } else {
         for (const i of CUARTOS) {
             const cuartos = (semanaActual[nombreDiaHoy] && semanaActual[nombreDiaHoy][jorSel]) || {};
-            const raw = cuartos[String(i)] || "";
-            const segunda = (cuartos[`${i}b`] || "").split("::")[0];
-            const nom = raw.split("::")[0] + (segunda ? ` + ${segunda}` : "");
+            const ocupado = cuartos[String(i)] || cuartos[`${i}b`];
             // Un cupo vacío de hoy lo puede tomar cualquiera, sea o no de esa
             // franja (Leonardo, 2026-11-09). Va por el mismo guardado que la grilla.
             const elegida = hayCupoElegido(nombreDiaHoy, jorSel, i);
-            let clase = "estado-ocupada", texto = "PROGRAMADA", click = "";
+            let clase = "estado-ocupada", texto = "OCUPADA", click = "";
             if (elegida) {
                 clase = "estado-elegida"; texto = "✓ SIN GUARDAR";
                 click = `onclick="quitarCupoElegido('${nombreDiaHoy}','${jorSel}',${i})"`;
-            } else if (!nom) {
+            } else if (!ocupado) {
                 clase = "estado-disponible"; texto = "✋ TOMAR";
                 click = `onclick="marcarCupoActual('${nombreDiaHoy}','${jorSel}',${i})"`;
             }
-            const visible = elegida ? modeloActual : nom;
-            cont.innerHTML += `<div class="room-row"><div class="r-num">${i}</div><div class="r-name" style="color:${visible ? '#444' : '#AAA'}">${visible || "---"}</div><div class="r-state ${clase}" ${click}>${texto}</div></div>`;
+            cont.innerHTML += `<div class="room-row"><div class="r-num">${i}</div><div class="r-state ${clase}" ${click}>${texto}</div></div>`;
         }
     }
 }
@@ -772,7 +753,8 @@ function generarGrilla(bd, jornada, modo) {
             const soyLaSegunda = crudaPareja.split("::")[0] === modeloActual;
             const raw = soyLaSegunda ? crudaPareja : crudo;
             const ocupante = raw.split("::")[0];
-            const conQuien = (soyLaSegunda ? crudo : crudaPareja).split("::")[0];
+            // Solo importa que tiene pareja: su nombre tampoco se muestra.
+            const conPareja = (soyLaSegunda ? crudo : crudaPareja) ? " + PAREJA" : "";
             const enEspera = raw.includes("::PENDIENTE");
             const perfil = perfiles[ocupante] || {};
             const esFija = String(perfil.cuarto_fijo) === String(i);
@@ -785,28 +767,15 @@ function generarGrilla(bd, jornada, modo) {
 
             if (ocupante === modeloActual) {
                 if (enEspera) {
-                    html += `<div class="turno-bloque bg-espera">TÚ${conQuien ? ` + ${conQuien.toUpperCase()}` : ""} (en espera)</div>`;
+                    html += `<div class="turno-bloque bg-espera">TÚ${conPareja} (en espera)</div>`;
                 } else if (esFija) {
-                    html += `<div class="turno-bloque bg-fija" onclick="abrirModalLiberar('${dia}','${jornada}',${i})">${prefijo}TÚ${conQuien ? ` + ${conQuien.toUpperCase()}` : ""} (FIJA)</div>`;
+                    html += `<div class="turno-bloque bg-fija" onclick="abrirModalLiberar('${dia}','${jornada}',${i})">${prefijo}TÚ${conPareja} (FIJA)</div>`;
                 } else {
-                    html += `<div class="turno-bloque bg-mia" onclick="abrirModalLiberar('${dia}','${jornada}',${i})">TÚ${conQuien ? ` + ${conQuien.toUpperCase()}` : ""}</div>`;
+                    html += `<div class="turno-bloque bg-mia" onclick="abrirModalLiberar('${dia}','${jornada}',${i})">TÚ${conPareja}</div>`;
                 }
             } else if (ocupante) {
-                const satelite = esSatelite(ocupante);
-                const extra = esSupernumeraria(ocupante);
-                const icono = satelite ? "🛰 " : (extra ? "➕ " : "");
-                const nombreVisible = icono + ocupante.toUpperCase() + (conQuien ? ` + ${conQuien.toUpperCase()}` : "");
-                if (enEspera) {
-                    html += `<div class="turno-bloque bg-espera-otra">${nombreVisible} (espera)</div>`;
-                } else if (esFija) {
-                    html += `<div class="turno-bloque bg-fija">${prefijo}${nombreVisible}</div>`;
-                } else if (satelite) {
-                    html += `<div class="turno-bloque bg-satelite">${nombreVisible}</div>`;
-                } else if (extra) {
-                    html += `<div class="turno-bloque bg-extra">${nombreVisible}</div>`;
-                } else {
-                    html += `<div class="turno-bloque bg-morado">${nombreVisible}</div>`;
-                }
+                // Ningún dato de las demás: ni nombre, ni cuarto fijo, ni categoría.
+                html += `<div class="turno-bloque bg-morado">OCUPADO</div>`;
             } else {
                 if (modo === "proxima") {
                     html += `<div class="turno-bloque bg-vacio">VACÍO</div>`;
@@ -1144,14 +1113,22 @@ async function confirmarLiberacion() {
 /* ============================================================== DATOS */
 async function cargarDatos() {
     try {
-        const rC = await fetch(`${API_URL}/api/cuartos?estudio=${ESTUDIO}&t=${Date.now()}`, { cache: 'no-store' });
+        // La sesión le dice a la API quién pregunta: solo le llega su propio nombre.
+        const conSesion = { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token_sesion') || '') } };
+        const rC = await fetch(`${API_URL}/api/cuartos?estudio=${ESTUDIO}&t=${Date.now()}`, conSesion);
         const jC = await rC.json();
         cuartosFisicos = Object.keys(jC.cuartos).map(k => ({
             room: parseInt(k), nombre: jC.cuartos[k].nombre, estado: jC.cuartos[k].estado
         })).sort((a, b) => a.room - b.room);
 
-        const rS = await fetch(`${API_URL}/api/semana?estudio=${ESTUDIO}&t=${Date.now()}`, { cache: 'no-store' });
+        const rS = await fetch(`${API_URL}/api/semana?estudio=${ESTUDIO}&t=${Date.now()}`, conSesion);
         const jS = await rS.json();
+        // Sin sesión no sabríamos cuál es su cupo: tiene que volver a entrar.
+        if (jS.sesion_valida === false) {
+            PARADISE.olvidar('token_sesion', 'modelo_actual', 'jornada_actual');
+            window.location.href = URL_LOGIN;
+            return;
+        }
         semanaActual = jS.semana_actual || {};
         semanaProxima = jS.proxima_semana || {};
         perfiles = jS.perfiles || {};
