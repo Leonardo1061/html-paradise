@@ -718,7 +718,19 @@ function renderizarCuartosHoy() {
             const raw = cuartos[String(i)] || "";
             const segunda = (cuartos[`${i}b`] || "").split("::")[0];
             const nom = raw.split("::")[0] + (segunda ? ` + ${segunda}` : "");
-            cont.innerHTML += `<div class="room-row"><div class="r-num">${i}</div><div class="r-name" style="color:${nom ? '#444' : '#AAA'}">${nom || "---"}</div><div class="r-state ${nom ? "estado-ocupada" : "estado-neutro"}">${nom ? "PROGRAMADA" : "CUPO"}</div></div>`;
+            // Un cupo vacío de hoy lo puede tomar cualquiera, sea o no de esa
+            // franja (Leonardo, 2026-11-09). Va por el mismo guardado que la grilla.
+            const elegida = hayCupoElegido(nombreDiaHoy, jorSel, i);
+            let clase = "estado-ocupada", texto = "PROGRAMADA", click = "";
+            if (elegida) {
+                clase = "estado-elegida"; texto = "✓ SIN GUARDAR";
+                click = `onclick="quitarCupoElegido('${nombreDiaHoy}','${jorSel}',${i})"`;
+            } else if (!nom) {
+                clase = "estado-disponible"; texto = "✋ TOMAR";
+                click = `onclick="marcarCupoActual('${nombreDiaHoy}','${jorSel}',${i})"`;
+            }
+            const visible = elegida ? modeloActual : nom;
+            cont.innerHTML += `<div class="room-row"><div class="r-num">${i}</div><div class="r-name" style="color:${visible ? '#444' : '#AAA'}">${visible || "---"}</div><div class="r-state ${clase}" ${click}>${texto}</div></div>`;
         }
     }
 }
@@ -766,7 +778,7 @@ function generarGrilla(bd, jornada, modo) {
             const esFija = String(perfil.cuarto_fijo) === String(i);
             const prefijo = esFija ? `R${i}: ` : "";
 
-            if (hayCupoElegido(dia, jornada, i)) {
+            if (modo === "actual" && hayCupoElegido(dia, jornada, i)) {
                 html += `<div class="turno-bloque bg-elegida" onclick="quitarCupoElegido('${dia}','${jornada}',${i})">✓ SIN GUARDAR</div>`;
                 continue;
             }
@@ -841,15 +853,16 @@ function renderizarGrillas() {
 }
 
 function marcarCupoActual(dia, jornada, room) {
-    if (viendoProxima) return;
     pendiente.statusActual = pendiente.statusActual.filter(c => !(c.dia === dia && c.jornada === jornada));
     pendiente.statusActual.push({ dia, jornada, room });
+    renderizarCuartosHoy();
     renderizarGrillas();
     actualizarBarraGuardar();
 }
 
 function quitarCupoElegido(dia, jornada, room) {
     pendiente.statusActual = pendiente.statusActual.filter(c => !(c.dia === dia && c.jornada === jornada && c.room === room));
+    renderizarCuartosHoy();
     renderizarGrillas();
     actualizarBarraGuardar();
 }
