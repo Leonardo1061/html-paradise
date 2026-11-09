@@ -20,6 +20,10 @@
   Escribe lo mismo que cuando una modelo toma un cuarto o un cupo (la API lo
   firma con el nombre del monitor en el historial). Como en el escritorio,
   el monitor asignado a Tropic Studio no tiene este módulo.
+
+  CEO y Programación (Leonardo, 2026-11-09) tienen arriba, junto a la campana,
+  un selector de estudio: The Paradise, Tropic o Imperio. Los dos aliados se
+  miran y no se tocan desde aquí.
 -->
 
 <link rel="manifest" href="manifest_personal.webmanifest">
@@ -97,6 +101,8 @@
     color: #fca5a5; font-weight: 600; border-radius: 12px; padding: 13px; font-size: 14px;
 }
 .boton-peligro:disabled { opacity: .55; }
+.selector-estudio { max-width: 106px; padding: 9px 4px; font-size: 0.7rem; }
+.solo-lectura .r-state, .solo-lectura .turno-bloque { cursor: default; }
 </style>
 </head>
 
@@ -119,7 +125,7 @@
     <!-- ================= STATUS SEMANAL ================= -->
     <div class="card">
         <div class="card-header">
-            <h2>STATUS ROOM <span id="rango-fechas" style="font-size:0.85rem; color:var(--apagado); font-weight:normal;"></span></h2>
+            <h2><span id="titulo-status">STATUS ROOM</span> <span id="rango-fechas" style="font-size:0.85rem; color:var(--apagado); font-weight:normal;"></span></h2>
         </div>
         <div class="leyenda">
             <span><div class="caja-color" style="background:var(--verde-g);"></div> Libre</span>
@@ -150,9 +156,10 @@
     const P = window.Personal;
     const esc = P.escapar;
     const $ = (id) => document.getElementById(id);
-    // Del 1 al 12 menos el 2. Igual en api/reglas_cuartos.py.
-    const CUARTOS = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    const estado = { datos: null, modelos: null };
+    const ESTUDIOS = { paradise: 'THE PARADISE', tropic: 'TROPIC', imperio: 'IMPERIO' };
+    const estado = { datos: null, modelos: null, estudio: 'paradise' };
+    // Los manda la API: cada estudio tiene los suyos.
+    const cuartosDe = (d) => d.cuartos.map((c) => c.numero);
 
     // La jornada de ahora, igual que turnos.html: 7-13 mañana, 13-20 tarde, resto noche.
     const hoy = new Date();
@@ -182,7 +189,7 @@
                 let clase, texto;
                 if (c.estado === 'OCUPADA') { clase = 'estado-ocupada'; texto = 'OCUPADA'; }
                 else if (c.estado === 'DE SALIDA') { clase = 'estado-salida'; texto = 'DE SALIDA'; }
-                else if (c.estado === 'DISPONIBLE') { clase = 'estado-disponible'; texto = '＋ ASIGNAR'; }
+                else if (c.estado === 'DISPONIBLE') { clase = 'estado-disponible'; texto = d.solo_lectura ? 'DISPONIBLE' : '＋ ASIGNAR'; }
                 else { clase = 'estado-neutro'; texto = c.estado; }
                 html += '<div class="room-row"><div class="r-num">' + c.numero + '</div><div class="r-name">' +
                     esc(c.nombre || '') + '</div><div class="r-state ' + clase + '" data-room="' + c.numero + '">' +
@@ -190,7 +197,7 @@
             });
         } else {
             const fila = (d.semana[d.hoy] || {})[jornada] || [];
-            for (const i of CUARTOS) {
+            for (const i of cuartosDe(d)) {
                 const cupoHoy = fila.find((c) => c.numero === i) || {};
                 const nom = (cupoHoy.nombre || '') + (cupoHoy.companera ? ' + ' + cupoHoy.companera : '');
                 html += '<div class="room-row"><div class="r-num">' + i + '</div><div class="r-name" style="color:' +
@@ -199,6 +206,7 @@
             }
         }
         $('tabla-rooms').innerHTML = html;
+        if (d.solo_lectura) return;
         $('tabla-rooms').querySelectorAll('[data-room]').forEach((celda) => {
             const c = d.cuartos.find((x) => String(x.numero) === celda.dataset.room);
             if (c.estado === 'DISPONIBLE') celda.onclick = () => asignar('Cuarto ' + c.numero + ' · hoy · ' + jornada,
@@ -217,11 +225,11 @@
         d.dias.forEach((dia) => {
             html += '<div class="dia-columna"><div class="dia-titulo' + (dia === d.hoy ? ' hoy' : '') + '">' + esc(dia) + '</div>';
             const fila = (d.semana[dia] || {})[jornada] || [];
-            for (const i of CUARTOS) {
+            for (const i of cuartosDe(d)) {
                 const cupo = fila.find((c) => c.numero === i) || {};
                 const nombre = cupo.nombre || '';
                 const datos = 'data-dia="' + esc(dia) + '" data-room="' + i + '" data-nombre="' + esc(nombre) + '"';
-                if (!nombre) { html += '<div class="turno-bloque bg-verde" ' + datos + '>➕ DISPONIBLE</div>'; continue; }
+                if (!nombre) { html += '<div class="turno-bloque bg-verde" ' + datos + '>' + (d.solo_lectura ? 'DISPONIBLE' : '➕ DISPONIBLE') + '</div>'; continue; }
                 const p = perfil(nombre);
                 const fija = String(p.cuarto_fijo) === String(i);
                 const satelite = norm(p.jornada) === 'satelites';
@@ -238,6 +246,7 @@
             html += '</div>';
         });
         $('grillas').innerHTML = html + '</div>';
+        if (d.solo_lectura) return;
         $('grillas').querySelectorAll('.turno-bloque').forEach((celda) => {
             const dia = celda.dataset.dia, room = parseInt(celda.dataset.room, 10), nombre = celda.dataset.nombre;
             celda.onclick = nombre
@@ -311,18 +320,44 @@
     }
 
     async function cargar() {
+        const pedido = estado.estudio;
         try {
-            estado.datos = await P.pedir('/api/personal/status');
+            const datos = await P.pedir('/api/personal/status?estudio=' + pedido);
+            if (pedido !== estado.estudio) return;   // cambió de estudio mientras tanto
+            estado.datos = datos;
             pintarCuartos();
             pintarGrilla();
         } catch (error) {
-            if (!estado.datos) $('tabla-rooms').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
+            if (pedido === estado.estudio && !estado.datos) $('tabla-rooms').innerHTML = '<div class="vacio">' + esc(error.message) + '</div>';
         }
     }
 
-    P.iniciar('status').then(() => {
-        $('filtro-jornada-hoy').onchange = pintarCuartos;
-        $('sel-jornada').onchange = pintarGrilla;
+    function ponerSelectorEstudio() {
+        const selector = document.createElement('select');
+        selector.id = 'sel-estudio';
+        selector.className = 'dropdown-jornada selector-estudio';
+        selector.title = 'Estudio';
+        selector.setAttribute('aria-label', 'Estudio');
+        selector.innerHTML = Object.keys(ESTUDIOS).map((k) =>
+            '<option value="' + k + '">' + ESTUDIOS[k] + '</option>').join('');
+        selector.onchange = () => {
+            estado.estudio = selector.value;
+            estado.datos = null;
+            document.querySelector('main.contenido').classList.toggle('solo-lectura', estado.estudio !== 'paradise');
+            $('titulo-status').textContent = estado.estudio === 'paradise'
+                ? 'STATUS ROOM' : 'STATUS ROOM · ' + ESTUDIOS[estado.estudio];
+            $('tabla-rooms').innerHTML = '<p style="text-align:center;color:var(--apagado)">Cargando...</p>';
+            $('grillas').innerHTML = '';
+            cargar();
+        };
+        const derecha = document.querySelector('#barra-personal .derecha');
+        derecha.insertBefore(selector, derecha.firstChild);
+    }
+
+    P.iniciar('status').then((yo) => {
+        if (yo.ve_vistas_ceo) ponerSelectorEstudio();
+        $('filtro-jornada-hoy').onchange = () => { if (estado.datos) pintarCuartos(); };
+        $('sel-jornada').onchange = () => { if (estado.datos) pintarGrilla(); };
         cargar();
         setInterval(() => {
             if (document.visibilityState === 'visible' && !$('capas-personal').innerHTML) cargar();
