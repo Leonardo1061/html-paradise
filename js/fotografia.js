@@ -627,6 +627,7 @@ async function abrirAlbum(album) {
             galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">Esta sesión está vacía.</div>';
             return;
         }
+        ponerBotonDescarga(album, archivos);
         const fuentes = archivos.map((a) => a.tipo === 'video'
             ? { tipo: 'video', src: API + a.src, poster: API + a.mini }
             : API + a.src);
@@ -647,6 +648,128 @@ async function abrirAlbum(album) {
         if (galeria.isConnected) {
             galeria.innerHTML = '<div class="vacio" style="grid-column:1/-1">' + escapar(error.message) + '</div>';
         }
+    }
+}
+
+/* --- descargar la sesión completa ----------------------------------------
+   En el computador (Chrome/Edge) pregunta en qué carpeta guardarla y escribe
+   ahí una carpeta con el nombre de la sesión, archivo por archivo, sin cargar
+   todo en memoria. Donde el navegador no deja elegir carpeta (celular, Safari,
+   Firefox) baja un solo .zip a Descargas. Los archivos van en su calidad
+   original (?m=original), no la versión reducida de la galería. */
+const ICONO_DESCARGA = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>';
+const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+
+function ponerBotonDescarga(album, archivos) {
+    const cabecera = document.querySelector('.hoja-cabecera');
+    if (!cabecera || cabecera.querySelector('.boton-descarga')) return;
+    const boton = document.createElement('button');
+    boton.className = 'boton-descarga';
+    boton.title = 'Descargar toda la sesión';
+    boton.innerHTML = ICONO_DESCARGA + '<span>Descargar</span>';
+    boton.onclick = () => descargarAlbum(album, archivos, boton);
+    cabecera.insertBefore(boton, cabecera.querySelector('.cerrar'));
+}
+
+function nombreSeguro(texto, defecto) {
+    const limpio = String(texto || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return (limpio || defecto).slice(0, 120);
+}
+
+/* Nombres de archivo sin repetir dentro de la carpeta o del zip. */
+function nombresUnicos(archivos) {
+    const vistos = {};
+    return archivos.map((a, i) => {
+        let nombre = nombreSeguro(a.nombre, 'archivo-' + (i + 1));
+        const clave = nombre.toLowerCase();
+        if (vistos[clave]) {
+            const punto = nombre.lastIndexOf('.');
+            const base = punto > 0 ? nombre.slice(0, punto) : nombre;
+            const ext = punto > 0 ? nombre.slice(punto) : '';
+            nombre = base + ' (' + (vistos[clave] + 1) + ')' + ext;
+        }
+        vistos[clave] = (vistos[clave] || 0) + 1;
+        return nombre;
+    });
+}
+
+async function traerArchivo(archivo) {
+    const respuesta = await fetch(API + (archivo.descarga || archivo.src));
+    if (!respuesta.ok) throw new Error('No se pudo bajar ' + (archivo.nombre || 'un archivo') + '.');
+    return respuesta;
+}
+
+function cargarJSZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    return new Promise((resolver, fallar) => {
+        const script = document.createElement('script');
+        script.src = JSZIP_URL;
+        script.onload = () => window.JSZip ? resolver(window.JSZip) : fallar(new Error('No cargó el compresor.'));
+        script.onerror = () => fallar(new Error('No se pudo preparar el .zip. Revisa tu conexión.'));
+        document.head.appendChild(script);
+    });
+}
+
+async function descargarAlbum(album, archivos, boton) {
+    if (boton.disabled) return;
+    const carpetaNombre = nombreSeguro(album.nombre, 'Sesión de fotos');
+    const nombres = nombresUnicos(archivos);
+    const original = boton.innerHTML;
+    const progreso = (hechos) => {
+        boton.innerHTML = '<span class="girando">◌</span><span>' + hechos + '/' + archivos.length + '</span>';
+    };
+
+    // 1) Elegir carpeta (computador). Si no se puede, el .zip.
+    let carpeta = null;
+    if (window.showDirectoryPicker) {
+        try {
+            const elegida = await window.showDirectoryPicker({ id: 'sesiones-fotos', mode: 'readwrite', startIn: 'downloads' });
+            carpeta = await elegida.getDirectoryHandle(carpetaNombre, { create: true });
+        } catch (error) {
+            if (error && error.name === 'AbortError') return;     // canceló: nada que hacer
+            carpeta = null;                                       // bloqueado: va el .zip
+        }
+    }
+
+    boton.disabled = true;
+    progreso(0);
+    try {
+        if (carpeta) {
+            for (let i = 0; i < archivos.length; i++) {
+                const respuesta = await traerArchivo(archivos[i]);
+                const destino = await carpeta.getFileHandle(nombres[i], { create: true });
+                const escritor = await destino.createWritable();
+                await respuesta.body.pipeTo(escritor);
+                progreso(i + 1);
+            }
+            avisar('Listo: ' + archivos.length + ' archivos en la carpeta «' + carpetaNombre + '».', 'bueno');
+        } else {
+            const JSZip = await cargarJSZip();
+            const zip = new JSZip();
+            for (let i = 0; i < archivos.length; i++) {
+                const respuesta = await traerArchivo(archivos[i]);
+                zip.file(nombres[i], await respuesta.blob());
+                progreso(i + 1);
+            }
+            boton.innerHTML = '<span class="girando">◌</span><span>Armando…</span>';
+            // Fotos y videos ya vienen comprimidos: STORE es rápido y no gasta batería.
+            const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+            const enlace = document.createElement('a');
+            enlace.href = URL.createObjectURL(blob);
+            enlace.download = carpetaNombre + '.zip';
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            setTimeout(() => URL.revokeObjectURL(enlace.href), 60000);
+            avisar('Listo: «' + carpetaNombre + '.zip» quedó en tus Descargas.', 'bueno');
+        }
+    } catch (error) {
+        avisar(error.message || 'No se pudo descargar la sesión.', 'malo');
+    } finally {
+        boton.disabled = false;
+        boton.innerHTML = original;
     }
 }
 
