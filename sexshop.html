@@ -9,9 +9,12 @@
 <!--
   SEXSHOP (2026-11-15)
   ====================
-  Pantalla nueva del rediseño. El catálogo y las solicitudes (con aprobación
-  del CEO, como los productos de la Admin) todavía no tienen API: por ahora
-  solo avisa que viene pronto.
+  El catálogo de la tienda «Paradise SexShop» de la Admin (Productos ▾), con
+  sus fotos, en el orden de la Admin. Lo da la API: GET /api/tienda/sexshop
+  (tienda_modelos.py), toda la lista de una vez; aquí se busca por nombre y se
+  muestra de 20 en 20 con páginas 1, 2, 3…
+  «Solicitar» abre un ticket al CEO con el producto ya escrito: decide él.
+  «Mis solicitudes» y «Mi deuda» todavía no tienen API propia.
 -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -51,10 +54,67 @@ body {
 }
 button { font-family: inherit; cursor: pointer; }
 .oculto { display: none !important; }
-.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 760px; margin: 0 auto; }
-.barra .marca { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; }
-.barra .marca img { width: 30px; height: 30px; object-fit: contain; }
+.barra { display: flex; align-items: center; gap: 10px; padding: 14px 18px 10px; max-width: 760px; margin: 0 auto; }
+.barra h1 { margin: 0; font-size: 17px; font-weight: 700; white-space: nowrap; }
 .contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+
+/* El buscador redondo de la derecha, con la lupa. */
+.buscador {
+    margin-left: auto; flex: 1 1 auto; min-width: 0; max-width: 240px;
+    display: flex; align-items: center; gap: 7px;
+    background: #3a3a3c; border-radius: 999px; padding: 0 12px; height: 30px;
+}
+.buscador img { width: 15px; height: 15px; flex: none; opacity: .95; }
+.buscador input {
+    flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--texto);
+    font-size: 14px; padding: 0;
+}
+.buscador input::placeholder { color: #9a978d; }
+.buscador input::-webkit-search-cancel-button { filter: invert(1); }
+
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 14px; }
+.tabs button {
+    background: transparent; border: 1px solid #3a3833; color: #d8d4c6; border-radius: 6px;
+    padding: 9px 4px; font-size: 14px;
+}
+.tabs button.activo { background: var(--degradado); color: #1a1404; border-color: transparent; font-weight: 700; }
+
+.cuenta { font-size: 12px; color: var(--tenue); margin: 0 2px 10px; }
+.prods { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (min-width: 620px) { .prods { grid-template-columns: repeat(3, 1fr); } }
+.prod {
+    background: rgba(24, 24, 27, .94); border: 1px solid #2b2a27; border-radius: 8px;
+    overflow: hidden; display: flex; flex-direction: column;
+}
+.prod .im {
+    aspect-ratio: 1 / 1; background: radial-gradient(circle at 50% 40%, #3a3326, #17150f 75%);
+    display: grid; place-items: center; overflow: hidden;
+}
+.prod .im img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prod .im .sin { font-size: 34px; opacity: .55; }
+.prod .tx { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.prod b {
+    font-size: 14px; font-weight: 700; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.prod .precio { color: #f3d98b; font-size: 15px; font-weight: 500; }
+.prod .bo {
+    margin-top: auto; background: var(--degradado); color: #1a1404; border: 0; border-radius: 6px;
+    padding: 8px 4px; font-size: 14px; font-weight: 500;
+}
+.prod .tx > .bo { margin-top: 8px; }
+
+.paginas { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 18px 0 6px; }
+.paginas button {
+    min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px;
+    background: transparent; border: 1px solid #3a3833; color: #d8d4c6; font-size: 14px;
+}
+.paginas button.activa { background: var(--degradado); color: #1a1404; border-color: transparent; font-weight: 700; }
+.paginas button:disabled { opacity: .35; cursor: default; }
+.paginas .puntos { color: var(--tenue); align-self: center; padding: 0 2px; }
+
+.aviso { text-align: center; color: var(--tenue); font-size: 14px; padding: 34px 10px; }
+.aviso button { margin-top: 12px; }
 </style>
 <link rel="stylesheet" href="css/tema_dorado.css">
 </head>
@@ -62,20 +122,44 @@ button { font-family: inherit; cursor: pointer; }
 <body>
 
 <div class="barra">
-    <div class="marca"><img src="img/sexshop.png" alt=""></div>
-    <div>
-        <div style="font-size:15px;font-weight:600">SexShop</div>
-        <div style="font-size:11px;color:var(--tenue)">Solicita nuestros productos</div>
-    </div>
+    <h1>SexShop</h1>
+    <label class="buscador">
+        <img src="img/lupa.png" alt="">
+        <input type="search" id="buscar" placeholder="Buscar" autocomplete="off" enterkeyhint="search" aria-label="Buscar por nombre">
+    </label>
 </div>
 
 <main class="contenido">
-    <div class="pd-pronto">
-        <img src="img/sexshop.png" alt="">
-        <h2>SexShop Paradise</h2>
-        <p>Muy pronto vas a poder ver el catálogo y solicitar productos desde aquí, con pago por cuotas.</p>
-        <span class="pd-sello">Próximamente</span>
+    <div class="tabs" id="tabs">
+        <button class="activo" data-tab="catalogo">Catálogo</button>
+        <button data-tab="solicitudes">Mis solicitudes</button>
+        <button data-tab="deuda">Mi deuda</button>
     </div>
+
+    <section id="tab-catalogo">
+        <div class="cuenta" id="cuenta"></div>
+        <div class="prods" id="prods"></div>
+        <div class="aviso" id="aviso">Cargando el catálogo…</div>
+        <nav class="paginas" id="paginas" aria-label="Páginas"></nav>
+    </section>
+
+    <section id="tab-solicitudes" class="oculto">
+        <div class="pd-pronto">
+            <img src="img/sexshop.png" alt="">
+            <h2>Mis solicitudes</h2>
+            <p>Cada «Solicitar» le llega al CEO como ticket. Lo ves en tu campana como pendiente hasta que te responda.</p>
+            <button class="pd-boton" id="ver-campana">Ver mi campana</button>
+        </div>
+    </section>
+
+    <section id="tab-deuda" class="oculto">
+        <div class="pd-pronto">
+            <img src="img/sexshop.png" alt="">
+            <h2>Mi deuda</h2>
+            <p>Muy pronto vas a ver aquí lo que debes de productos y las cuotas que te faltan.</p>
+            <span class="pd-sello">Próximamente</span>
+        </div>
+    </section>
 </main>
 
 <!-- La barra vieja: escondida, js/barra_modelo.js pone la nueva. -->
@@ -89,5 +173,6 @@ button { font-family: inherit; cursor: pointer; }
 <script>
 if (!localStorage.getItem('token_sesion')) window.location.href = PARADISE.URL_LOGIN;
 </script>
+<script src="js/sexshop.js"></script>
 </body>
 </html>
