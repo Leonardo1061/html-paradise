@@ -200,7 +200,6 @@ function montar(raiz, opciones) {
     }
 
     function elegirCanal(id) {
-        estado.toco = true;
         estado.canal = id;
         estado.sinLeer[id] = 0;
         pintarCanales();
@@ -243,11 +242,17 @@ function montar(raiz, opciones) {
         try { localStorage.setItem('chat_visto_hasta', estado.cursor); } catch (e) { /* da igual */ }
     }
 
+    // Con `enCaja` (el INICIO) el chat es un cuadro de una pantalla y lo que se
+    // desplaza es la lista de adentro, no la página.
+    if (opciones.enCaja) raiz.classList.add('chat-en-caja');
+
     function cercaDelFinal() {
+        if (opciones.enCaja) return lista.scrollTop + lista.clientHeight >= lista.scrollHeight - 120;
         return window.innerHeight + window.scrollY >= document.body.scrollHeight - 160;
     }
 
     function alFinal() {
+        if (opciones.enCaja) { lista.scrollTop = lista.scrollHeight; return; }
         window.scrollTo({ top: document.body.scrollHeight });
     }
 
@@ -272,9 +277,7 @@ function montar(raiz, opciones) {
             }
             lista.appendChild(burbuja(m));
         });
-        // En el INICIO (`quieto`) el chat va debajo de las tarjetas: no se baja
-        // solo al abrir, solo cuando ella ya escribió o ya está leyendo el final.
-        if (bajar && (!opciones.quieto || estado.toco || cercaDelFinal())) requestAnimationFrame(alFinal);
+        if (bajar) requestAnimationFrame(alFinal);
     }
 
     function burbuja(m) {
@@ -422,7 +425,6 @@ function montar(raiz, opciones) {
     }
 
     function provisional(datos) {
-        estado.toco = true;
         const m = Object.assign({
             id: 'local-' + Date.now(), canal_id: estado.canal, de_modelo: true, autor: '',
             texto: '', imagen: false, ts: '', hora: '', fecha: '', enviando: true,

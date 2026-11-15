@@ -57,7 +57,7 @@ body {
     margin: 0; background: var(--fondo); color: var(--texto);
     font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
-    padding-bottom: 170px;
+    padding-bottom: 110px;
 }
 button { font-family: inherit; cursor: pointer; }
 .oculto { display: none !important; }
@@ -84,8 +84,24 @@ button { font-family: inherit; cursor: pointer; }
     font-size: 13px; color: var(--tenue);
 }
 .titulo-chat img { width: 24px; height: 24px; object-fit: contain; }
-/* El chat va sobre el fondo del inicio: la fila de chats no lleva fondo propio. */
-#chat .chat-canales { background: rgba(7, 7, 8, .9); margin: 0 -14px; padding: 8px 14px 10px; }
+/* El chat del inicio es un cuadro de UNA pantalla (entre la cabecera y la barra
+   de abajo): adentro se desplazan los mensajes y la caja de escribir va al pie
+   del cuadro, no flotando sobre los mosaicos. */
+#chat.chat-en-caja {
+    display: flex; flex-direction: column;
+    height: calc(100vh - var(--bm-arriba, 66px) - 110px - env(safe-area-inset-bottom));
+    height: calc(100dvh - var(--bm-arriba, 66px) - 110px - env(safe-area-inset-bottom));
+    min-height: 360px;
+    background: rgba(8, 8, 10, .82); border: 1px solid var(--borde); border-radius: var(--radio);
+    padding: 10px 10px 8px; overflow: hidden;
+}
+#chat.chat-en-caja .chat-canales { position: static; background: none; flex: none; }
+#chat.chat-en-caja .chat-ayuda { flex: none; }
+#chat.chat-en-caja .chat-lista {
+    flex: 1; min-height: 0; overflow-y: auto; padding: 0 2px 8px; overscroll-behavior: contain;
+}
+#chat.chat-en-caja .chat-pie { position: relative; left: auto; right: auto; bottom: auto; transform: none; width: auto; flex: none; }
+#chat.chat-en-caja .chat-barra { box-shadow: none; }
 
 .aviso {
     position: fixed; left: 16px; right: 16px; bottom: 160px; z-index: 70;

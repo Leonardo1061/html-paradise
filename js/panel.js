@@ -114,10 +114,15 @@ document.addEventListener('paradise:clave', pintarClave);
 
 cargar();
 
-// El chat del inicio: Soporte y los privados. `quieto` evita que la página
-// baje sola hasta el último mensaje al abrir (los mosaicos van primero).
+// El inicio abre SIEMPRE arriba, en los mosaicos (el navegador no recuerda
+// dónde se quedó la vez anterior).
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
+
+// El chat del inicio: Soporte y los privados, en un cuadro de una pantalla
+// (`enCaja`): lo que baja al último mensaje es el cuadro, no la página.
 if (estado.token && window.ChatParadise) {
-    ChatParadise.montar($('chat'), { avisar: avisar, quieto: true }).activar();
+    ChatParadise.montar($('chat'), { avisar: avisar, enCaja: true }).activar();
 }
 
 // Enlaces viejos a panel.html#perfil: abren el cambio de contraseña.
