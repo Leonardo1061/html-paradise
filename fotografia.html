@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#050506">
 <title>Fotografía · PARADISE</title>
 
 <!--
@@ -35,27 +35,27 @@
 <meta name="apple-mobile-web-app-title" content="PARADISE">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/chat.css">
 
 <style>
 :root {
     --fondo:      #0a0a0b;
-    --panel:      #141318;
-    --panel-alto: #1b1a22;
-    --borde:      #2a2932;
-    --texto:      #f4f4f5;
-    --tenue:      #9b9ba3;
-    --apagado:    #6b6b73;
+    --panel:      #141416;
+    --panel-alto: #1a1a1d;
+    --borde:      #34322b;
+    --texto:      #f4f1e8;
+    --tenue:      #a9a595;
+    --apagado:    #6f6c62;
 
-    --violeta:    #8b5cf6;
-    --magenta:    #d946ef;
-    --soft:       #22d3ee;
-    --verde:      #34d399;
+    --violeta:    #c9982e;
+    --magenta:    #f3d98b;
+    --soft:       #f6ecc8;
+    --verde:      #f3d98b;
     --rojo:       #ef4444;
     --ambar:      #fbbf24;
 
-    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
     --radio: 18px;
 }
 
@@ -63,7 +63,7 @@
 
 body {
     margin: 0; background: var(--fondo); color: var(--texto);
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     padding-bottom: 120px;
 }
@@ -74,9 +74,7 @@ button { font-family: inherit; cursor: pointer; }
 .barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; }
 .marca {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
-    background: var(--degradado); font-size: 19px; color: #fff;
-    box-shadow: 0 8px 20px rgba(168, 85, 247, .35);
-}
+    background: var(--degradado); font-size: 19px; box-shadow: 0 8px 20px rgba(217, 180, 74, .35); color: #1a1404; }
 .barra .derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .redondo {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
@@ -97,7 +95,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .pestanas button { flex: 1 1 auto; min-width: 0; white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 @media (max-width: 400px) { .pestanas button { font-size: 12.5px; } }
-.pestanas button.activo { background: var(--degradado); color: #fff; }
+.pestanas button.activo { background: var(--degradado); color: #1a1404; }
 
 .titulo-seccion {
     font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--tenue);
@@ -119,7 +117,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .sesion .icono {
     width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
-    background: rgba(217, 70, 239, .14); font-size: 19px; flex: none;
+    background: rgba(243, 217, 139, .14); font-size: 19px; flex: none;
 }
 .sesion .cuando { font-size: 14px; font-weight: 600; }
 .sesion .detalle { font-size: 12px; color: var(--tenue); margin-top: 2px; }
@@ -131,14 +129,14 @@ button { font-family: inherit; cursor: pointer; }
     background: var(--panel-alto); color: var(--tenue); border: 1px solid var(--borde);
     white-space: nowrap;
 }
-.chapa.programada { color: #c4b5fd; border-color: rgba(139, 92, 246, .45); }
-.chapa.asistio { color: #6ee7b7; border-color: rgba(52, 211, 153, .45); }
+.chapa.programada { color: #c4b5fd; border-color: rgba(217, 180, 74, .45); }
+.chapa.asistio { color: #6ee7b7; border-color: rgba(243, 217, 139, .45); }
 .chapa.no-asistio { color: #fca5a5; border-color: rgba(239, 68, 68, .45); }
 
 /* -------------------------------------------------------- pista portafolio */
 .pendiente {
     display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-    background: rgba(217, 70, 239, .1); border: 1px solid rgba(217, 70, 239, .4);
+    background: rgba(243, 217, 139, .1); border: 1px solid rgba(243, 217, 139, .4);
     border-radius: 14px; padding: 11px 14px; font-size: 13px; line-height: 1.4;
 }
 .pendiente b { color: #fff; }
@@ -164,7 +162,7 @@ button { font-family: inherit; cursor: pointer; }
 .dia .nombre { font-size: 11px; color: var(--tenue); font-weight: 600; text-transform: uppercase; }
 .dia .numero { font-size: 17px; font-weight: 700; }
 .dia .libres { font-size: 10px; color: var(--apagado); }
-.dia.activo { background: var(--degradado); border-color: transparent; }
+.dia.activo { background: var(--degradado); border-color: transparent; color: #1a1404; }
 .dia.activo .nombre, .dia.activo .libres { color: rgba(255, 255, 255, .85); }
 .dia .punto {
     position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%;
@@ -187,8 +185,8 @@ button { font-family: inherit; cursor: pointer; }
 .bloque.libre:active { transform: scale(.99); }
 .bloque.ocupado { cursor: default; opacity: .6; }
 .bloque.ocupado .estado { color: var(--tenue); }
-.bloque.mia { background: linear-gradient(90deg, rgba(217, 70, 239, .22), rgba(139, 92, 246, .16));
-              border-color: rgba(217, 70, 239, .55); }
+.bloque.mia { background: linear-gradient(90deg, rgba(243, 217, 139, .22), rgba(217, 180, 74, .16));
+              border-color: rgba(243, 217, 139, .55); }
 .bloque.mia .estado { color: #fff; }
 .bloque.pasado { cursor: default; opacity: .35; }
 .bloque.pasado.mia { opacity: .7; cursor: pointer; }
@@ -198,7 +196,7 @@ button { font-family: inherit; cursor: pointer; }
     font-size: 11px; color: var(--soft); display: flex; align-items: center; gap: 8px;
     margin: 6px 0 2px; letter-spacing: .3px;
 }
-.corte-sede .linea { flex: 1; height: 1px; background: rgba(34, 211, 238, .3); }
+.corte-sede .linea { flex: 1; height: 1px; background: rgba(246, 236, 200, .3); }
 
 .al-dia { font-size: 11px; color: var(--apagado); text-align: center; margin-top: 14px; }
 
@@ -215,7 +213,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .estilo .icono {
     width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
-    background: rgba(139, 92, 246, .16); font-size: 21px; flex: none;
+    background: rgba(217, 180, 74, .16); font-size: 21px; flex: none;
 }
 .estilo .icono.foto { width: 56px; height: 56px; background: var(--borde); overflow: hidden; }
 .estilo .icono.foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -260,8 +258,7 @@ button { font-family: inherit; cursor: pointer; }
 .navegacion {
     position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 30; background: var(--degradado); border-radius: 20px;
-    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
-}
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(217, 180, 74, .4); color: #1a1404; }
 @media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
 .navegacion button {
     flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
@@ -291,12 +288,12 @@ button { font-family: inherit; cursor: pointer; }
 .hoja-cabecera .boton-descarga + .cerrar { margin-left: 0; }
 .boton-descarga {
     margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 7px;
-    background: rgba(139, 92, 246, .14); color: var(--texto); font-weight: 600; font-size: 13px;
-    border: 1px solid rgba(217, 70, 239, .45); border-radius: 999px; padding: 8px 14px;
+    background: rgba(217, 180, 74, .14); color: var(--texto); font-weight: 600; font-size: 13px;
+    border: 1px solid rgba(243, 217, 139, .45); border-radius: 999px; padding: 8px 14px;
     font-family: inherit; cursor: pointer; transition: background .15s, box-shadow .15s, transform .1s;
 }
 .boton-descarga svg { color: var(--magenta); }
-.boton-descarga:hover { background: var(--degradado); border-color: transparent; box-shadow: 0 4px 16px rgba(217, 70, 239, .35); }
+.boton-descarga:hover { background: var(--degradado); border-color: transparent; box-shadow: 0 4px 16px rgba(243, 217, 139, .35); color: #1a1404; }
 .boton-descarga:hover svg { color: #fff; }
 .boton-descarga:active { transform: scale(.97); }
 .boton-descarga:disabled { opacity: .8; cursor: progress; }
@@ -333,9 +330,8 @@ button { font-family: inherit; cursor: pointer; }
 .fila-dato .r { color: var(--tenue); min-width: 74px; }
 
 .boton-principal {
-    width: 100%; background: var(--degradado); border: 0; color: #fff; font-weight: 600;
-    border-radius: 12px; padding: 14px; font-size: 15px;
-}
+    width: 100%; background: var(--degradado); border: 0; font-weight: 600;
+    border-radius: 12px; padding: 14px; font-size: 15px; color: #1a1404; }
 .boton-principal:disabled { opacity: .55; }
 .boton-peligro {
     width: 100%; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .5);
@@ -356,13 +352,14 @@ button { font-family: inherit; cursor: pointer; }
     box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
 }
 .aviso.malo { border-color: rgba(239, 68, 68, .55); }
-.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+.aviso.bueno { border-color: rgba(243, 217, 139, .5); }
 @media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
 
 .cargando { text-align: center; color: var(--apagado); padding: 40px 0; font-size: 14px; }
 .girando { display: inline-block; animation: giro 1s linear infinite; }
 @keyframes giro { to { transform: rotate(360deg); } }
 </style>
+<link rel="stylesheet" href="css/tema_dorado.css">
 </head>
 
 <body>

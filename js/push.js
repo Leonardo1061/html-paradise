@@ -208,14 +208,14 @@ function pintarTarjeta(texto, boton, alTocar) {
     tarjeta.style.cssText =
         'position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));' +
         'z-index:9999;max-width:460px;margin:0 auto;background:#17171a;color:#f4f4f5;' +
-        'border:1px solid rgba(168,85,247,.45);border-radius:14px;padding:14px 14px 12px;' +
+        'border:1px solid var(--pdz-borde-acento, rgba(168,85,247,.45));border-radius:14px;padding:14px 14px 12px;' +
         'box-shadow:0 10px 30px rgba(0,0,0,.45);font:14px/1.4 Poppins,-apple-system,sans-serif;';
     tarjeta.innerHTML =
         '<div style="display:flex;gap:10px;align-items:flex-start">' +
         '<div style="font-size:22px;line-height:1">🔔</div>' +
         '<div style="flex:1"><div class="t"></div>' +
         '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
-        (boton ? '<button type="button" class="si" style="background:linear-gradient(135deg,#d946ef,#8b5cf6);color:#fff;border:0;' +
+        (boton ? '<button type="button" class="si" style="background:var(--pdz-degradado, linear-gradient(135deg,#d946ef,#8b5cf6));color:var(--pdz-sobre-acento, #fff);border:0;' +
                  'border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer"></button>' : '') +
         '<button type="button" class="no" style="background:transparent;color:#a1a1aa;border:1px solid ' +
         '#3f3f46;border-radius:10px;padding:8px 14px;cursor:pointer">Ahora no</button>' +

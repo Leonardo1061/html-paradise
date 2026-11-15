@@ -21,14 +21,24 @@ Las cuatro piezas hablan con la MISMA base de Firestore.
 | Archivo | Qué es |
 |---|---|
 | `index.html` | Login por **cédula + contraseña**. Es la portada del sitio |
-| `panel.html` | **Panel de inicio**: resumen de su semana y la barra de navegación |
+| `panel.html` | **Inicio** (rediseño negro y dorado, 2026-11-15): seis mosaicos, capacitaciones y reuniones, y el chat con el estudio |
+| `seguimiento.html` | **Seguimiento**: los números y la gráfica de su semana (lo que antes era el inicio). La bitácora está pendiente |
+| `pagos.html` | **Pagos**: pestañas 💳 Recibos y 💵 Mi producido (`js/producido.js`) |
+| `convenios.html`, `sexshop.html`, `capacitaciones.html`, `rank.html` | Pantallas nuevas del rediseño. Todavía sin API: muestran «Próximamente» (Capacitaciones sí lista las reuniones del cronograma) |
+| `css/tema_dorado.css` | El tema negro y dorado común a todas las páginas de la modelo. Va después del `<style>` de cada página |
+| `img/` | Logo, fondo e iconos del rediseño |
 | `turnos.html` | Pre-agendamiento y toma de cupos de la semana |
 | `plan.html` | **Plan de trabajo** (TUS SHOWS): la misma pantalla del programa de escritorio |
 | `fotografia.html` | **Fotografía**: malla del fotógrafo (agendarse y cancelar) y portafolio de estilos |
 | `dashboard.html` | Tablero de métricas. Hoy con datos de ejemplo |
 | `js/barra_modelo.js` | Arriba a la derecha de todas sus páginas: la ⚙️ **tuerca** (cambiar contraseña, alerta de prueba, salir) y la 🔔 **campana** con sus tickets; y el botón 🎫 **TICKET CEO** de la barra de abajo |
 
-`panel.html` usa `js/panel.js`: los números los calcula la API (`/api/acceso/panel`)
+**Rediseño 2026-11-15.** La cabecera fija (☰ menú, foto, logo, nombre, jornada, 🔔, ⚙️) y la barra de abajo
+(Fotografía · Room · Contenido · CEO · Pagos) las pone `js/barra_modelo.js` en todas las páginas de la modelo;
+la `.navegacion` vieja de cada página sigue en el HTML pero escondida. En Room (`turnos.html`) los colores de
+estado de los cuartos (libre, ocupado, tu turno, fijo…) se dejaron como estaban porque tienen significado.
+
+`seguimiento.html` usa `js/seguimiento.js`: los números los calcula la API (`/api/acceso/panel`)
 con las mismas funciones del planificador, así que el panel y el plan no pueden
 decir cosas distintas. La barra de abajo lleva a TUS SHOWS (`plan.html`), a
 STATUS ROOM (`turnos.html`) y a FOTOGRAFÍA (`fotografia.html`).

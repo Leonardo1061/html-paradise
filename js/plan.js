@@ -977,7 +977,7 @@ function abrirFicha(show, idBloque) {
               escapar(show.descripcion_corta) + '</div>' : '') +
         '</div></div>');
 
-    if (show.tema_habitacion) partes.push('<div class="frase" style="margin-top:14px;color:#e879f9;font-style:italic">"' +
+    if (show.tema_habitacion) partes.push('<div class="frase" style="margin-top:14px;color:#f3d98b;font-style:italic">"' +
         escapar(show.tema_habitacion) + '"</div>');
     if (show.mindset) partes.push('<div class="mindset"><b>Mindset:</b> ' + escapar(show.mindset) + '</div>');
 

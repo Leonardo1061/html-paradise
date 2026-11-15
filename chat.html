@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#050506">
 <title>Chat · PARADISE</title>
 
 <!--
@@ -23,27 +23,27 @@
 <meta name="apple-mobile-web-app-title" content="PARADISE">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/chat.css">
 
 <style>
 :root {
     --fondo:      #0a0a0b;
-    --panel:      #141318;
-    --panel-alto: #1b1a22;
-    --borde:      #2a2932;
-    --texto:      #f4f4f5;
-    --tenue:      #9b9ba3;
-    --apagado:    #6b6b73;
+    --panel:      #141416;
+    --panel-alto: #1a1a1d;
+    --borde:      #34322b;
+    --texto:      #f4f1e8;
+    --tenue:      #a9a595;
+    --apagado:    #6f6c62;
 
-    --violeta:    #8b5cf6;
-    --magenta:    #d946ef;
-    --soft:       #22d3ee;
-    --verde:      #34d399;
+    --violeta:    #c9982e;
+    --magenta:    #f3d98b;
+    --soft:       #f6ecc8;
+    --verde:      #f3d98b;
     --rojo:       #ef4444;
     --ambar:      #fbbf24;
 
-    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
     --radio: 18px;
 }
 
@@ -51,7 +51,7 @@
 
 body {
     margin: 0; background: var(--fondo); color: var(--texto);
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     padding-bottom: 120px;
 }
@@ -62,9 +62,7 @@ button { font-family: inherit; cursor: pointer; }
 .barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; }
 .marca {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
-    background: var(--degradado); font-size: 19px; color: #fff;
-    box-shadow: 0 8px 20px rgba(168, 85, 247, .35);
-}
+    background: var(--degradado); font-size: 19px; box-shadow: 0 8px 20px rgba(217, 180, 74, .35); color: #1a1404; }
 .barra .derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .redondo {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
@@ -78,8 +76,7 @@ button { font-family: inherit; cursor: pointer; }
 .navegacion {
     position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 30; background: var(--degradado); border-radius: 20px;
-    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
-}
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(217, 180, 74, .4); color: #1a1404; }
 @media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
 .navegacion button {
     flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
@@ -99,10 +96,11 @@ button { font-family: inherit; cursor: pointer; }
     box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
 }
 .aviso.malo { border-color: rgba(239, 68, 68, .55); }
-.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+.aviso.bueno { border-color: rgba(243, 217, 139, .5); }
 @media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
 
 </style>
+<link rel="stylesheet" href="css/tema_dorado.css">
 </head>
 
 <body>

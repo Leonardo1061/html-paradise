@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>Capacitaciones · PARADISE</title>
+
+<!--
+  CAPACITACIONES (2026-11-15)
+  ===========================
+  Pantalla nueva del rediseño. Lo que SÍ existe ya se muestra: las
+  capacitaciones y reuniones del cronograma que vienen (las mismas de la 🔔
+  campana, js/barra_modelo.js). Los tips y videos aún no tienen API: queda el
+  aviso de «Próximamente».
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141416;
+    --panel-alto: #1a1a1d;
+    --borde:      #34322b;
+    --texto:      #f4f1e8;
+    --tenue:      #a9a595;
+    --apagado:    #6f6c62;
+    --mid:        #d9b44a;
+    --soft:       #f6ecc8;
+    --high:       #c0661a;
+    --verde:      #f3d98b;
+    --rojo:       #ef4444;
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
+    --radio: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 110px;
+}
+button { font-family: inherit; cursor: pointer; }
+.oculto { display: none !important; }
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 760px; margin: 0 auto; }
+.barra .marca { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; }
+.barra .marca img { width: 30px; height: 30px; object-fit: contain; }
+.contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+</style>
+<link rel="stylesheet" href="css/tema_dorado.css">
+</head>
+
+<body>
+
+<div class="barra">
+    <div class="marca"><img src="img/capacitaciones.png" alt=""></div>
+    <div>
+        <div style="font-size:15px;font-weight:600">Capacitaciones</div>
+        <div style="font-size:11px;color:var(--tenue)">Tips de las mejores modelos</div>
+    </div>
+</div>
+
+<main class="contenido">
+    <div class="pd-pronto">
+        <img src="img/capacitaciones.png" alt="">
+        <h2>Tips y videos</h2>
+        <p>Muy pronto vas a encontrar aquí tips y videos de las mejores modelos del estudio.</p>
+        <span class="pd-sello">Próximamente</span>
+    </div>
+
+    <div class="pd-tarjeta">
+        <h2>🗓️ Capacitaciones y reuniones</h2>
+        <p class="sub" style="margin-bottom:10px">Ir es opcional: sirven de refuerzo.</p>
+        <div id="lista-actividades"><p class="sub">No hay ninguna programada por ahora.</p></div>
+    </div>
+</main>
+
+<!-- La barra vieja: escondida, js/barra_modelo.js pone la nueva. -->
+<nav class="navegacion"></nav>
+<div id="capas"></div>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/adjuntos.js"></script>
+<script src="js/barra_modelo.js"></script>
+<script>
+if (!localStorage.getItem('token_sesion')) window.location.href = PARADISE.URL_LOGIN;
+</script>
+<script>
+(function () {
+    'use strict';
+    const lista = document.getElementById('lista-actividades');
+    function pintar(actividades) {
+        if (!actividades || !actividades.length) return;
+        lista.innerHTML = actividades.slice(0, 12).map(PARADISE_BARRA.tarjetaActividad).join('');
+    }
+    document.addEventListener('paradise:actividades', (e) => pintar(e.detail));
+    pintar(PARADISE_BARRA.actividades());
+})();
+</script>
+</body>
+</html>

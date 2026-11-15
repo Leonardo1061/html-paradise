@@ -11,8 +11,8 @@
     <meta name="apple-mobile-web-app-title" content="PARADISE">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <meta name="theme-color" content="#0a0a0b">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#050506">
     <style>
         /* =================================================================
            STATUS · turnos de la semana
@@ -30,16 +30,16 @@
            ================================================================= */
         :root {
             --fondo: #0a0a0b;
-            --panel: #141318;
-            --panel-alto: #1b1a22;
-            --borde: #2a2932;
-            --texto: #f4f4f5;
-            --texto-tenue: #9b9ba3;
-            --apagado: #6b6b73;
+            --panel: #141416;
+            --panel-alto: #1a1a1d;
+            --borde: #34322b;
+            --texto: #f4f1e8;
+            --texto-tenue: #a9a595;
+            --apagado: #6f6c62;
 
-            --acento: #a855f7;
-            --acento-suave: rgba(168, 85, 247, .14);
-            --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+            --acento: #d9b44a;
+            --acento-suave: rgba(217, 180, 74, .14);
+            --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
 
             /* --- Colores CON SIGNIFICADO: no se tocan --- */
             --verde: #4CAF50;      /* libre */
@@ -58,7 +58,7 @@
             --card-bg: var(--panel);
         }
         * { box-sizing: border-box; margin: 0; padding: 0;
-            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+            font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         body { background-color: var(--fondo); color: var(--texto); padding-bottom: 120px;
                -webkit-font-smoothing: antialiased; }
         textarea, input, select { background-color: var(--panel-alto); color: var(--texto);
@@ -108,9 +108,9 @@
                 border: 1px solid var(--borde); background: var(--panel-alto); padding: 9px 12px;
                 border-radius: 999px; outline: none; cursor: pointer; }
 
-        .btn-amarillo { background: var(--degradado); color: #fff; border: 0;
+        .btn-amarillo { background: var(--degradado); border: 0;
                 padding: 11px 16px; border-radius: 12px; font-weight: 600; cursor: pointer;
-                font-size: 0.86rem; box-shadow: 0 8px 20px rgba(168, 85, 247, .28); }
+                font-size: 0.86rem; box-shadow: 0 8px 20px rgba(217, 180, 74, .28); color: #1a1404; }
         .btn-negro { background: var(--panel-alto); color: var(--texto); border: 1px solid var(--borde);
                 padding: 11px 16px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 0.86rem; }
         .btn-amarillo:active, .btn-negro:active { transform: scale(0.98); }
@@ -128,7 +128,7 @@
         .estado-salida { background-color: rgba(255, 152, 0, .16); color: #ffd180; }
         .estado-disponible { background-color: rgba(76, 175, 80, .16); color: #a5d6a7; cursor: pointer; }
         .estado-neutro { background-color: var(--panel-alto); color: var(--apagado); }
-        .estado-elegida { background: var(--degradado); color: #fff; cursor: pointer; }
+        .estado-elegida { background: var(--degradado); cursor: pointer; color: #1a1404; }
 
         /* ===================== LEYENDA ===================== */
         .leyenda { display: flex; gap: 12px; font-size: 0.7rem; justify-content: center; flex-wrap: wrap;
@@ -138,8 +138,8 @@
         .caja-color { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); }
 
         /* ===================== PRE-AGENDAMIENTO ===================== */
-        #pre-agendamiento { background: linear-gradient(180deg, rgba(168,85,247,.10), rgba(10,10,11,0));
-                padding: 16px; border-radius: 18px; margin-bottom: 16px; border: 1px solid rgba(168,85,247,.45); }
+        #pre-agendamiento { background: linear-gradient(180deg, rgba(217, 180, 74,.10), rgba(10,10,11,0));
+                padding: 16px; border-radius: 18px; margin-bottom: 16px; border: 1px solid rgba(217, 180, 74,.45); }
         #pre-agendamiento h3 { color: var(--texto); margin-bottom: 8px; font-size: 1.02rem; font-weight: 600; }
         .aviso-doble { background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto-tenue);
                 padding: 13px; border-radius: 14px; font-size: 0.85rem; line-height: 1.55; margin-bottom: 14px; }
@@ -161,7 +161,7 @@
         .grid-dias { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 7px; }
         .dia-btn { padding: 10px 4px; text-align: center; border-radius: 12px; font-weight: 600;
                 font-size: 0.78rem; cursor: pointer; user-select: none; transition: 0.15s; }
-        .dia-asiste { background: var(--degradado); color: #fff; border: 1px solid transparent; }
+        .dia-asiste { background: var(--degradado); border: 1px solid transparent; color: #1a1404; }
         .dia-falta { background-color: var(--panel-alto); color: var(--apagado); border: 1px dashed var(--borde); }
         .dia-descanso { background: #fbbf24; color: #2b1d00; border: 1px solid transparent; }
         .nota-descanso-listo { color: #a5d6a7; font-weight: 600; }
@@ -189,7 +189,7 @@
         .bg-satelite { background-color: var(--satelite); color: #00211D; }
         /* Supernumeraria: no tiene jornada propia, está cubriendo un hueco. */
         .bg-extra { background-color: var(--extra); color: #2B0716; }
-        .bg-elegida { background: var(--degradado); color: #fff; cursor: pointer; }
+        .bg-elegida { background: var(--degradado); cursor: pointer; color: #1a1404; }
         /* LISTA DE ESPERA = BLANCO */
         .bg-espera { background-color: var(--espera); color: #444; border: 2px dashed #9E9E9E; }
         .bg-espera-otra { background-color: var(--espera); color: #9E9E9E; border: 1px dashed #D5D5D5; }
@@ -202,8 +202,8 @@
             display: none; border-top: 1px solid var(--borde);
         }
         #barra-guardar.visible { display: block; }
-        #btn-guardar { width: 100%; background: var(--degradado); color: #fff; border: none;
-            padding: 15px; border-radius: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        #btn-guardar { width: 100%; background: var(--degradado); border: none;
+            padding: 15px; border-radius: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; color: #1a1404; }
         #btn-guardar:disabled { opacity: .6; cursor: wait; }
         #btn-guardar.bloqueado { background: var(--borde); color: #c9c9d1; opacity: 1; cursor: not-allowed; }
         #texto-pendiente { color: var(--texto-tenue); font-size: 0.74rem; text-align: center;
@@ -251,8 +251,7 @@
         .navegacion {
             position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
             z-index: 150; background: var(--degradado); border-radius: 20px;
-            display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
-        }
+            display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(217, 180, 74, .4); color: #1a1404; }
         @media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
         .navegacion button {
             flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
@@ -268,6 +267,7 @@
         /* Mientras hay cambios sin guardar manda la barra de guardar. */
         body.guardando .navegacion { display: none; }
     </style>
+    <link rel="stylesheet" href="css/tema_dorado.css">
 </head>
 <body>
 
@@ -275,8 +275,10 @@
 
     <header>
         <div class="header-info">
-            <h1 id="lbl-nombre">Cargando...</h1>
-            <p id="lbl-jornada">Jornada</p>
+            <!-- El nombre y la jornada ya salen en la cabecera fija (js/barra_modelo.js). -->
+            <h1 id="lbl-nombre" hidden>Cargando...</h1>
+            <p id="lbl-jornada" hidden>Jornada</p>
+            <h1>Status Room</h1>
         </div>
         <div class="header-actions">
             <button class="btn-entregar" id="btn-entregar" onclick="marcarEntregaCuarto()">Entregar Cuarto</button>

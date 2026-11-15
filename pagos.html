@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#050506">
 <title>Mis pagos · PARADISE</title>
 
 <!--
@@ -29,25 +29,25 @@
 <meta name="apple-mobile-web-app-title" content="PARADISE">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
 :root {
     --fondo:      #0a0a0b;
-    --panel:      #141318;
-    --panel-alto: #1b1a22;
-    --borde:      #2a2932;
-    --texto:      #f4f4f5;
-    --tenue:      #9b9ba3;
-    --apagado:    #6b6b73;
+    --panel:      #141416;
+    --panel-alto: #1a1a1d;
+    --borde:      #34322b;
+    --texto:      #f4f1e8;
+    --tenue:      #a9a595;
+    --apagado:    #6f6c62;
 
-    --violeta:    #8b5cf6;
-    --magenta:    #d946ef;
-    --verde:      #34d399;
+    --violeta:    #c9982e;
+    --magenta:    #f3d98b;
+    --verde:      #f3d98b;
     --rojo:       #ef4444;
     --ambar:      #fbbf24;
 
-    --degradado: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
     --radio: 18px;
 }
 
@@ -55,7 +55,7 @@
 
 body {
     margin: 0; background: var(--fondo); color: var(--texto);
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     padding-bottom: 120px;
 }
@@ -67,9 +67,7 @@ button { cursor: pointer; }
 .barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 900px; margin: 0 auto; }
 .marca {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
-    background: var(--degradado); font-size: 19px; color: #fff;
-    box-shadow: 0 8px 20px rgba(168, 85, 247, .35);
-}
+    background: var(--degradado); font-size: 19px; box-shadow: 0 8px 20px rgba(217, 180, 74, .35); color: #1a1404; }
 
 .contenido { padding: 6px 16px 0; max-width: 900px; margin: 0 auto; }
 
@@ -108,13 +106,13 @@ table.pagos tr:last-child td { border-bottom: 0; }
     display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
 }
 .estado.pendiente { background: rgba(251, 191, 36, .16); color: var(--ambar); }
-.estado.pagado { background: rgba(52, 211, 153, .16); color: var(--verde); }
+.estado.pagado { background: rgba(243, 217, 139, .16); color: var(--verde); }
 .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
 .boton {
     border: 1px solid var(--borde); background: var(--panel-alto); color: var(--texto);
     border-radius: 10px; padding: 7px 11px; font-size: 13px; font-weight: 500;
 }
-.boton.principal { background: var(--degradado); border: 0; color: #fff; }
+.boton.principal { background: var(--degradado); border: 0; color: #1a1404; }
 .boton:disabled { opacity: .45; cursor: default; }
 .pie { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13px; color: var(--tenue); }
 .paginas { display: flex; gap: 6px; }
@@ -132,7 +130,7 @@ table.pagos tr:last-child td { border-bottom: 0; }
 }
 .hoja-arriba { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
 .hoja-arriba .boton { background: #eef0f4; color: #1d1d22; border-color: #d5d8e0; }
-.hoja-arriba .boton.principal { background: var(--degradado); color: #fff; border: 0; }
+.hoja-arriba .boton.principal { background: var(--degradado); border: 0; color: #1a1404; }
 .recibo { display: grid; grid-template-columns: 64% 36%; gap: 14px; }
 .recibo h2 { margin: 0 0 4px; font-size: 19px; }
 .datos td { padding: 2px 10px 2px 0; }
@@ -163,8 +161,7 @@ table.pagos tr:last-child td { border-bottom: 0; }
 .navegacion {
     position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 30; background: var(--degradado); border-radius: 20px;
-    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(139, 92, 246, .4);
-}
+    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(217, 180, 74, .4); color: #1a1404; }
 @media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 500px; } }
 .navegacion button {
     flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .78);
@@ -184,7 +181,7 @@ table.pagos tr:last-child td { border-bottom: 0; }
     box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
 }
 .aviso.malo { border-color: rgba(239, 68, 68, .55); }
-.aviso.bueno { border-color: rgba(52, 211, 153, .5); }
+.aviso.bueno { border-color: rgba(243, 217, 139, .5); }
 @media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
 
 /* Imprimir / guardar como PDF: solo el recibo, en blanco. */
@@ -196,7 +193,18 @@ table.pagos tr:last-child td { border-bottom: 0; }
     .hoja-arriba { display: none; }
     .recibo { grid-template-columns: 64% 36%; }
 }
+.pagina-producido { padding: 10px 0; border-top: 1px solid var(--borde); cursor: pointer; }
+.pagina-producido:first-child { border-top: none; padding-top: 0; }
+.pagina-producido .cabeza { display: flex; justify-content: space-between; font-size: 13px; color: var(--tenue); }
+.pagina-producido .cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.pagina-producido .rotulo { font-size: 11px; color: var(--tenue); }
+.pagina-producido .usd { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--oro-claro); }
+.pagina-producido .nota { font-size: 12px; color: var(--apagado); margin-top: 4px; }
+.pagina-producido .detalle { font-size: 12px; color: var(--tenue); margin-top: 8px; }
+.pagina-producido .detalle div { display: flex; justify-content: space-between; padding: 2px 0; font-variant-numeric: tabular-nums; }
+.vacio-producido { text-align: center; color: var(--apagado); font-size: 13px; padding: 22px 0; }
 </style>
+<link rel="stylesheet" href="css/tema_dorado.css">
 </head>
 
 <body>
@@ -204,13 +212,25 @@ table.pagos tr:last-child td { border-bottom: 0; }
 <div class="barra">
     <div class="marca">💳</div>
     <div>
-        <div style="font-size:15px;font-weight:600">Mis pagos</div>
-        <div style="font-size:11px;color:var(--tenue)">Tus recibos de nómina</div>
+        <div style="font-size:15px;font-weight:600">Pagos</div>
+        <div style="font-size:11px;color:var(--tenue)">Tus recibos de nómina y tu producido</div>
     </div>
 </div>
 
 <main class="contenido">
-    <div class="tarjeta">
+    <div class="pd-pestanas">
+        <button class="activo" id="tab-recibos">💳 Recibos</button>
+        <button id="tab-producido">💵 Mi producido</button>
+    </div>
+
+    <!-- 💵 Su producido en dólares, página por página (js/producido.js, /api/nomina/mio) -->
+    <div class="tarjeta oculto" id="vista-producido">
+        <h2 style="margin:0 0 4px;font-size:16px;font-weight:500">💵 Mi producido</h2>
+        <div style="font-size:12px;color:var(--tenue);margin-bottom:10px">En dólares, por página. La semana se corta el sábado a las 11:59 pm. Toca una para ver el detalle de esta semana.</div>
+        <div id="lista-producido"><div class="vacio-producido">Cargando tu producido…</div></div>
+    </div>
+
+    <div class="tarjeta" id="vista-recibos">
         <div class="controles">
             <label>Mostrar
                 <select id="por-pagina">
@@ -252,6 +272,7 @@ table.pagos tr:last-child td { border-bottom: 0; }
 <script src="js/push.js"></script>
 <script src="js/adjuntos.js"></script>
 <script src="js/barra_modelo.js"></script>
+<script src="js/producido.js"></script>
 <script>
 (function () {
     'use strict';
@@ -509,6 +530,24 @@ table.pagos tr:last-child td { border-bottom: 0; }
     $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };
     $('nav-status').onclick = () => { window.location.href = 'turnos.html'; };
     $('nav-pagos').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Las dos pestañas: 💳 Recibos (lo de siempre) y 💵 Mi producido, que
+    // antes estaba en el INICIO. El producido se pide la primera vez que se abre.
+    let producidoPedido = false;
+    function verPestana(cual) {
+        const producido = cual === 'producido';
+        $('tab-recibos').classList.toggle('activo', !producido);
+        $('tab-producido').classList.toggle('activo', producido);
+        $('vista-recibos').classList.toggle('oculto', producido);
+        $('vista-producido').classList.toggle('oculto', !producido);
+        if (producido && !producidoPedido) {
+            producidoPedido = true;
+            ProducidoParadise.cargar($('vista-producido'), $('lista-producido'));
+        }
+    }
+    $('tab-recibos').onclick = () => verPestana('recibos');
+    $('tab-producido').onclick = () => verPestana('producido');
+    if (window.location.hash === '#producido') verPestana('producido');
     cargar();
 })();
 </script>

@@ -1,0 +1,118 @@
+/* ===========================================================================
+ * PARADISE · Tema negro y dorado de la web de modelos (rediseño 2026-11-15)
+ * ===========================================================================
+ * Va en TODAS las páginas de la modelo, DESPUÉS del <style> de la página:
+ *
+ *     <link rel="stylesheet" href="css/tema_dorado.css">
+ *
+ * Cada página sigue teniendo sus estilos; aquí está lo común del diseño nuevo:
+ * el fondo con el arco dorado, los colores de marca y las piezas del INICIO
+ * (mosaicos) que también usan las pantallas nuevas.
+ * La cabecera fija, el menú ☰ y la barra de abajo los pone js/barra_modelo.js.
+ */
+:root {
+    --oro: #d9b44a;
+    --oro-claro: #f3d98b;
+    --oro-hondo: #8f6f22;
+    --oro-velo: rgba(217, 180, 74, .12);
+    --sobre-oro: #1a1404;
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
+    /* La tarjeta «Activar avisos» de js/push.js toma de aquí sus colores. */
+    --pdz-degradado: var(--degradado);
+    --pdz-sobre-acento: var(--sobre-oro);
+    --pdz-borde-acento: var(--oro-hondo);
+    color-scheme: dark;
+}
+
+html { background: #050506; }
+body { background: transparent !important; font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+/* El fondo va en una capa fija (en iPhone `background-attachment: fixed` falla). */
+body::before {
+    content: ""; position: fixed; inset: 0; z-index: -2;
+    background: #0a0a0b url(../img/fondo.jpg) center top / cover no-repeat;
+}
+/* En las pantallas de adentro el arco queda apenas insinuado para que se lea. */
+body::after {
+    content: ""; position: fixed; inset: 0; z-index: -1; background: rgba(6, 6, 7, .86);
+}
+body.pd-inicio::after, body.pd-ingreso::after { background: rgba(6, 6, 7, .25); }
+
+button, input, select, textarea { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--oro-claro); outline-offset: 2px; }
+::selection { background: var(--oro); color: var(--sobre-oro); }
+
+/* El cuadrito con emoji junto al título de cada página. */
+.barra .marca {
+    background: var(--oro-velo) !important; border: 1px solid var(--oro-hondo);
+    box-shadow: none !important; color: var(--oro-claro) !important;
+}
+
+/* ------------------------------------------------------------ mosaicos */
+.pd-mosaicos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pd-mosaico {
+    background: rgba(28, 28, 31, .9); border: 1px solid #2b2a27; border-radius: 6px;
+    color: #f4f1e8; text-decoration: none; cursor: pointer; padding: 12px 6px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center;
+    transition: border-color .15s;
+}
+.pd-mosaico:hover, .pd-mosaico:active { border-color: var(--oro); }
+.pd-mosaico .ic { height: 82px; display: grid; place-items: center; position: relative; }
+.pd-mosaico .ic img { max-height: 82px; max-width: 108px; display: block; }
+.pd-mosaico h3 { margin: 4px 0 0; font-weight: 400; font-size: 19px; }
+.pd-mosaico p { margin: 0; font-size: 11.5px; color: #d8d4c6; }
+.pd-mosaico .rank-num {
+    position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 6px;
+    font-size: 36px; color: var(--oro-claro);
+}
+@media (max-width: 360px) {
+    .pd-mosaico .ic { height: 68px; }
+    .pd-mosaico .ic img { max-height: 68px; }
+    .pd-mosaico h3 { font-size: 16.5px; }
+}
+
+/* ------------------------------------------------- pantallas nuevas */
+.pd-pagina { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+.pd-titulo { display: flex; align-items: center; gap: 12px; padding: 14px 18px 10px; max-width: 760px; margin: 0 auto; }
+.pd-titulo img { width: 44px; height: 44px; object-fit: contain; flex: none; }
+.pd-titulo h1 { margin: 0; font-size: 17px; font-weight: 500; }
+.pd-titulo p { margin: 1px 0 0; font-size: 12px; color: #a9a595; }
+.pd-tarjeta {
+    background: rgba(20, 20, 22, .93); border: 1px solid #34322b; border-radius: 16px;
+    padding: 16px; margin-bottom: 14px;
+}
+.pd-tarjeta h2 { margin: 0 0 4px; font-size: 16px; font-weight: 500; }
+.pd-tarjeta .sub { font-size: 12.5px; color: #a9a595; line-height: 1.5; margin: 0; }
+.pd-pronto {
+    text-align: center; padding: 30px 18px; border: 1px dashed var(--oro-hondo); border-radius: 16px;
+    background: rgba(20, 20, 22, .8); margin-bottom: 14px;
+}
+.pd-pronto img { width: 96px; height: 96px; object-fit: contain; }
+.pd-pronto h2 { margin: 12px 0 6px; font-size: 19px; font-weight: 500; color: var(--oro-claro); }
+.pd-pronto p { margin: 0 auto; max-width: 34ch; font-size: 13.5px; line-height: 1.55; color: #d8d4c6; }
+.pd-sello {
+    display: inline-block; margin-top: 14px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    font-weight: 700; padding: 4px 10px; border-radius: 6px; background: var(--degradado); color: var(--sobre-oro);
+}
+.pd-boton {
+    display: inline-block; background: var(--degradado); color: var(--sobre-oro); border: 0; border-radius: 12px;
+    padding: 12px 16px; font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none;
+}
+.pd-boton.linea { background: none; color: var(--oro-claro); border: 1px solid var(--oro-hondo); }
+.pd-pestanas { display: flex; gap: 6px; margin-bottom: 14px; }
+.pd-pestanas button {
+    flex: 1; background: none; border: 1px solid #34322b; color: #a9a595; border-radius: 10px;
+    padding: 9px 6px; font-size: 13.5px; cursor: pointer;
+}
+.pd-pestanas button.activo { background: var(--degradado); color: var(--sobre-oro); border-color: transparent; font-weight: 500; }
+
+/* ------------------------------------------------------------------ chat */
+/* css/chat.css también lo usa la web del personal (que sigue en violeta):
+   por eso lo dorado del chat de la modelo se pone aquí y no allá. */
+:root { --violeta: #c9982e; }
+.chat-canal.activo, .chat-msg.mio .chat-burbuja, .chat-barra .chat-enviar, .chat-barra .chat-mic,
+.chat-grabando .enviar { color: var(--sobre-oro) !important; }
+.chat-msg.mio .chat-burbuja a { color: var(--sobre-oro); }
+.chat-menu .documento { background: #c9982e; }
+.chat-ficha.mia { background: rgba(217, 180, 74, .22); }
+.chat-barra-emojis .emoji.mia { background: rgba(217, 180, 74, .3); }
+.chat-barra { border-color: var(--oro-hondo) !important; }

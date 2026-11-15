@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>Seguimiento · PARADISE</title>
+
+<!--
+  SEGUIMIENTO DE LA MODELO (2026-11-15)
+  =====================================
+  Sus estadísticas de la semana: los cuatro números, lo siguiente de hoy y la
+  gráfica de minutos programados por día. Es lo que antes era el INICIO; lo
+  pinta js/seguimiento.js con `/api/acceso/panel`.
+
+  La BITÁCORA (notas del monitor sobre su semana) aún no existe en la API:
+  queda el aviso de «Próximamente».
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141416;
+    --panel-alto: #1a1a1d;
+    --borde:      #34322b;
+    --texto:      #f4f1e8;
+    --tenue:      #a9a595;
+    --apagado:    #6f6c62;
+    --mid:        #d9b44a;
+    --soft:       #f6ecc8;
+    --high:       #c0661a;
+    --verde:      #f3d98b;
+    --rojo:       #ef4444;
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
+    --radio: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 110px;
+}
+button { font-family: inherit; cursor: pointer; }
+.oculto { display: none !important; }
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 760px; margin: 0 auto; }
+.barra .marca { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; }
+.barra .marca img { width: 30px; height: 30px; object-fit: contain; }
+.contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+.saludo h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+.saludo p { margin: 3px 0 0; font-size: 13px; color: var(--tenue); }
+
+/* ------------------------------------------------------------- tarjetas */
+.tarjeta {
+    background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 16px;
+}
+
+.rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.dato .rotulo { font-size: 13px; color: var(--tenue); }
+.dato .cifra { font-size: 26px; font-weight: 700; margin-top: 6px; line-height: 1.1; }
+.dato .cifra small { font-size: 15px; font-weight: 600; color: var(--tenue); }
+.dato .pie { font-size: 12px; margin-top: 8px; color: var(--tenue); }
+.dato .pie.bien { color: var(--verde); }
+.dato .pie.ojo { color: #fbbf24; }
+
+/* ------------------------------------------------------------- gráfica */
+.grafica { margin-top: 16px; }
+.grafica .encabezado { display: flex; align-items: flex-start; gap: 10px; }
+.grafica h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.grafica .sub { font-size: 12px; color: var(--tenue); margin-top: 2px; }
+/* Sin alto fijo: el viewBox manda y el texto no se deforma al escalar. */
+.grafica svg { width: 100%; height: auto; display: block; margin-top: 14px; overflow: visible; }
+
+.pie-grafica {
+    display: flex; gap: 10px; margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--borde);
+}
+.pie-grafica .celda { flex: 1; display: flex; align-items: center; gap: 10px; }
+.pie-grafica .cuadro {
+    width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+    background: rgba(217, 180, 74, .14); font-size: 17px;
+}
+.pie-grafica .rotulo { font-size: 12px; color: var(--tenue); }
+.pie-grafica .cifra { font-size: 17px; font-weight: 700; }
+
+/* ------------------------------------------------------- lo que sigue */
+.siguiente {
+    margin-top: 16px; display: flex; align-items: center; gap: 12px;
+    border-left: 4px solid var(--mid);
+}
+.siguiente.soft { border-left-color: var(--soft); }
+.siguiente.high { border-left-color: var(--high); }
+.siguiente .icono {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: rgba(217, 180, 74, .14); font-size: 22px;
+}
+.siguiente .rotulo { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--tenue); }
+.siguiente .nombre { font-size: 16px; font-weight: 600; margin-top: 2px; }
+.siguiente .ir {
+    margin-left: auto; background: var(--degradado); border: 0; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1a1404; }
+
+.cargando { text-align: center; color: var(--apagado); padding: 50px 0; font-size: 14px; }
+.girando { display: inline-block; animation: giro 1s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+
+</style>
+<link rel="stylesheet" href="css/tema_dorado.css">
+</head>
+
+<body>
+
+<div class="barra">
+    <div class="marca"><img src="img/seguimiento.png" alt=""></div>
+    <div>
+        <div style="font-size:15px;font-weight:600">Seguimiento</div>
+        <div style="font-size:11px;color:var(--tenue)">Tus estadísticas y tu bitácora</div>
+    </div>
+</div>
+
+<main class="contenido">
+    <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando tu semana…</div>
+    <div id="tablero" class="oculto"></div>
+
+    <div class="pd-pronto" style="margin-top:16px">
+        <h2 style="margin-top:0">Bitácora</h2>
+        <p>Aquí vas a ver lo que tu monitor anota sobre tu semana.</p>
+        <span class="pd-sello">Próximamente</span>
+    </div>
+</main>
+
+<!-- La barra vieja: escondida, js/barra_modelo.js pone la nueva. -->
+<nav class="navegacion"></nav>
+<div id="capas"></div>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/adjuntos.js"></script>
+<script src="js/barra_modelo.js"></script>
+<script src="js/seguimiento.js"></script>
+</body>
+</html>

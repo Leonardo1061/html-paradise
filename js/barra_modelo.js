@@ -8,6 +8,15 @@
  *
  *     <script src="js/barra_modelo.js"></script>
  *
+ * REDISEÑO NEGRO Y DORADO (2026-11-15): la cabecera fija ahora lleva ☰ menú,
+ * foto de perfil, logo, nombre y jornada, 🔔 campana y ⚙️ ajustes (con los
+ * iconos de img/). La barra de abajo es nueva y la pone este archivo
+ * (`montarNav`): Fotografía · Room · Contenido · CEO · Pagos; la `.navegacion`
+ * vieja de cada página se queda escondida. El ☰ abre el menú lateral
+ * (`abrirMenu`). En el INICIO no sale la burbuja del chat porque el chat ya
+ * está en la página. Lo que sigue describe lo de antes, que sigue valiendo
+ * salvo donde este párrafo dice otra cosa.
+ *
  * CABECERA FIJA (2026-10-08): una franja arriba que no se va con el scroll,
  * igual en las cinco páginas. A la izquierda ▦ INICIO (panel.html); a la
  * derecha 🔔 campana, ⚙️ tuerca y ⏻ salir. Respeta la muesca del iPhone
@@ -76,7 +85,8 @@
  * Así no alcanza a agendarse con la cédula como nombre.
  */
 
-if (localStorage.getItem('token_sesion') && localStorage.getItem('datos_pendientes') === '1') {
+const BM_EN_DATOS = /(^|\/)datos(\.html)?$/.test(window.location.pathname);
+if (!BM_EN_DATOS && localStorage.getItem('token_sesion') && localStorage.getItem('datos_pendientes') === '1') {
     window.location.replace('datos.html');
 }
 
@@ -315,7 +325,7 @@ function estilos() {
 @media (min-width: 760px) { .navegacion.bm-nav6 { width: 600px; } .navegacion.bm-nav6 button { white-space: nowrap; } }
 .bm-redondo {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
-    background: #1b1a22; border: 1px solid #2a2932; color: #f4f4f5; font-size: 17px;
+    background: #1a1a1d; border: 1px solid #34322b; color: #f4f1e8; font-size: 17px;
     position: relative; cursor: pointer; font-family: inherit; padding: 0; flex: none;
 }
 .bm-globo {
@@ -327,173 +337,230 @@ function estilos() {
 /* Los nombres largos de abajo (STATUS ROOM, SUBIR CONTENIDO) bajan a dos
    renglones en vez de montarse sobre el vecino. */
 .navegacion button { white-space: normal !important; line-height: 1.1; text-align: center; }
-:root { --bm-arriba: calc(56px + env(safe-area-inset-top)); }
+:root { --bm-arriba: calc(66px + env(safe-area-inset-top)); }
 body.bm-con-arriba { padding-top: var(--bm-arriba); }
 /* Que lo último de la página pueda subir por encima de la burbuja. */
 body.bm-con-burbuja { padding-bottom: calc(165px + env(safe-area-inset-bottom)) !important; }
 .bm-arriba {
     position: fixed; top: 0; left: 0; right: 0; z-index: 35; height: var(--bm-arriba);
-    padding: env(safe-area-inset-top) max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+    padding: env(safe-area-inset-top) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
     display: flex; align-items: center; gap: 8px;
-    background: rgba(10,10,11,.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid #2a2932; font-family: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
+    background: rgba(7,7,8,.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid #8f6f22; font-family: 'Ubuntu', -apple-system, 'Segoe UI', sans-serif;
 }
-.bm-arriba .bm-derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.bm-inicio {
-    height: 40px; border-radius: 13px; border: 0; padding: 0 13px; display: flex; align-items: center; gap: 7px;
-    background: #1b1a22; box-shadow: inset 0 0 0 1px #2a2932; color: #f4f4f5;
-    font: 600 12px/1 'Poppins', -apple-system, 'Segoe UI', sans-serif; letter-spacing: .3px; cursor: pointer;
+.bm-arriba .bm-derecha { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: none; }
+.bm-ic {
+    background: none !important; border: 0 !important; padding: 4px; width: auto !important; height: auto !important;
+    border-radius: 10px; cursor: pointer; display: grid; place-items: center; position: relative; flex: none;
+    font-size: 0 !important; color: #f4f1e8; animation: none !important; box-shadow: none !important;
 }
-.bm-inicio span { font-size: 17px; }
-.bm-inicio.activo { background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%); box-shadow: 0 8px 20px rgba(168,85,247,.3); }
+.bm-ic > img { display: block; width: 32px; height: 32px; object-fit: contain; }
+.bm-ic.bm-menu > img { width: 30px; height: 30px; }
+.bm-ic .bm-globo, .bm-ic .globo, .bm-ic .punto-campana {
+    top: -1px !important; right: -3px !important; border: 0 !important; background: #e3262b !important;
+    font-size: 11px !important; min-width: 18px; height: 18px;
+}
+.bm-ic.tiene-avisos > img { animation: bm-latido 1.6s infinite; }
+@keyframes bm-latido { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.bm-avatar {
+    width: 46px; height: 46px; border-radius: 50%; border: 2px solid #d9b44a; padding: 0; flex: none;
+    background: #1a1a1d; color: #f3d98b; font: 500 19px/1 'Ubuntu', sans-serif; overflow: hidden; cursor: pointer;
+    display: grid; place-items: center;
+}
+.bm-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bm-quien {
+    flex: 1; min-width: 0; background: none; border: 0; padding: 0; text-align: left; cursor: pointer;
+    color: #f4f1e8; font-family: inherit; line-height: 1.1;
+}
+.bm-quien img { height: 21px; display: block; margin-bottom: 1px; }
+.bm-quien b { display: block; font-weight: 400; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-quien span { display: block; color: #d9b44a; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-volver {
+    background: none; border: 0; color: #d9b44a; font: 13px 'Ubuntu', sans-serif; cursor: pointer;
+    padding: 4px 8px 4px 0; white-space: nowrap; flex: none;
+}
+/* La barra de abajo: la vieja de cada página se esconde y manda esta. */
+.navegacion { display: none !important; }
+.bm-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 33;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    background: #070708; border-top: 1px solid #8f6f22; border-radius: 20px 20px 0 0;
+    padding: 8px max(4px, env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+    font-family: 'Ubuntu', -apple-system, 'Segoe UI', sans-serif;
+}
+@media (min-width: 760px) { .bm-nav { left: 50%; right: auto; transform: translateX(-50%); width: 520px; border-left: 1px solid #8f6f22; border-right: 1px solid #8f6f22; } }
+.bm-nav button {
+    background: none; border: 0; color: #cfccc0; font: 12px 'Ubuntu', sans-serif; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 3px 0; border-radius: 10px;
+}
+.bm-nav button img { height: 32px; width: 44px; object-fit: contain; }
+.bm-nav button.activo { color: #f3d98b; }
+.bm-nav button.activo img { filter: sepia(1) saturate(4) hue-rotate(-12deg) brightness(.95); }
+body.guardando .bm-nav { display: none; }
+/* El menú ☰ */
+.bm-cajon {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 2001; width: min(78vw, 320px);
+    background: #09090a; border-right: 1px solid #8f6f22; color: #f4f1e8;
+    padding: calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    display: flex; flex-direction: column; gap: 2px; overflow-y: auto;
+    font-family: 'Ubuntu', -apple-system, 'Segoe UI', sans-serif;
+}
+.bm-cajon > img { height: 32px; align-self: flex-start; margin-bottom: 12px; }
+.bm-cajon button {
+    background: none; border: 0; color: #f4f1e8; text-align: left; padding: 10px 6px; border-radius: 9px;
+    font: 15px 'Ubuntu', sans-serif; cursor: pointer; display: flex; gap: 12px; align-items: center;
+}
+.bm-cajon button:hover, .bm-cajon button.activo { background: #1a1a1d; }
+.bm-cajon button.activo { color: #f3d98b; }
+.bm-cajon button img, .bm-cajon button span.e { width: 26px; height: 26px; object-fit: contain; text-align: center; flex: none; font-size: 19px; line-height: 26px; }
+.bm-cajon hr { border: 0; border-top: 1px solid #34322b; margin: 8px 0; width: 100%; }
 .bm-burbuja {
     position: fixed; z-index: 34; right: max(16px, env(safe-area-inset-right));
-    bottom: calc(96px + env(safe-area-inset-bottom));
+    bottom: calc(92px + env(safe-area-inset-bottom));
     width: 54px; height: 54px; border-radius: 50%; border: 0; display: grid; place-items: center;
-    background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%); color: #fff; font-size: 24px;
-    box-shadow: 0 12px 28px rgba(139,92,246,.5); cursor: pointer; padding: 0;
-}
+    background: linear-gradient(135deg, #f3d98b 0%, #c9982e 100%); font-size: 24px;
+    box-shadow: 0 12px 28px rgba(217, 180, 74,.5); cursor: pointer; padding: 0; color: #1a1404; }
 .bm-burbuja .bm-globo { top: -3px; right: -3px; }
 @media (min-width: 760px) { .bm-burbuja { right: calc(50% - 250px); } }
 /* Donde ya hay una caja de chat abajo o manda la barra de guardar, estorba. */
 body.guardando .bm-burbuja, body:has(#vista-chat:not(.oculto)) .bm-burbuja { display: none; }
 .bm-velo { position: fixed; inset: 0; background: rgba(0,0,0,.66); backdrop-filter: blur(3px); z-index: 2000; }
 .bm-hoja {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 2001; background: #141318; color: #f4f4f5;
-    border-top: 1px solid #2a2932; border-radius: 22px 22px 0 0; max-height: 92vh;
-    display: flex; flex-direction: column; font-family: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 2001; background: #0e0e10; color: #f4f1e8;
+    border-top: 1px solid #8f6f22; border-radius: 22px 22px 0 0; max-height: 92vh;
+    display: flex; flex-direction: column; font-family: 'Ubuntu', -apple-system, 'Segoe UI', sans-serif;
 }
 @media (min-width: 760px) { .bm-hoja { left: 50%; transform: translateX(-50%); width: 480px; } }
-.bm-cabecera { padding: 16px; border-bottom: 1px solid #2a2932; display: flex; gap: 10px; align-items: center; }
+.bm-cabecera { padding: 16px; border-bottom: 1px solid #34322b; display: flex; gap: 10px; align-items: center; }
 .bm-cabecera h3 { margin: 0; font-size: 17px; flex: 1; }
-.bm-cerrar { background: none; border: 0; color: #9b9ba3; font-size: 22px; padding: 4px 6px; cursor: pointer; }
+.bm-cerrar { background: none; border: 0; color: #a9a595; font-size: 22px; padding: 4px 6px; cursor: pointer; }
 .bm-cuerpo { padding: 16px; overflow-y: auto; }
 .bm-opcion {
     width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
-    background: #1b1a22; border: 1px solid #2a2932; color: #f4f4f5; border-radius: 14px;
+    background: #1a1a1d; border: 1px solid #34322b; color: #f4f1e8; border-radius: 14px;
     padding: 14px; font-size: 15px; font-family: inherit; margin-bottom: 10px;
 }
 .bm-opcion .icono { font-size: 20px; width: 26px; text-align: center; }
-.bm-opcion small { display: block; color: #9b9ba3; font-size: 12px; margin-top: 2px; }
+.bm-opcion small { display: block; color: #a9a595; font-size: 12px; margin-top: 2px; }
 .bm-campo { margin-bottom: 14px; }
-.bm-campo label { display: block; font-size: 12px; color: #9b9ba3; margin-bottom: 6px; }
+.bm-campo label { display: block; font-size: 12px; color: #a9a595; margin-bottom: 6px; }
 .bm-campo input, .bm-campo textarea {
-    width: 100%; box-sizing: border-box; background: #1b1a22; border: 1px solid #2a2932;
-    border-radius: 12px; padding: 12px 13px; color: #f4f4f5; font-size: 15px; font-family: inherit;
+    width: 100%; box-sizing: border-box; background: #1a1a1d; border: 1px solid #34322b;
+    border-radius: 12px; padding: 12px 13px; color: #f4f1e8; font-size: 15px; font-family: inherit;
 }
 .bm-campo textarea { min-height: 96px; resize: vertical; }
 .bm-campo select {
-    width: 100%; box-sizing: border-box; background: #1b1a22; border: 1px solid #2a2932;
-    border-radius: 12px; padding: 12px 13px; color: #f4f4f5; font-size: 15px; font-family: inherit;
+    width: 100%; box-sizing: border-box; background: #1a1a1d; border: 1px solid #34322b;
+    border-radius: 12px; padding: 12px 13px; color: #f4f1e8; font-size: 15px; font-family: inherit;
 }
 .bm-conv { display: flex; flex-direction: column; gap: 8px; }
-.bm-msj { max-width: 85%; align-self: flex-start; background: #1b1a22; border: 1px solid #2a2932;
+.bm-msj { max-width: 85%; align-self: flex-start; background: #1a1a1d; border: 1px solid #34322b;
     border-radius: 14px 14px 14px 4px; padding: 9px 12px; font-size: 14px; line-height: 1.45; }
-.bm-msj.mio { align-self: flex-end; border-radius: 14px 14px 4px 14px; border-color: rgba(217,70,239,.45); }
-.bm-msj .quien { font-size: 11.5px; color: #9b9ba3; margin-bottom: 3px; }
+.bm-msj.mio { align-self: flex-end; border-radius: 14px 14px 4px 14px; border-color: rgba(243, 217, 139,.45); }
+.bm-msj .quien { font-size: 11.5px; color: #a9a595; margin-bottom: 3px; }
 .bm-msj .txt { white-space: pre-wrap; word-break: break-word; }
 .bm-msj img { max-width: 220px; max-height: 220px; border-radius: 10px; display: block; margin-top: 6px; cursor: zoom-in; }
 .bm-msj .bm-secundario { margin-top: 6px; }
-.bm-escribir { border-top: 1px solid #2a2932; padding: 10px 12px 14px; }
+.bm-escribir { border-top: 1px solid #34322b; padding: 10px 12px 14px; }
 .bm-escribir .fila { display: flex; gap: 8px; align-items: flex-end; }
 .bm-escribir textarea { flex: 1; min-width: 0; min-height: 52px; max-height: 40vh; resize: vertical;
-    background: #1b1a22; border: 1px solid #2a2932; border-radius: 12px; padding: 9px 11px;
-    color: #f4f4f5; font: inherit; font-size: 14px; }
+    background: #1a1a1d; border: 1px solid #34322b; border-radius: 12px; padding: 9px 11px;
+    color: #f4f1e8; font: inherit; font-size: 14px; }
 .bm-escribir .bm-principal { width: auto; padding: 12px 16px; }
-.bm-fin { text-align: center; color: #9b9ba3; font-size: 13px; padding: 12px 6px; }
+.bm-fin { text-align: center; color: #a9a595; font-size: 13px; padding: 12px 6px; }
 .bm-campo input.bm-invalido { border-color: rgba(239,68,68,.7); }
 .bm-motivo { font-size: 12px; color: #fca5a5; margin-top: 6px; }
 .bm-motivo:empty { display: none; }
 .bm-sugerencias { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
-.bm-sugerencias small { color: #9b9ba3; font-size: 12px; }
+.bm-sugerencias small { color: #a9a595; font-size: 12px; }
 .bm-sugerencias .bm-secundario { padding: 6px 10px; font-size: 12px; }
 .s-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .bm-subida {
-    display: flex; align-items: center; gap: 8px; background: #1b1a22; border: 1px solid #2a2932;
-    border-radius: 10px; padding: 6px 8px; font-size: 12px; color: #d4d4d8;
+    display: flex; align-items: center; gap: 8px; background: #1a1a1d; border: 1px solid #34322b;
+    border-radius: 10px; padding: 6px 8px; font-size: 12px; color: #d8d4c6;
 }
 .bm-subida img { width: 40px; height: 40px; object-fit: cover; border-radius: 7px; flex: none; }
 .bm-subida .tipo { width: 40px; text-align: center; font-size: 20px; flex: none; }
 .bm-subida .nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bm-subida .peso { color: #9b9ba3; flex: none; }
-.bm-subida button { background: none; border: 0; color: #9b9ba3; cursor: pointer; font-size: 14px; flex: none; }
-.bm-subida.hecho { border-color: rgba(52,211,153,.4); }
+.bm-subida .peso { color: #a9a595; flex: none; }
+.bm-subida button { background: none; border: 0; color: #a9a595; cursor: pointer; font-size: 14px; flex: none; }
+.bm-subida.hecho { border-color: rgba(217,180,74,.4); }
 .bm-subida.error { border-color: rgba(239,68,68,.55); }
 .bm-subida.error .nombre { white-space: normal; }
-.bm-subida.subiendo { border-color: rgba(139,92,246,.6); }
-.bm-pestanas { display: flex; gap: 6px; margin-bottom: 14px; background: #1b1a22;
-    border: 1px solid #2a2932; border-radius: 12px; padding: 4px; }
-.bm-pestanas button { flex: 1; background: none; border: 0; color: #9b9ba3; border-radius: 9px;
+.bm-subida.subiendo { border-color: rgba(217, 180, 74,.6); }
+.bm-pestanas { display: flex; gap: 6px; margin-bottom: 14px; background: #1a1a1d;
+    border: 1px solid #34322b; border-radius: 12px; padding: 4px; }
+.bm-pestanas button { flex: 1; background: none; border: 0; color: #a9a595; border-radius: 9px;
     padding: 9px 6px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
-.bm-pestanas button.activa { background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%); color: #fff; }
-.bm-kwiky-info { background: #1b1a22; border: 1px solid rgba(139,92,246,.45); border-radius: 12px;
+.bm-pestanas button.activa { background: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%); color: #fff; }
+.bm-kwiky-info { background: #1a1a1d; border: 1px solid rgba(217, 180, 74,.45); border-radius: 12px;
     padding: 11px 13px; font-size: 13.5px; line-height: 1.45; margin-bottom: 14px; }
-.bm-kwiky-info b { color: #e9d5ff; }
+.bm-kwiky-info b { color: #f3d98b; }
 .bm-principal {
-    width: 100%; background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%); border: 0; color: #fff;
+    width: 100%; background: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%); border: 0; color: #fff;
     font-weight: 600; border-radius: 12px; padding: 14px; font-size: 15px; font-family: inherit; cursor: pointer;
 }
 .bm-principal:disabled { opacity: .6; }
 .bm-secundario {
-    background: #1b1a22; border: 1px solid #2a2932; color: #d4d4d8; border-radius: 11px;
+    background: #1a1a1d; border: 1px solid #34322b; color: #d8d4c6; border-radius: 11px;
     padding: 9px 12px; font-size: 13px; font-family: inherit; cursor: pointer;
 }
 .bm-fila { display: flex; gap: 8px; flex-wrap: wrap; }
-.bm-nota { font-size: 12px; color: #6b6b73; line-height: 1.5; margin-top: 10px; }
+.bm-nota { font-size: 12px; color: #6f6c62; line-height: 1.5; margin-top: 10px; }
 .bm-adjuntos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .bm-chip {
-    display: flex; align-items: center; gap: 6px; background: #1b1a22; border: 1px solid #2a2932;
-    border-radius: 10px; padding: 6px 8px; font-size: 12px; color: #d4d4d8; max-width: 100%;
+    display: flex; align-items: center; gap: 6px; background: #1a1a1d; border: 1px solid #34322b;
+    border-radius: 10px; padding: 6px 8px; font-size: 12px; color: #d8d4c6; max-width: 100%;
 }
 .bm-chip img { width: 44px; height: 44px; object-fit: cover; border-radius: 7px; }
-.bm-chip button { background: none; border: 0; color: #9b9ba3; cursor: pointer; font-size: 14px; }
-.bm-progreso { height: 6px; background: #1b1a22; border-radius: 99px; overflow: hidden; margin: 10px 0; }
-.bm-progreso div { height: 100%; width: 0; background: linear-gradient(90deg, #d946ef, #8b5cf6); transition: width .2s; }
+.bm-chip button { background: none; border: 0; color: #a9a595; cursor: pointer; font-size: 14px; }
+.bm-progreso { height: 6px; background: #1a1a1d; border-radius: 99px; overflow: hidden; margin: 10px 0; }
+.bm-progreso div { height: 100%; width: 0; background: linear-gradient(90deg, #f3d98b, #c9982e); transition: width .2s; color: #1a1404; }
 .bm-ticket {
-    background: #1b1a22; border: 1px solid #2a2932; border-radius: 14px; padding: 13px; margin-bottom: 10px;
+    background: #1a1a1d; border: 1px solid #34322b; border-radius: 14px; padding: 13px; margin-bottom: 10px;
     border-left: 4px solid #fbbf24;
 }
-.bm-ticket.respondido { border-left-color: #34d399; }
-.bm-ticket.cerrado { border-left-color: #6b6b73; }
-.bm-ticket.nuevo { box-shadow: 0 0 0 1px rgba(52,211,153,.5); }
+.bm-ticket.respondido { border-left-color: #d9b44a; }
+.bm-ticket.cerrado { border-left-color: #6f6c62; }
+.bm-ticket.nuevo { box-shadow: 0 0 0 1px rgba(217,180,74,.5); }
 .bm-ticket .cabeza { display: flex; gap: 8px; align-items: flex-start; }
 .bm-ticket .asunto { font-weight: 600; font-size: 15px; flex: 1; }
-.bm-ticket .meta { font-size: 12px; color: #9b9ba3; margin-top: 3px; }
-.bm-ticket .detalle { font-size: 13px; margin-top: 8px; white-space: pre-wrap; color: #d4d4d8; }
+.bm-ticket .meta { font-size: 12px; color: #a9a595; margin-top: 3px; }
+.bm-ticket .detalle { font-size: 13px; margin-top: 8px; white-space: pre-wrap; color: #d8d4c6; }
 .bm-ticket .respuesta {
-    margin-top: 10px; background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.3);
+    margin-top: 10px; background: rgba(217,180,74,.08); border: 1px solid rgba(217,180,74,.3);
     border-radius: 11px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap;
 }
-.bm-ticket .respuesta b { display: block; font-size: 11px; color: #6ee7b7; margin-bottom: 4px; letter-spacing: .5px; }
+.bm-ticket .respuesta b { display: block; font-size: 11px; color: #f3d98b; margin-bottom: 4px; letter-spacing: .5px; }
 .bm-pildora { font-size: 11px; border-radius: 99px; padding: 3px 9px; background: rgba(251,191,36,.15); color: #fde68a; white-space: nowrap; }
-.bm-pildora.respondido { background: rgba(52,211,153,.15); color: #6ee7b7; }
-.bm-pildora.cerrado { background: rgba(155,155,163,.15); color: #d4d4d8; }
+.bm-pildora.respondido { background: rgba(217,180,74,.15); color: #f3d98b; }
+.bm-pildora.cerrado { background: rgba(155,155,163,.15); color: #d8d4c6; }
 .bm-miniaturas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .bm-miniaturas img { width: 64px; height: 64px; object-fit: cover; border-radius: 9px; cursor: pointer; }
-.bm-extra { margin-bottom: 14px; font-size: 13px; line-height: 1.45; color: #d4d4d8;
-    background: #1b1a22; border: 1px solid #2a2932; border-radius: 12px; padding: 11px 13px; }
-.bm-vacio { text-align: center; color: #6b6b73; padding: 26px 0; font-size: 14px; }
+.bm-extra { margin-bottom: 14px; font-size: 13px; line-height: 1.45; color: #d8d4c6;
+    background: #1a1a1d; border: 1px solid #34322b; border-radius: 12px; padding: 11px 13px; }
+.bm-vacio { text-align: center; color: #6f6c62; padding: 26px 0; font-size: 14px; }
 .bm-visor { position: fixed; inset: 0; z-index: 2010; background: rgba(0,0,0,.92); display: grid; place-items: center; }
 .bm-visor img { max-width: 96vw; max-height: 92vh; border-radius: 10px; }
 .bm-aviso {
-    position: fixed; left: 16px; right: 16px; bottom: 100px; z-index: 10000; background: #1b1a22; color: #f4f4f5;
-    border: 1px solid #2a2932; border-radius: 14px; padding: 13px 15px; font-size: 14px; line-height: 1.4;
-    box-shadow: 0 16px 40px rgba(0,0,0,.6); font-family: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
+    position: fixed; left: 16px; right: 16px; bottom: 100px; z-index: 10000; background: #1a1a1d; color: #f4f1e8;
+    border: 1px solid #34322b; border-radius: 14px; padding: 13px 15px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 16px 40px rgba(0,0,0,.6); font-family: 'Ubuntu', -apple-system, 'Segoe UI', sans-serif;
 }
 .bm-aviso.malo { border-color: rgba(239,68,68,.55); }
-.bm-aviso.bueno { border-color: rgba(52,211,153,.5); }
+.bm-aviso.bueno { border-color: rgba(217,180,74,.5); }
 @media (min-width: 760px) { .bm-aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
 .bm-no-salgas { background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.45); color: #fde68a;
     border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; margin-bottom: 12px; }
 .bm-final { position: fixed; inset: 0; z-index: 10001; background: rgba(0,0,0,.8); backdrop-filter: blur(4px);
-    display: grid; place-items: center; padding: 20px; font-family: 'Poppins', -apple-system, 'Segoe UI', sans-serif; }
-.bm-final .caja { width: 100%; max-width: 400px; background: #141318; color: #f4f4f5; border-radius: 22px;
-    padding: 28px 22px 22px; text-align: center; border: 2px solid rgba(52,211,153,.6);
+    display: grid; place-items: center; padding: 20px; font-family: 'Ubuntu', -apple-system, 'Segoe UI', sans-serif; }
+.bm-final .caja { width: 100%; max-width: 400px; background: #141416; color: #f4f1e8; border-radius: 22px;
+    padding: 28px 22px 22px; text-align: center; border: 2px solid rgba(217,180,74,.6);
     box-shadow: 0 24px 60px rgba(0,0,0,.6); }
 .bm-final .caja.mal { border-color: rgba(239,68,68,.65); }
 .bm-final .icono { font-size: 64px; line-height: 1; }
 .bm-final h2 { margin: 14px 0 8px; font-size: 22px; }
-.bm-final p { margin: 0 0 20px; font-size: 15px; line-height: 1.5; color: #d4d4d8; white-space: pre-line; }
+.bm-final p { margin: 0 0 20px; font-size: 15px; line-height: 1.5; color: #d8d4c6; white-space: pre-line; }
 .chat-camara {
     position: fixed; inset: 0; z-index: 2020; background: #000;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px;
@@ -539,7 +606,7 @@ function abrirVisor(src) {
 // ⚙️ LA TUERCA
 // =======================================================================
 function abrirTuerca() {
-    const hoja = abrirHoja('tuerca', '⚙️ Ajustes');
+    const hoja = abrirHoja('tuerca', 'Ajustes');
     hoja.cuerpo.innerHTML =
         '<button class="bm-opcion" data-op="datos"><span class="icono">📝</span>' +
             '<span>Actualiza tus datos<small>Nombre, correo, celular, foto y cédula</small></span></button>' +
@@ -547,7 +614,10 @@ function abrirTuerca() {
             '<span>Cambiar contraseña<small>La misma del programa de escritorio</small></span></button>' +
         '<button class="bm-opcion" data-op="prueba"><span class="icono">📳</span>' +
             '<span>Enviar alerta de prueba<small>Para comprobar que los avisos llegan a este teléfono</small></span></button>' +
+        '<button class="bm-opcion" data-op="actualizar"><span class="icono">⬇️</span>' +
+            '<span>Buscar actualización<small>Recarga la última versión de la web</small></span></button>' +
         '<button class="bm-opcion" data-op="salir"><span class="icono">⏻</span><span>Cerrar sesión</span></button>';
+    hoja.cuerpo.querySelector('[data-op="actualizar"]').onclick = buscarActualizacion;
     hoja.cuerpo.querySelector('[data-op="datos"]').onclick = () => { window.location.href = 'datos.html'; };
     hoja.cuerpo.querySelector('[data-op="clave"]').onclick = cambiarClave;
     hoja.cuerpo.querySelector('[data-op="prueba"]').onclick = alertaDePrueba;
@@ -641,7 +711,7 @@ async function revisarActividades(forzar) {
 /* Una capacitación o reunión (campana e INICIO). */
 function tarjetaActividad(a) {
     const sello = a.pronto ? 'Empieza pronto' : a.nuevo ? 'Nueva' : '';
-    return '<div class="bm-ticket' + (actividadSuena(a) ? ' nuevo' : '') + '" style="border-left:4px solid ' + escapar(a.color) + '">' +
+    return '<div class="bm-ticket' + (actividadSuena(a) ? ' nuevo' : '') + '" style="border-left:4px solid #d9b44a">' +
         '<div class="cabeza"><div class="asunto">' + escapar(a.icono + ' ' + a.titulo) + '</div>' +
         (sello ? '<span class="bm-pildora respondido">' + sello + '</span>' : '') + '</div>' +
         '<div class="meta">' + escapar(a.cuando) + '</div>' +
@@ -1734,58 +1804,192 @@ function montarBurbuja() {
 }
 
 // =======================================================================
-// LA CABECERA FIJA
+// LA CABECERA FIJA (rediseño 2026-11-15)
 // =======================================================================
+// ☰ menú · foto · logo, nombre y jornada · 🔔 campana · ⚙️ ajustes.
+// Es la misma en todas las páginas y no se va con el scroll.
+const PAGINA = (window.location.pathname.split('/').pop() || 'panel.html').replace(/\.html$/, '') || 'panel';
+const EN_INICIO = PAGINA === 'panel' || PAGINA === '';
+
+function icono(nombre) { return '<img src="img/' + nombre + '.png" alt="">'; }
+
+function ir(pagina) {
+    if (pagina === PAGINA + '.html') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    window.location.href = pagina;
+}
+
+/* La foto de perfil sale de /api/datos (la misma de «Actualiza tus datos»).
+   Se guarda en el teléfono y se vuelve a pedir una vez al día. */
+function pintarFoto(avatar) {
+    let foto = '';
+    try { foto = localStorage.getItem('pdz_foto_perfil') || ''; } catch (e) { foto = ''; }
+    if (foto) {
+        avatar.innerHTML = '<img alt="Tu foto">';
+        avatar.querySelector('img').src = 'data:image/png;base64,' + foto;
+    } else {
+        avatar.textContent = ((localStorage.getItem('modelo_actual') || 'P').trim().charAt(0) || 'P').toUpperCase();
+    }
+}
+
+async function cargarFoto(avatar) {
+    const hoy = new Date().toISOString().slice(0, 10);
+    let dia = '';
+    try { dia = localStorage.getItem('pdz_foto_dia') || ''; } catch (e) { dia = ''; }
+    if (dia === hoy) return;
+    try {
+        const ficha = await pedir('/api/datos');
+        try {
+            localStorage.setItem('pdz_foto_dia', hoy);
+            if (ficha.foto_perfil) localStorage.setItem('pdz_foto_perfil', ficha.foto_perfil);
+            else localStorage.removeItem('pdz_foto_perfil');
+        } catch (e) { /* teléfono sin espacio: se queda la inicial */ }
+        pintarFoto(avatar);
+    } catch (error) { /* sin red: mañana se intenta otra vez */ }
+}
+
+async function buscarActualizacion() {
+    cerrarHoja();
+    avisar('Buscando la última versión…', 'bueno');
+    try {
+        if ('serviceWorker' in navigator) {
+            const registro = await navigator.serviceWorker.getRegistration();
+            if (registro) await registro.update();
+        }
+    } catch (e) { /* se recarga igual */ }
+    window.location.reload();
+}
+
+function abrirMenu() {
+    cerrarHoja();
+    const capa = document.createElement('div');
+    const opciones = [
+        ['panel', '▦', 'Inicio'], ['plan', 'plan-de-trabajo', 'Plan de Trabajo'], ['convenios', 'convenios', 'Convenios'],
+        ['sexshop', 'sexshop', 'SexShop'], ['capacitaciones', 'capacitaciones', 'Capacitaciones'],
+        ['seguimiento', 'seguimiento', 'Seguimiento'], ['rank', 'rank', 'Rank'], ['chat', 'chat', 'Chat'],
+        ['datos', '📝', 'Mis datos'],
+    ];
+    capa.innerHTML = '<div class="bm-velo"></div><div class="bm-cajon"><img src="img/logo.png" alt="The Paradise">' +
+        opciones.map(([pagina, ic, texto]) =>
+            '<button data-pagina="' + pagina + '"' + (pagina === PAGINA ? ' class="activo"' : '') + '>' +
+            (/^[a-z-]+$/.test(ic) ? icono(ic) : '<span class="e">' + ic + '</span>') + texto + '</button>').join('') +
+        '<hr><button data-op="actualizar">' + icono('actualizar') + 'Buscar actualización</button>' +
+        '<button data-op="salir"><span class="e">⏻</span>Cerrar sesión</button></div>';
+    document.body.appendChild(capa);
+    const hoja = { tipo: 'menu', capa: capa, cuerpo: capa.querySelector('.bm-cajon'), pintar: null };
+    hoja.cerrar = () => { capa.remove(); if (estado.hoja === hoja) estado.hoja = null; };
+    capa.querySelector('.bm-velo').onclick = hoja.cerrar;
+    capa.querySelectorAll('[data-pagina]').forEach((b) => {
+        b.onclick = () => { hoja.cerrar(); ir(b.dataset.pagina + '.html'); };
+    });
+    capa.querySelector('[data-op="actualizar"]').onclick = buscarActualizacion;
+    capa.querySelector('[data-op="salir"]').onclick = salir;
+    estado.hoja = hoja;
+}
+
 function montarCabecera() {
     const arriba = document.createElement('div');
     arriba.className = 'bm-arriba';
-    const enInicio = /(^|\/)(panel(\.html)?)?$/.test(window.location.pathname);
-    const inicio = document.createElement('button');
-    inicio.className = 'bm-inicio' + (enInicio ? ' activo' : '');
-    inicio.title = 'Inicio';
-    inicio.innerHTML = '<span>▦</span>INICIO';
-    inicio.onclick = () => {
-        if (enInicio) window.scrollTo({ top: 0, behavior: 'smooth' });
-        else window.location.href = 'panel.html';
-    };
+
+    const menu = document.createElement('button');
+    menu.className = 'bm-ic bm-menu';
+    menu.title = 'Menú';
+    menu.setAttribute('aria-label', 'Menú');
+    menu.innerHTML = icono('menu');
+    menu.onclick = abrirMenu;
+
+    const avatar = document.createElement('button');
+    avatar.className = 'bm-avatar';
+    avatar.title = 'Mis datos';
+    avatar.onclick = () => ir('datos.html');
+    pintarFoto(avatar);
+    cargarFoto(avatar);
+
+    const quien = document.createElement('button');
+    quien.className = 'bm-quien';
+    quien.title = 'Inicio';
+    quien.innerHTML = '<img src="img/logo.png" alt="The Paradise"><b></b><span></span>';
+    quien.querySelector('b').textContent = localStorage.getItem('modelo_actual') || '';
+    quien.querySelector('span').textContent = localStorage.getItem('jornada_actual') || '';
+    quien.onclick = () => ir('panel.html');
+
     const derecha = document.createElement('div');
     derecha.className = 'bm-derecha';
-    arriba.appendChild(inicio);
+    arriba.appendChild(menu);
+    arriba.appendChild(avatar);
+    arriba.appendChild(quien);
     arriba.appendChild(derecha);
 
-    // La campana de la página (panel, turnos) se muda aquí con lo suyo.
+    // La campana de la página (turnos) se muda aquí con lo suyo.
     const campanaPropia = document.getElementById('btn-avisos') || document.getElementById('btn-campana');
     if (campanaPropia) {
+        Array.from(campanaPropia.childNodes).forEach((n) => { if (n.nodeType === 3) n.remove(); });
+        campanaPropia.classList.add('bm-ic');
+        campanaPropia.insertAdjacentHTML('afterbegin', icono('campana'));
+        campanaPropia.setAttribute('aria-label', 'Avisos y tickets');
         derecha.appendChild(campanaPropia);
     } else {
-        const campana = boton_redondo('🔔', 'Avisos y tickets');
+        const campana = boton_redondo('campana', 'Avisos y tickets');
         estado.globo = document.createElement('span');
         estado.globo.className = 'bm-globo bm-oculto';
         campana.appendChild(estado.globo);
         campana.onclick = abrirCampana;
         derecha.appendChild(campana);
     }
-    const tuerca = boton_redondo('⚙️', 'Ajustes');
+    const tuerca = boton_redondo('ajustes', 'Ajustes');
     tuerca.id = 'btn-tuerca';
     tuerca.onclick = abrirTuerca;
     derecha.appendChild(tuerca);
-    const fuera = boton_redondo('🚪', 'Cerrar sesión');
-    fuera.id = 'btn-salir';
-    fuera.onclick = salir;
-    derecha.appendChild(fuera);
 
     document.body.insertBefore(arriba, document.body.firstChild);
     document.body.classList.add('bm-con-arriba');
+
+    // En las páginas de adentro, «‹ Inicio» al lado del título de la página.
+    if (!EN_INICIO && !BM_EN_DATOS) {
+        const titulo = document.querySelector('body > .barra, body > header');
+        if (titulo) {
+            const volver = document.createElement('button');
+            volver.className = 'bm-volver';
+            volver.textContent = '‹ Inicio';
+            volver.onclick = () => ir('panel.html');
+            titulo.insertBefore(volver, titulo.firstChild);
+        }
+    }
+}
+
+// =======================================================================
+// LA BARRA DE ABAJO (rediseño 2026-11-15)
+// =======================================================================
+// Fotografía · Room · Contenido · CEO · Pagos, con los iconos del diseño.
+// La barra vieja de cada página (.navegacion) se queda escondida.
+function montarNav() {
+    const nav = document.createElement('nav');
+    nav.className = 'bm-nav';
+    const botones = [
+        ['fotografia', 'fotografia', 'Fotografía', () => ir('fotografia.html')],
+        ['turnos', 'room', 'Room', () => ir('turnos.html')],
+        ['', 'contenido', 'Contenido', () => abrirSubir()],
+        ['', 'ticket-ceo', 'CEO', () => abrirNuevo()],
+        ['pagos', 'pagos', 'Pagos', () => ir('pagos.html')],
+    ];
+    botones.forEach(([pagina, ic, texto, accion]) => {
+        const b = document.createElement('button');
+        b.innerHTML = icono(ic) + texto;
+        if (pagina && pagina === PAGINA) b.className = 'activo';
+        b.onclick = accion;
+        nav.appendChild(b);
+    });
+    document.body.appendChild(nav);
 }
 
 // =======================================================================
 // MONTAJE
 // =======================================================================
-function boton_redondo(simbolo, titulo) {
+function boton_redondo(nombre, titulo) {
     const b = document.createElement('button');
-    b.className = 'bm-redondo';
+    b.className = 'bm-ic';
     b.title = titulo;
-    b.textContent = simbolo;
+    b.setAttribute('aria-label', titulo);
+    b.innerHTML = icono(nombre);
     return b;
 }
 
@@ -1815,33 +2019,12 @@ async function avisoKwiky() {
     hoja.cuerpo.querySelector('.s-ok').onclick = hoja.cerrar;
 }
 
-// 💳 MIS PAGOS (2026-10-26): el sexto botón de la barra de abajo, a la
-// derecha de TICKET CEO. Se pone aquí para no tocar las cinco páginas;
-// pagos.html ya lo trae marcado como activo.
-function montarNavPagos(navTicket) {
-    if (!navTicket) return;
-    let boton = document.getElementById('nav-pagos');
-    if (!boton) {
-        boton = document.createElement('button');
-        boton.id = 'nav-pagos';
-        boton.innerHTML = '<span class="simbolo">💳</span>MIS PAGOS';
-        navTicket.insertAdjacentElement('afterend', boton);
-    }
-    if (!boton.classList.contains('activo')) boton.onclick = () => { window.location.href = 'pagos.html'; };
-    navTicket.parentElement.classList.add('bm-nav6');
-}
-
 function montar() {
     estilos();
     montarCabecera();
-    montarBurbuja();
+    montarNav();
+    if (!EN_INICIO) montarBurbuja();
     setTimeout(avisoKwiky, 1500);
-
-    const nav = document.getElementById('nav-ticket');
-    if (nav) nav.onclick = abrirNuevo;
-    const navSubir = document.getElementById('nav-subir');
-    if (navSubir) navSubir.onclick = abrirSubir;
-    montarNavPagos(nav);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarHoja(); });
 
     revisar(true).then(() => {
@@ -1862,7 +2045,7 @@ if (token()) montar();
 
 return {
     abrirCampana: abrirCampana, abrirNuevo: abrirNuevo, abrirTuerca: abrirTuerca,
-    abrirSubir: abrirSubir,
+    abrirSubir: abrirSubir, abrirMenu: abrirMenu, pedir: pedir,
     cambiarClave: cambiarClave, salir: salir, revisar: revisar,
     /* La página pone algo arriba de la lista de tickets (panel: la lista de espera). */
     ponerExtra: (funcion) => { estado.extra = funcion; },
