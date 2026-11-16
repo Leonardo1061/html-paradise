@@ -83,8 +83,8 @@ BackOffice del escritorio.
 | `personal_fotografia.html` | **Fotografía**: la misma pantalla de las modelos; agenda a cualquier modelo (asunto o estilo del portafolio), marca Asistió / No Asistió y cancela (`js/fotografia_personal.js`) |
 | `personal_status.html` | **Status Room**: la misma pantalla de las modelos; pone a cualquier modelo en un cuarto disponible o en un cupo vacío de la semana, o lo libera |
 | `personal_tickets.html` | **MIS TICKETS** (solo el CEO): el historial de los TICKET CEO, 15 a la vez con «Cargar más», y se responden ahí mismo |
-| `js/personal.js` | Lo común: sesión, barras y la 🔔 **campana de tareas** |
-| `css/personal.css` | El aspecto (acento cian para no confundirla con la de las modelos) |
+| `js/personal.js` | Lo común: sesión, cabecera fija (☰ menú, campana, ⚙ ajustes), barra de iconos de abajo y la 🔔 **campana de tareas** |
+| `css/personal.css` | El aspecto: el mismo negro y dorado de la web de modelos (rediseño 2026-11-16); cada página enlaza también `css/tema_dorado.css` |
 
 Las reglas de roles son las del escritorio y las aplica la API
 (`/api/personal/…`, `reglas_personal.py`): solo CEO y Gerencia asignan tareas;

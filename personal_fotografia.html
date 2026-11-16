@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#050506">
 <title>Fotografía personal · PARADISE</title>
 
 <!--
@@ -31,12 +31,12 @@
 <meta name="apple-mobile-web-app-title" content="PARADISE Staff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/personal.css">
 
 <style>
 .contenido { max-width: 760px; }
-/* El estilo de la página de las modelos (fotografia.html), con el acento del personal. */
+/* El estilo de la página de las modelos (fotografia.html), en el mismo negro y dorado. */
 /* --------------------------------------------------------------- pestañas */
 .pestanas-foto {
     display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--borde);
@@ -46,7 +46,7 @@
     flex: 1; background: none; border: 0; color: var(--tenue); font-size: 14px;
     font-weight: 600; padding: 10px 0; border-radius: 11px;
 }
-.pestanas-foto button.activo { background: var(--degradado); color: #fff; }
+.pestanas-foto button.activo { background: var(--degradado); color: var(--sobre-oro); }
 
 .titulo-seccion {
     font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--tenue);
@@ -68,7 +68,7 @@
     background: var(--panel-alto); color: var(--tenue); border: 1px solid var(--borde);
     white-space: nowrap;
 }
-.chapa.programada { color: #c4b5fd; border-color: rgba(139, 92, 246, .45); }
+.chapa.programada { color: #f3d98b; border-color: rgba(201, 152, 46, .45); display: inline-block; width: auto; margin-top: 0; padding: 3px 9px; border-radius: 999px; background: var(--panel-alto); text-align: center; }
 .chapa.asistio { color: #6ee7b7; border-color: rgba(52, 211, 153, .45); }
 .chapa.no-asistio { color: #fca5a5; border-color: rgba(239, 68, 68, .45); }
 
@@ -76,7 +76,7 @@
 /* -------------------------------------------------------- pista portafolio */
 .pendiente {
     display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-    background: rgba(217, 70, 239, .1); border: 1px solid rgba(217, 70, 239, .4);
+    background: rgba(217, 180, 74, .1); border: 1px solid rgba(217, 180, 74, .4);
     border-radius: 14px; padding: 11px 14px; font-size: 13px; line-height: 1.4;
 }
 .pendiente b { color: #fff; }
@@ -103,12 +103,13 @@
 .dia .numero { font-size: 17px; font-weight: 700; }
 .dia .libres { font-size: 10px; color: var(--apagado); }
 .dia.activo { background: var(--degradado); border-color: transparent; }
-.dia.activo .nombre, .dia.activo .libres { color: rgba(255, 255, 255, .85); }
+.dia.activo { color: var(--sobre-oro); }
+.dia.activo .nombre, .dia.activo .libres { color: #4a3a0c; }
 .dia .punto {
     position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%;
     background: var(--magenta); box-shadow: 0 0 0 2px var(--fondo);
 }
-.dia.activo .punto { background: #fff; box-shadow: none; }
+.dia.activo .punto { background: var(--sobre-oro); box-shadow: none; }
 
 /* ---------------------------------------------------------------- bloques */
 .bloques { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
@@ -121,12 +122,12 @@
 .bloque .sede { font-size: 11px; color: var(--apagado); }
 .bloque .lado { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .bloque .estado { font-size: 12px; font-weight: 600; }
-.bloque.libre .estado { color: var(--verde); }
+.bloque.libre .estado { color: var(--oro-claro); }
 .bloque.libre:active { transform: scale(.99); }
 .bloque.ocupado { cursor: default; opacity: .6; }
 .bloque.ocupado .estado { color: var(--tenue); }
-.bloque.mia { background: linear-gradient(90deg, rgba(217, 70, 239, .22), rgba(139, 92, 246, .16));
-              border-color: rgba(217, 70, 239, .55); }
+.bloque.mia { background: linear-gradient(90deg, rgba(217, 180, 74, .22), rgba(201, 152, 46, .16));
+              border-color: rgba(217, 180, 74, .55); }
 .bloque.mia .estado { color: #fff; }
 .bloque.pasado { cursor: default; opacity: .35; }
 .bloque.pasado.mia { opacity: .7; cursor: pointer; }
@@ -136,7 +137,7 @@
     font-size: 11px; color: var(--soft); display: flex; align-items: center; gap: 8px;
     margin: 6px 0 2px; letter-spacing: .3px;
 }
-.corte-sede .linea { flex: 1; height: 1px; background: rgba(34, 211, 238, .3); }
+.corte-sede .linea { flex: 1; height: 1px; background: rgba(217, 180, 74, .3); }
 
 .al-dia { font-size: 11px; color: var(--apagado); text-align: center; margin-top: 14px; }
 
@@ -153,7 +154,7 @@
 }
 .estilo .icono {
     width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
-    background: rgba(139, 92, 246, .16); font-size: 21px; flex: none;
+    background: rgba(201, 152, 46, .16); font-size: 21px; flex: none;
 }
 .estilo .icono.foto { width: 56px; height: 56px; background: var(--borde); overflow: hidden; }
 .estilo .icono.foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -204,8 +205,8 @@
 .boton-peligro:disabled { opacity: .55; }
 
 
-.bloque.reservado { background: linear-gradient(90deg, rgba(6, 182, 212, .2), rgba(139, 92, 246, .16));
-                    border-color: rgba(6, 182, 212, .55); }
+.bloque.reservado { background: linear-gradient(90deg, rgba(217, 180, 74, .2), rgba(201, 152, 46, .16));
+                    border-color: rgba(217, 180, 74, .55); }
 .bloque.reservado .estado { color: #fff; }
 .bloque.pasado.reservado { opacity: .7; cursor: pointer; }
 .botones-estado { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
@@ -213,9 +214,11 @@
     flex: 1; background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
     border-radius: 11px; padding: 10px 6px; font-size: 13px; font-weight: 600;
 }
-.botones-estado button.elegido { background: var(--degradado); border-color: transparent; color: #fff; }
-.modelo-elegida { font-size: 13px; color: #a5f3fc; margin-top: 6px; min-height: 18px; }
+.botones-estado button.elegido { background: var(--degradado); border-color: transparent; color: var(--sobre-oro); }
+.modelo-elegida { font-size: 13px; color: #f3d98b; margin-top: 6px; min-height: 18px; }
 </style>
+<!-- El fondo con el arco dorado y lo dorado del chat: el mismo tema de la web de modelos. -->
+<link rel="stylesheet" href="css/tema_dorado.css">
 </head>
 
 <body>

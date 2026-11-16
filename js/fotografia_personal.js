@@ -269,7 +269,7 @@ function abrirSesion(dia, bloque) {
             ' · bloque ' + escapar(bloque.parte) + ' (el estado y cancelar valen para todo el show)</span></div>' : '') +
         '<div class="fila-dato"><span class="r">Sede</span><span>' + escapar(bloque.sede) + '</span></div>' +
         '<div class="fila-dato"><span class="r">Asunto</span><span>' + escapar(bloque.asunto) + '</span></div>' +
-        (bloque.celular ? '<div class="fila-dato"><span class="r">Celular</span><a style="color:#a5f3fc" href="tel:' +
+        (bloque.celular ? '<div class="fila-dato"><span class="r">Celular</span><a style="color:#f3d98b" href="tel:' +
             escapar(bloque.celular) + '">' + escapar(bloque.celular) + '</a></div>' : '') +
         (bloque.creado_por ? '<div class="fila-dato"><span class="r">Agendó</span><span>' + escapar(bloque.creado_por) + '</span></div>' : '') +
         '<div class="fila-dato" style="border-bottom:0"><span class="r">Fotos</span><span id="f-refs">' +

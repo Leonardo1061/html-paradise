@@ -1,52 +1,51 @@
 /* ===========================================================================
  * PARADISE · Web del personal administrativo (personal*.html)
  * ===========================================================================
- * Mismo aspecto que la web de las modelos, con el acento en cian para que
- * nadie confunda en qué web está. El chat reutiliza css/chat.css.
+ * Mismo tema negro y dorado de la web de las modelos (rediseño 2026-11-16):
+ * cabecera fija arriba, barra de iconos abajo y el arco dorado de fondo. Cada
+ * página enlaza además css/tema_dorado.css (el fondo y lo dorado del chat).
+ * La cabecera, el menú ☰ y la barra de abajo los pinta js/personal.js con las
+ * mismas clases `bm-` de js/barra_modelo.js; sus estilos están al final.
+ * Los nombres --cian, --violeta y --magenta se quedan (los usan las páginas),
+ * pero ahora valen oro. El chat reutiliza css/chat.css.
  */
 
 :root {
     --fondo:      #0a0a0b;
-    --panel:      #141318;
-    --panel-alto: #1b1a22;
-    --borde:      #2a2932;
-    --texto:      #f4f4f5;
-    --tenue:      #9b9ba3;
-    --apagado:    #6b6b73;
+    --panel:      #141416;
+    --panel-alto: #1a1a1d;
+    --borde:      #34322b;
+    --texto:      #f4f1e8;
+    --tenue:      #a9a595;
+    --apagado:    #6f6c62;
 
-    --cian:       #06b6d4;
-    --soft:       #22d3ee;      /* el nombre del autor en css/chat.css */
-    --violeta:    #8b5cf6;
-    --magenta:    #d946ef;
+    --oro:        #d9b44a;
+    --oro-claro:  #f3d98b;
+    --oro-hondo:  #8f6f22;
+    --sobre-oro:  #1a1404;      /* la letra encima del degradado dorado */
+    --cian:       #d9b44a;      /* el acento: era cian, ahora es oro */
+    --soft:       #f3d98b;      /* el nombre del autor en css/chat.css */
+    --violeta:    #c9982e;
+    --magenta:    #e0a53a;
     --verde:      #34d399;
     --rojo:       #ef4444;
     --ambar:      #fbbf24;
 
-    --degradado: linear-gradient(90deg, #06b6d4 0%, #8b5cf6 100%);
-    --radio: 18px;
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
+    --radio: 16px;
 }
 
 * { box-sizing: border-box; }
 body {
     margin: 0; background: var(--fondo); color: var(--texto);
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased; padding-bottom: 110px;
 }
 button, input, select, textarea { font-family: inherit; }
 button { cursor: pointer; }
 .oculto { display: none !important; }
 
-/* ------------------------------------------------------------------ barra */
-.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 980px; margin: 0 auto; }
-.marca {
-    width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; flex: none;
-    background: var(--degradado); font-size: 19px; font-weight: 700; color: #fff;
-    box-shadow: 0 8px 20px rgba(6, 182, 212, .3);
-}
-.barra .quien { min-width: 0; }
-.barra .quien .nombre { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.barra .quien .roles { font-size: 11px; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.barra .derecha { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+/* ------------------------------------------------------- botones redondos */
 .redondo {
     width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
     background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
@@ -61,19 +60,19 @@ button { cursor: pointer; }
 
 .contenido { padding: 6px 18px 0; max-width: 980px; margin: 0 auto; }
 .titulo-pagina { margin: 4px 0 14px; }
-.titulo-pagina h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.3px; }
+.titulo-pagina h1 { margin: 0; font-size: 19px; font-weight: 700; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .titulo-pagina p { margin: 3px 0 0; font-size: 13px; color: var(--tenue); }
 
 /* ------------------------------------------------------------- tarjetas */
-.tarjeta { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 16px; }
+.tarjeta { background: rgba(20, 20, 22, .93); border: 1px solid var(--borde); border-radius: var(--radio); padding: 16px; }
 .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
 .dato .rotulo { font-size: 13px; color: var(--tenue); }
 .dato .cifra { font-size: 26px; font-weight: 700; margin-top: 6px; line-height: 1.1; }
 .dato .pie { font-size: 12px; margin-top: 8px; color: var(--tenue); }
 .dato.clic { cursor: pointer; }
-.dato.clic:hover { border-color: #3b3a45; }
+.dato.clic:hover, .dato.clic:active { border-color: var(--oro); }
 .seccion { margin-top: 18px; }
-.seccion h2 { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
+.seccion h2 { margin: 0 0 10px; font-size: 16px; font-weight: 500; color: var(--oro-claro); }
 .fila {
     display: flex; align-items: center; gap: 12px; padding: 11px 0;
     border-top: 1px solid var(--borde); font-size: 14px;
@@ -92,32 +91,7 @@ button { cursor: pointer; }
 .pildora.urgente { background: rgba(239, 68, 68, .14); border-color: rgba(239, 68, 68, .5); color: #fecaca; }
 .pildora.alta { background: rgba(251, 191, 36, .12); border-color: rgba(251, 191, 36, .45); color: #fde68a; }
 .pildora.bien { background: rgba(52, 211, 153, .12); border-color: rgba(52, 211, 153, .45); color: #a7f3d0; }
-.pildora.cian { background: rgba(6, 182, 212, .12); border-color: rgba(6, 182, 212, .45); color: #a5f3fc; }
-
-/* --------------------------------------------------------- barra inferior */
-.navegacion {
-    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
-    z-index: 30; background: var(--degradado); border-radius: 20px;
-    display: flex; padding: 10px 4px; box-shadow: 0 14px 34px rgba(6, 182, 212, .32);
-}
-@media (min-width: 760px) { .navegacion { left: 50%; transform: translateX(-50%); width: 460px; } }
-.navegacion button {
-    flex: 1; min-width: 0; background: none; border: 0; color: rgba(255, 255, 255, .8);
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 9px; font-weight: 600; letter-spacing: -.2px; padding: 4px 0; white-space: nowrap;
-    position: relative;
-}
-.navegacion button .simbolo { font-size: 19px; line-height: 1; }
-.navegacion button.activo { color: #fff; }
-.navegacion button.activo .simbolo { background: rgba(255, 255, 255, .2); border-radius: 10px; padding: 4px 10px; }
-.navegacion .globo { top: -4px; right: calc(50% - 26px); border-color: transparent; }
-/* Con muchos módulos (REUNIONES, MIS TICKETS) los nombres no caben a 9px. */
-.navegacion[data-botones="6"] { padding-left: 2px; padding-right: 2px; }
-.navegacion[data-botones="6"] button { font-size: 8px; letter-spacing: -.3px; }
-.navegacion[data-botones="7"] { padding-left: 2px; padding-right: 2px; }
-@media (max-width: 759px) { .navegacion[data-botones="7"] { left: 8px; right: 8px; } }
-.navegacion[data-botones="7"] button { font-size: 7px; letter-spacing: -.3px; }
-.navegacion[data-botones="7"] button.activo .simbolo { padding: 4px 7px; }
+.pildora.cian { background: rgba(217, 180, 74, .12); border-color: rgba(217, 180, 74, .45); color: var(--oro-claro); }
 
 /* ------------------------------------------------------------- formularios */
 .campo { margin-bottom: 14px; }
@@ -129,7 +103,7 @@ button { cursor: pointer; }
 .campo textarea { resize: vertical; min-height: 84px; }
 .campo input:focus, .campo select:focus, .campo textarea:focus { border-color: var(--cian); }
 .boton-principal {
-    width: 100%; background: var(--degradado); border: 0; color: #fff; font-weight: 600;
+    width: 100%; background: var(--degradado); border: 0; color: var(--sobre-oro); font-weight: 600;
     border-radius: 12px; padding: 14px; font-size: 15px;
 }
 .boton-principal:disabled { opacity: .6; cursor: default; }
@@ -157,10 +131,10 @@ button { cursor: pointer; }
     flex: none; background: var(--panel-alto); border: 1px solid var(--borde); color: var(--tenue);
     border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600;
 }
-.pestana.activa { background: var(--degradado); color: #fff; border-color: transparent; }
+.pestana.activa { background: var(--degradado); color: var(--sobre-oro); border-color: transparent; }
 
 .tarea { border: 1px solid var(--borde); border-radius: 14px; padding: 13px; margin-bottom: 10px; background: var(--panel-alto); }
-.tarea.nueva { border-color: rgba(6, 182, 212, .6); }
+.tarea.nueva { border-color: rgba(217, 180, 74, .6); }
 .tarea .cabeza { display: flex; gap: 8px; align-items: flex-start; }
 .tarea .cabeza .t { flex: 1; font-weight: 600; font-size: 14.5px; }
 .tarea .meta { font-size: 12px; color: var(--tenue); margin-top: 4px; }
@@ -207,8 +181,8 @@ button { cursor: pointer; }
 }
 .selector-modelos .opcion:first-child { border-top: 0; }
 .selector-modelos .opcion small { color: var(--tenue); font-size: 12px; }
-.selector-modelos .opcion.elegida { background: var(--degradado); color: #fff; }
-.selector-modelos .opcion.elegida small { color: rgba(255, 255, 255, .85); }
+.selector-modelos .opcion.elegida { background: var(--degradado); color: var(--sobre-oro); }
+.selector-modelos .opcion.elegida small { color: #4a3a0c; }
 .hoja-cabecera .sub { font-size: 12px; color: var(--tenue); margin-top: 3px; font-weight: 400; }
 
 /* ------------------------------------- conversación de una tarea (personal.js) */
@@ -222,7 +196,7 @@ button { cursor: pointer; }
     max-width: 85%; align-self: flex-start; background: var(--panel-alto); border: 1px solid var(--borde);
     border-radius: 14px 14px 14px 4px; padding: 9px 12px; font-size: 14px; line-height: 1.45;
 }
-.burbuja-tarea.mia { align-self: flex-end; border-radius: 14px 14px 4px 14px; border-color: rgba(6, 182, 212, .45); }
+.burbuja-tarea.mia { align-self: flex-end; border-radius: 14px 14px 4px 14px; border-color: rgba(217, 180, 74, .45); }
 .burbuja-tarea .autor { font-size: 11.5px; color: var(--tenue); margin-bottom: 3px; }
 .burbuja-tarea .texto { white-space: pre-wrap; word-break: break-word; }
 .burbuja-tarea .archivo:not(:empty) { margin-top: 6px; }
@@ -250,7 +224,7 @@ button { cursor: pointer; }
     flex: none; background: none; border: 1px solid var(--borde); color: var(--tenue);
     border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600;
 }
-.filtro-tarea.activo { border-color: var(--cian); color: var(--cian); background: rgba(6, 182, 212, .1); }
+.filtro-tarea.activo { border-color: var(--cian); color: var(--cian); background: rgba(217, 180, 74, .1); }
 .mostrar-mas { display: block; margin: 4px auto 12px; }
 .filtro-persona {
     flex: none; max-width: 190px; background: var(--panel-alto); border: 1px solid var(--borde);
@@ -265,7 +239,7 @@ button { cursor: pointer; }
 .tabla-resumen td { padding: 9px 4px; border-bottom: 1px solid var(--borde); }
 .tabla-resumen td:not(:first-child), .tabla-resumen th:not(:first-child) { text-align: center; }
 .tabla-resumen tr[data-persona] { cursor: pointer; }
-.tabla-resumen tr[data-persona]:hover td { background: rgba(6, 182, 212, .08); }
+.tabla-resumen tr[data-persona]:hover td { background: rgba(217, 180, 74, .08); }
 .tabla-resumen tr.grupales td { color: var(--tenue); }
 .tarea .de-otro { color: var(--cian); }
 
@@ -279,7 +253,7 @@ button { cursor: pointer; }
 .pie-conversacion textarea { min-height: 64px; max-height: 40vh; resize: vertical; overflow-y: auto; }
 
 /* EL DESCANSO DE LA SEMANA (campana y personal_cronograma.html) */
-.tarjeta-descanso.por-elegir { border-color: var(--cian); box-shadow: 0 0 0 1px rgba(6, 182, 212, .35); }
+.tarjeta-descanso.por-elegir { border-color: var(--cian); box-shadow: 0 0 0 1px rgba(217, 180, 74, .35); }
 .dias-descanso { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 4px 0 10px; }
 .dia-descanso {
     display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 2px;
@@ -287,8 +261,8 @@ button { cursor: pointer; }
     font-size: 13px; font-weight: 600; cursor: pointer;
 }
 .dia-descanso small { font-size: 10.5px; font-weight: 400; color: var(--tenue); }
-.dia-descanso.elegido { background: var(--degradado); border-color: transparent; color: #fff; }
-.dia-descanso.elegido small { color: #e0f2fe; }
+.dia-descanso.elegido { background: var(--degradado); border-color: transparent; color: var(--sobre-oro); }
+.dia-descanso.elegido small { color: #4a3a0c; }
 .dia-descanso:disabled { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
 .pie-descanso { font-size: 12.5px; color: var(--tenue); line-height: 1.45; }
 
@@ -331,7 +305,7 @@ button { cursor: pointer; }
 .programada.salio { opacity: .75; }
 .dias-programar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
 .dia-programar { height: 44px; border: 1px solid var(--borde); border-radius: 12px; background: var(--panel-alto); color: var(--texto); font-weight: 700; }
-.dia-programar.elegido { background: var(--cian); border-color: var(--cian); color: #04242c; }
+.dia-programar.elegido { background: var(--cian); border-color: var(--cian); color: var(--sobre-oro); }
 .dia-programar:disabled { opacity: .35; }
 .aviso-descanso { margin-bottom: 14px; padding: 9px 11px; border-radius: 12px; background: rgba(251, 191, 36, .14); color: var(--ambar); font-size: 12.5px; line-height: 1.4; }
 .fila-campos { display: flex; gap: 8px; }
@@ -354,9 +328,9 @@ button { cursor: pointer; }
 
 /* ------------------------------------------------- burbuja del chat flotante */
 .burbuja-chat {
-    position: fixed; z-index: 29; width: 56px; height: 56px; border-radius: 50%; border: 0; padding: 0;
-    background: var(--degradado); color: #fff; font-size: 24px; display: grid; place-items: center;
-    box-shadow: 0 10px 26px rgba(6, 182, 212, .45); cursor: grab; touch-action: none; user-select: none;
+    position: fixed; z-index: 34; width: 56px; height: 56px; border-radius: 50%; border: 0; padding: 0;
+    background: var(--degradado); color: var(--sobre-oro); font-size: 24px; display: grid; place-items: center;
+    box-shadow: 0 12px 28px rgba(217, 180, 74, .5); cursor: grab; touch-action: none; user-select: none;
     -webkit-user-select: none; transition: left .18s ease, top .18s ease;
 }
 .burbuja-chat.arrastrando { cursor: grabbing; transition: none; transform: scale(1.06); }
@@ -393,3 +367,121 @@ button { cursor: pointer; }
     background: var(--panel-alto); color: var(--tenue); font-size: 11px; font-family: inherit; cursor: zoom-in;
 }
 .pantalla-captura img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ===========================================================================
+ * CABECERA FIJA, MENÚ ☰ Y BARRA DE ABAJO (rediseño 2026-11-16)
+ * ===========================================================================
+ * Las mismas piezas y medidas de la web de modelos (js/barra_modelo.js). Aquí
+ * las pinta js/personal.js (pintarBarras).
+ */
+:root { --bm-arriba: calc(66px + env(safe-area-inset-top)); }
+body.bm-con-arriba { padding-top: var(--bm-arriba); }
+.bm-arriba {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 35; height: var(--bm-arriba);
+    padding: env(safe-area-inset-top) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(7, 7, 8, .95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--oro-hondo);
+}
+.bm-arriba .bm-derecha { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: none; }
+.bm-ic {
+    background: none; border: 0; padding: 4px; border-radius: 10px; display: grid; place-items: center;
+    position: relative; flex: none; color: var(--texto);
+}
+.bm-ic > img { display: block; width: 32px; height: 32px; object-fit: contain; }
+.bm-ic.bm-menu > img { width: 30px; height: 30px; }
+.bm-ic .globo { top: -1px; right: -3px; border: 0; background: #e3262b; min-width: 18px; height: 18px; }
+.bm-ic.tiene-avisos > img { animation: bm-latido 1.6s infinite; }
+@keyframes bm-latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.bm-avatar {
+    width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--oro); padding: 0; flex: none;
+    background: var(--panel-alto); color: var(--oro-claro); font-size: 17px; font-weight: 500; line-height: 1;
+    display: grid; place-items: center; overflow: hidden;
+}
+.bm-quien {
+    flex: 1; min-width: 0; background: none; border: 0; padding: 0; text-align: left;
+    color: var(--texto); line-height: 1.1;
+}
+.bm-quien img { height: 21px; display: block; margin-bottom: 1px; }
+.bm-quien b { display: block; font-weight: 400; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-quien span { display: block; color: var(--oro); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-volver {
+    background: none; border: 0; color: var(--oro); font-size: 13px; font-weight: 400;
+    padding: 4px 8px 4px 0; white-space: nowrap; flex: none;
+}
+
+.bm-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 33;
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+    background: #070708; border-top: 1px solid var(--oro-hondo); border-radius: 20px 20px 0 0;
+    padding: 8px max(4px, env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+}
+@media (min-width: 760px) {
+    .bm-nav { left: 50%; right: auto; transform: translateX(-50%); width: 560px;
+              border-left: 1px solid var(--oro-hondo); border-right: 1px solid var(--oro-hondo); }
+}
+.bm-nav button {
+    background: none; border: 0; color: #cfccc0; font-size: 12px; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 3px 0; border-radius: 10px;
+    white-space: nowrap; position: relative;
+}
+.bm-nav button img, .bm-nav button svg { height: 32px; width: 44px; object-fit: contain; color: #fff; }
+.bm-nav button.activo { color: var(--oro-claro); }
+.bm-nav button.activo img { filter: sepia(1) saturate(4) hue-rotate(-12deg) brightness(.95); }
+.bm-nav button.activo svg { color: var(--oro); }
+.bm-nav[data-botones="6"] button { font-size: 10.5px; letter-spacing: -.2px; }
+.bm-nav[data-botones="6"] button img, .bm-nav[data-botones="6"] button svg { width: 38px; }
+.bm-nav[data-botones="7"] button { font-size: 9.5px; letter-spacing: -.3px; }
+.bm-nav[data-botones="7"] button img, .bm-nav[data-botones="7"] button svg { width: 34px; height: 30px; }
+
+.bm-velo { position: fixed; inset: 0; background: rgba(0, 0, 0, .66); backdrop-filter: blur(3px); z-index: 2000; }
+.bm-cajon {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 2001; width: min(78vw, 320px);
+    background: #09090a; border-right: 1px solid var(--oro-hondo); color: var(--texto);
+    padding: calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    display: flex; flex-direction: column; gap: 2px; overflow-y: auto;
+}
+.bm-cajon > img { height: 32px; align-self: flex-start; margin-bottom: 12px; }
+.bm-cajon button {
+    background: none; border: 0; color: var(--texto); text-align: left; padding: 10px 6px; border-radius: 9px;
+    font-size: 15px; display: flex; gap: 12px; align-items: center; position: relative;
+}
+.bm-cajon button:hover, .bm-cajon button.activo { background: var(--panel-alto); }
+.bm-cajon button.activo { color: var(--oro-claro); }
+.bm-cajon button img, .bm-cajon button svg, .bm-cajon button span.e {
+    width: 26px; height: 26px; object-fit: contain; text-align: center; flex: none; font-size: 19px; line-height: 26px;
+}
+.bm-cajon button .globo { position: static; margin-left: auto; border: 0; }
+.bm-cajon hr { border: 0; border-top: 1px solid var(--borde); margin: 8px 0; width: 100%; }
+
+/* «‹ Inicio  Título» en las páginas que no traen su propio título. */
+.bm-subtitulo { display: flex; align-items: center; gap: 4px; padding: 14px 18px 8px; max-width: 980px; margin: 0 auto; }
+.bm-subtitulo h1 { margin: 0; font-size: 17px; font-weight: 700; }
+h1.titulo-pagina { font-size: 19px; font-weight: 700; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+/* Las hojas que suben desde abajo, con el filo dorado de la web de modelos. */
+.hoja { background: #0e0e10; border-top-color: var(--oro-hondo); }
+.opcion-ajuste {
+    width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 14px; padding: 13px 14px; font-size: 14.5px; margin-bottom: 8px;
+}
+.opcion-ajuste .icono { font-size: 20px; width: 26px; text-align: center; flex: none; }
+.opcion-ajuste img.icono { height: 24px; object-fit: contain; }
+.opcion-ajuste small { display: block; color: var(--tenue); font-size: 12px; margin-top: 2px; }
+
+/* Un botón principal pintado de rojo (Notificar falta) conserva la letra blanca. */
+.boton-principal[style*="--rojo"] { color: #fff; }
+
+/* ------------------------------------------- inicio: los datos como mosaicos */
+.rejilla.mosaicos { grid-template-columns: 1fr 1fr; }
+@media (min-width: 620px) { .rejilla.mosaicos { grid-template-columns: repeat(4, 1fr); } }
+.rejilla.mosaicos .dato {
+    background: rgba(28, 28, 31, .9); border-color: #2b2a27; border-radius: 6px; text-align: center;
+    padding: 14px 8px 12px; transition: border-color .15s;
+}
+.rejilla.mosaicos .dato .rotulo { font-size: 14.5px; color: var(--texto); }
+.rejilla.mosaicos .dato .cifra { font-size: 34px; font-weight: 400; color: var(--oro-claro); margin-top: 4px; }
+.rejilla.mosaicos .dato .pie { font-size: 11.5px; color: #d8d4c6; margin-top: 4px; }
+.rejilla.mosaicos .dato.con-faltas { background: rgba(239, 68, 68, .12); border-color: var(--rojo); }
+.rejilla.mosaicos .dato.con-faltas .cifra { color: #fca5a5; }

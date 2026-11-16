@@ -8,9 +8,12 @@
  *     <script src="js/personal.js"></script>
  *     Personal.iniciar('chat').then((yo) => { ...la página... });
  *
- * y esto pone la barra de arriba (nombre, roles, 🔔 campana de tareas y
- * salir), la barra de abajo (solo con los módulos que su rol y su jornada le
- * permiten) y la hoja de tareas.
+ * y esto pone la cabecera fija del diseño negro y dorado (☰ menú, iniciales,
+ * logo con nombre y roles, 🔔 campana de tareas y ⚙ ajustes con «Cerrar
+ * sesión»), la barra de iconos de abajo (solo con los módulos que su rol y su
+ * jornada le permiten), «‹ Inicio» junto al título y la hoja de tareas. Es el
+ * mismo aspecto de la web de modelos (js/barra_modelo.js); los estilos `bm-`
+ * están al final de css/personal.css.
  *
  * LA SESIÓN
  * ---------
@@ -119,16 +122,30 @@ const FILTROS_TAREA = [
     { id: 'no_realizadas', texto: 'No realizadas', estados: ['no realizada'] },
 ];
 
+// `icono`: un PNG blanco de img/ (los mismos de la web de modelos) o, con «svg:», uno
+// de ICONOS_SVG. `titulo` es el que sale junto a «‹ Inicio» si la página no trae el suyo.
 const MODULOS = [
-    { id: 'inicio', texto: 'INICIO', simbolo: '▦', pagina: 'personal_panel.html' },
+    { id: 'inicio', texto: 'Inicio', icono: 'svg:inicio', pagina: 'personal_panel.html' },
     // Solo el CEO, donde estaba CHAT. El chat ya no va aquí: es la burbuja flotante.
-    { id: 'seguimiento', texto: 'SEGUIMIENTO', simbolo: '🔍', pagina: 'personal_seguimiento.html' },
-    { id: 'fotografia', texto: 'FOTOGRAFÍA', simbolo: '📷', pagina: 'personal_fotografia.html' },
-    { id: 'status', texto: 'STATUS ROOM', simbolo: '📋', pagina: 'personal_status.html' },
-    { id: 'cronograma', texto: 'CRONOGRAMA', simbolo: '🗓️', pagina: 'personal_cronograma.html' },
+    { id: 'seguimiento', texto: 'Seguimiento', icono: 'lupa', pagina: 'personal_seguimiento.html' },
+    { id: 'fotografia', texto: 'Fotografía', icono: 'fotografia', pagina: 'personal_fotografia.html' },
+    { id: 'status', texto: 'Room', titulo: 'Status Room', icono: 'room', pagina: 'personal_status.html' },
+    { id: 'cronograma', texto: 'Cronograma', icono: 'svg:cronograma', pagina: 'personal_cronograma.html' },
     // Solo el CEO: la API se lo añade a sus módulos (personal.es_ceo).
-    { id: 'tickets', texto: 'MIS TICKETS', simbolo: '🎫', pagina: 'personal_tickets.html' },
+    { id: 'tickets', texto: 'Tickets', titulo: 'Mis tickets', icono: 'ticket-ceo', pagina: 'personal_tickets.html' },
 ];
+const SVG_ABRE = '<svg viewBox="0 0 44 32" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+const ICONOS_SVG = {
+    inicio: SVG_ABRE + '<path d="M9 15 22 4l13 11"/><path d="M12.5 13v15h19V13"/><path d="M19 28v-8h6v8"/></svg>',
+    cronograma: SVG_ABRE + '<rect x="9" y="6" width="26" height="22" rx="3"/><path d="M9 13h26M16 3v6M28 3v6"/>' +
+        '<path d="M15 18h3M21 18h3M27 18h3M15 23h3M21 23h3"/></svg>',
+};
+
+function icono(nombre) {
+    if (nombre.indexOf('svg:') === 0) return ICONOS_SVG[nombre.slice(4)] || '';
+    return '<img src="img/' + nombre + '.png" alt="">';
+}
 
 function escapar(texto) {
     return String(texto == null ? '' : texto)
@@ -1925,48 +1942,153 @@ function guardarFicha(datos) {
     localStorage.setItem(CLAVE_FICHA, JSON.stringify(copia));
 }
 
+async function cerrarSesion() {
+    // La sesión ya no caduca: solo este botón la cierra. Antes se le
+    // dice a la API que este teléfono deja de recibir sus mensajes.
+    if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(true);
+    else { try { await pedir('/api/personal/salir', 'POST'); } catch (e) { /* da igual */ } }
+    PARADISE.olvidar(CLAVE_TOKEN);
+    localStorage.removeItem(CLAVE_FICHA);
+    aLogin();
+}
+
+async function buscarActualizacion() {
+    avisar('Buscando la última versión…', 'bueno');
+    try {
+        if ('serviceWorker' in navigator) {
+            const registro = await navigator.serviceWorker.getRegistration();
+            if (registro) await registro.update();
+        }
+    } catch (e) { /* se recarga igual */ }
+    window.location.reload();
+}
+
+function modulosVisibles(yo) {
+    const permitidos = ['inicio'].concat(yo.modulos || []);
+    return MODULOS.filter((m) => permitidos.indexOf(m.id) >= 0);
+}
+
+/* El menú ☰: los mismos módulos de la barra de abajo, el chat y lo de la cuenta. */
+function abrirMenu(actual) {
+    const yo = ficha();
+    const capa = document.createElement('div');
+    const conChat = (yo.modulos || []).indexOf('chat') >= 0;
+    capa.innerHTML = '<div class="bm-velo"></div><div class="bm-cajon"><img src="img/logo.png" alt="The Paradise">' +
+        modulosVisibles(yo).map((m) =>
+            '<button data-pagina="' + m.pagina + '"' + (m.id === actual ? ' class="activo"' : '') + '>' +
+            icono(m.icono) + escapar(m.titulo || m.texto) + '</button>').join('') +
+        (conChat ? '<button data-pagina="personal_chat.html"' + (actual === 'chat' ? ' class="activo"' : '') +
+            '><span class="e">💬</span>Chat</button>' : '') +
+        '<hr><button data-op="datos"><span class="e">📝</span>Mis datos</button>' +
+        '<button data-op="actualizar">' + icono('actualizar') + 'Buscar actualización</button>' +
+        '<button data-op="salir"><span class="e">⏻</span>Cerrar sesión</button></div>';
+    document.body.appendChild(capa);
+    const cerrar = () => capa.remove();
+    capa.querySelector('.bm-velo').onclick = cerrar;
+    capa.querySelectorAll('[data-pagina]').forEach((b) => {
+        b.onclick = () => { cerrar(); window.location.href = b.dataset.pagina; };
+    });
+    capa.querySelector('[data-op="datos"]').onclick = () => { cerrar(); abrirMisDatos(); };
+    capa.querySelector('[data-op="actualizar"]').onclick = () => { cerrar(); buscarActualizacion(); };
+    capa.querySelector('[data-op="salir"]').onclick = cerrarSesion;
+}
+
+/* La tuerca: lo de la cuenta, en una hoja desde abajo. */
+function abrirAjustes() {
+    const capa = document.createElement('div');
+    capa.className = 'capa-conversacion';
+    capa.innerHTML = '<div class="velo"></div><div class="hoja">' +
+        '<div class="hoja-cabecera"><h3>Ajustes</h3><button class="cerrar" title="Cerrar">✕</button></div>' +
+        '<div class="hoja-cuerpo">' +
+        '<button class="opcion-ajuste" data-op="datos"><span class="icono">📝</span>' +
+            '<span>Mis datos<small>Nombre, teléfono y correo de Gmail</small></span></button>' +
+        '<button class="opcion-ajuste" data-op="actualizar"><span class="icono">⬇️</span>' +
+            '<span>Buscar actualización<small>Recarga la última versión de la web</small></span></button>' +
+        '<button class="opcion-ajuste" data-op="salir"><span class="icono">⏻</span><span>Cerrar sesión</span></button>' +
+        '</div></div>';
+    document.getElementById('capas-personal').appendChild(capa);
+    const cerrar = () => capa.remove();
+    capa.querySelector('.velo').onclick = cerrar;
+    capa.querySelector('.cerrar').onclick = cerrar;
+    capa.querySelector('[data-op="datos"]').onclick = () => { cerrar(); abrirMisDatos(); };
+    capa.querySelector('[data-op="actualizar"]').onclick = () => { cerrar(); buscarActualizacion(); };
+    capa.querySelector('[data-op="salir"]').onclick = cerrarSesion;
+}
+
+function iniciales(nombre) {
+    const partes = String(nombre || '').trim().split(/\s+/).filter(Boolean);
+    return ((partes[0] || '?').charAt(0) + (partes.length > 1 ? partes[1].charAt(0) : '')).toUpperCase();
+}
+
+/* «‹ Inicio» junto al título, como en la web de modelos. Si la página no trae
+ * título propio, se le pone una fila con el nombre del módulo. */
+function pintarVolver(actual) {
+    if (actual === 'inicio' || document.getElementById('volver-inicio')) return;
+    const volver = document.createElement('button');
+    volver.id = 'volver-inicio';
+    volver.className = 'bm-volver';
+    volver.textContent = '‹ Inicio';
+    volver.onclick = () => { window.location.href = 'personal_panel.html'; };
+    const principal = document.querySelector('main');
+    const titulo = principal && principal.querySelector('.titulo-pagina h1, h1.titulo-pagina');
+    if (titulo) { titulo.insertBefore(volver, titulo.firstChild); return; }
+    const modulo = MODULOS.find((m) => m.id === actual);
+    const fila = document.createElement('div');
+    fila.className = 'bm-subtitulo';
+    fila.appendChild(volver);
+    const nombre = document.createElement('h1');
+    nombre.textContent = modulo ? (modulo.titulo || modulo.texto) : (actual === 'chat' ? 'Chat' : '');
+    fila.appendChild(nombre);
+    if (principal) principal.parentNode.insertBefore(fila, principal);
+}
+
 function pintarBarras(actual, yo) {
+    // ---- la cabecera fija: ☰, iniciales, logo con nombre y rol, campana y tuerca
     let barra = document.getElementById('barra-personal');
     if (!barra) {
         barra = document.createElement('div');
         barra.id = 'barra-personal';
+        barra.className = 'bm-arriba';
+        barra.innerHTML =
+            '<button class="bm-ic bm-menu" id="btn-menu" title="Menú" aria-label="Menú">' + icono('menu') + '</button>' +
+            '<button class="bm-avatar" id="btn-avatar" title="Mis datos"></button>' +
+            '<button class="bm-quien" id="btn-quien" title="Inicio"><img src="img/logo.png" alt="The Paradise"><b></b><span></span></button>' +
+            '<div class="bm-derecha derecha">' +
+            '  <button class="bm-ic" id="btn-campana" title="Tareas" aria-label="Tareas y avisos">' + icono('campana') +
+                '<span class="globo oculto" id="globo-tareas">0</span></button>' +
+            '  <button class="bm-ic" id="btn-tuerca" title="Ajustes" aria-label="Ajustes">' + icono('ajustes') + '</button>' +
+            '</div>';
         document.body.insertBefore(barra, document.body.firstChild);
+        document.body.classList.add('bm-con-arriba');
+        document.getElementById('btn-menu').onclick = () => abrirMenu(actual);
+        document.getElementById('btn-avatar').onclick = () => abrirMisDatos();
+        document.getElementById('btn-quien').onclick = () => {
+            if (actual === 'inicio') window.scrollTo({ top: 0, behavior: 'smooth' });
+            else window.location.href = 'personal_panel.html';
+        };
+        document.getElementById('btn-campana').onclick = () => abrirCampana();
+        document.getElementById('btn-tuerca').onclick = abrirAjustes;
     }
-    barra.className = 'barra';
-    barra.innerHTML =
-        '<div class="marca">P</div>' +
-        '<div class="quien"><div class="nombre">' + escapar(yo.monitor || '—') + '</div>' +
-        '<div class="roles">' + escapar(yo.texto_roles || '') +
-        (yo.jornada && yo.jornada !== 'Todas' ? ' · ' + escapar(yo.jornada) : '') + '</div></div>' +
-        '<div class="derecha">' +
-        '  <button class="redondo" id="btn-campana" title="Tareas">🔔<span class="globo oculto" id="globo-tareas">0</span></button>' +
-        '  <button class="redondo" id="btn-salir" title="Cerrar sesión">⏻</button>' +
-        '</div>';
-    document.getElementById('btn-campana').onclick = abrirCampana;
-    document.getElementById('btn-salir').onclick = async () => {
-        // La sesión ya no caduca: solo este botón la cierra. Antes se le
-        // dice a la API que este teléfono deja de recibir sus mensajes.
-        if (window.PARADISE_PUSH) await PARADISE_PUSH.salir(true);
-        else { try { await pedir('/api/personal/salir', 'POST'); } catch (e) { /* da igual */ } }
-        PARADISE.olvidar(CLAVE_TOKEN);
-        localStorage.removeItem(CLAVE_FICHA);
-        aLogin();
-    };
+    // Se pinta dos veces (con la ficha guardada y con la de la API): solo cambia el texto.
+    document.getElementById('btn-avatar').textContent = iniciales(yo.monitor);
+    barra.querySelector('.bm-quien b').textContent = yo.monitor || '—';
+    barra.querySelector('.bm-quien span').textContent = (yo.texto_roles || '') +
+        (yo.jornada && yo.jornada !== 'Todas' ? ' · ' + yo.jornada : '');
 
+    // ---- la barra de abajo: un icono por módulo
     let nav = document.getElementById('nav-personal');
     if (!nav) {
         nav = document.createElement('nav');
         nav.id = 'nav-personal';
         document.body.appendChild(nav);
     }
-    nav.className = 'navegacion';
-    const permitidos = ['inicio'].concat(yo.modulos || []);
-    const visibles = MODULOS.filter((m) => permitidos.indexOf(m.id) >= 0);
+    nav.className = 'bm-nav';
+    const visibles = modulosVisibles(yo);
     // Con 6 o 7 botones la letra se achica para que quepan en un teléfono.
     nav.dataset.botones = visibles.length;
     nav.innerHTML = visibles.map((m) =>
         '<button class="' + (m.id === actual ? 'activo' : '') + '" data-pagina="' + m.pagina + '" data-id="' + m.id + '">' +
-        '<span class="simbolo">' + m.simbolo + '</span>' + m.texto + '</button>').join('');
+        icono(m.icono) + escapar(m.texto) + '</button>').join('');
     nav.querySelectorAll('button').forEach((b) => {
         b.onclick = () => {
             if (b.dataset.id === actual) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1979,6 +2101,7 @@ function pintarBarras(actual, yo) {
         capas.id = 'capas-personal';
         document.body.appendChild(capas);
     }
+    pintarVolver(actual);
     pintarBurbujaChat(actual, yo);
 }
 
@@ -2018,8 +2141,8 @@ function pintarBurbujaChat(actual, yo) {
     try { sitio = Object.assign(sitio, JSON.parse(leerLocal(CLAVE_BURBUJA) || '{}')); } catch (e) { /* el de siempre */ }
 
     // Ni encima de la barra de arriba ni de la de abajo.
-    const topeArriba = () => 70;
-    const topeAbajo = () => Math.max(topeArriba(), window.innerHeight - LADO_BURBUJA - 96);
+    const topeArriba = () => 78;
+    const topeAbajo = () => Math.max(topeArriba(), window.innerHeight - LADO_BURBUJA - 92);
     const limitar = (y) => Math.min(topeAbajo(), Math.max(topeArriba(), y));
     const xDe = (lado) => (lado === 'izq' ? MARGEN_BURBUJA : window.innerWidth - LADO_BURBUJA - MARGEN_BURBUJA);
     function colocar() {

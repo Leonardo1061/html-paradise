@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#050506">
 <title>Status Room personal · PARADISE</title>
 
 <!--
@@ -34,14 +34,14 @@
 <meta name="apple-mobile-web-app-title" content="PARADISE Staff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/personal.css">
 
 <style>
-/* Los estilos de turnos.html (la página de las modelos), con el acento del personal. */
+/* Los estilos de turnos.html (la página de las modelos), en el mismo negro y dorado. */
 :root {
-    --texto-tenue: #9b9ba3;
-    --acento: #06b6d4;
+    --texto-tenue: #a9a595;
+    --acento: #d9b44a;
     /* --- Colores CON SIGNIFICADO de la grilla: los mismos de las modelos --- */
     --verde-g: #4CAF50;    /* libre */
     --morado: #9C27B0;     /* ocupado */
@@ -95,15 +95,17 @@
 .bg-satelite { background-color: var(--satelite); color: #00211D; }
 .bg-extra { background-color: var(--extra); color: #2B0716; }
 .bg-espera-otra { background-color: var(--espera); color: #9E9E9E; border: 1px dashed #D5D5D5; }
-.modelo-elegida { font-size: 13px; color: #a5f3fc; margin: 8px 0 12px; min-height: 18px; }
+.modelo-elegida { font-size: 13px; color: #f3d98b; margin: 8px 0 12px; min-height: 18px; }
 .boton-peligro {
     width: 100%; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .5);
     color: #fca5a5; font-weight: 600; border-radius: 12px; padding: 13px; font-size: 14px;
 }
 .boton-peligro:disabled { opacity: .55; }
-.selector-estudio { max-width: 106px; padding: 9px 4px; font-size: 0.7rem; }
+.selector-estudio { margin-left: auto; max-width: 170px; padding: 7px 10px; font-size: 0.72rem; }
 .solo-lectura .r-state, .solo-lectura .turno-bloque { cursor: default; }
 </style>
+<!-- El fondo con el arco dorado y lo dorado del chat: el mismo tema de la web de modelos. -->
+<link rel="stylesheet" href="css/tema_dorado.css">
 </head>
 
 <body>
@@ -350,8 +352,7 @@
             $('grillas').innerHTML = '';
             cargar();
         };
-        const derecha = document.querySelector('#barra-personal .derecha');
-        derecha.insertBefore(selector, derecha.firstChild);
+        document.querySelector('.bm-subtitulo').appendChild(selector);
     }
 
     P.iniciar('status').then((yo) => {

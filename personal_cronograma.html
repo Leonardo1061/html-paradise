@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#050506">
 <title>Cronograma · PARADISE</title>
 
 <!--
@@ -45,7 +45,7 @@
 <meta name="apple-mobile-web-app-title" content="PARADISE Staff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/personal.css">
 
 <style>
@@ -76,9 +76,9 @@
 .columna { position: relative; border-left: 1px solid var(--borde); cursor: pointer;
            background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--fila) * 2 - 1px),
                              var(--borde) calc(var(--fila) * 2 - 1px), var(--borde) calc(var(--fila) * 2)); }
-.columna.hoy { background-color: rgba(6, 182, 212, .05); }
-.turno-fondo { position: absolute; left: 0; right: 0; background: rgba(6, 182, 212, .10);
-               border-top: 1px dashed rgba(6, 182, 212, .5); border-bottom: 1px dashed rgba(6, 182, 212, .5);
+.columna.hoy { background-color: rgba(217, 180, 74, .05); }
+.turno-fondo { position: absolute; left: 0; right: 0; background: rgba(217, 180, 74, .10);
+               border-top: 1px dashed rgba(217, 180, 74, .5); border-bottom: 1px dashed rgba(217, 180, 74, .5);
                pointer-events: none; }
 .descanso-fondo { position: absolute; inset: 0; display: grid; place-items: center; color: var(--apagado);
                   font-size: 12px; pointer-events: none; }
@@ -93,7 +93,7 @@ table { border-collapse: collapse; width: 100%; font-size: 12px; }
 th, td { border-bottom: 1px solid var(--borde); padding: 7px 6px; text-align: center; vertical-align: middle; }
 th { color: var(--tenue); font-weight: 600; font-size: 11.5px; background: var(--panel-alto); }
 th small { display: block; font-weight: 400; color: var(--apagado); }
-th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
+th.hoy, td.hoy { background: rgba(217, 180, 74, .08); }
 .resumen td:first-child, .resumen th:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); z-index: 1; min-width: 120px; }
 .resumen .persona b { display: block; font-size: 12.5px; }
 .resumen .persona small { color: var(--tenue); }
@@ -130,6 +130,8 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
 .detalle-actividad p { margin: 6px 0; font-size: 13.5px; color: var(--tenue); line-height: 1.5; }
 .detalle-actividad b { color: var(--texto); }
 </style>
+<!-- El fondo con el arco dorado y lo dorado del chat: el mismo tema de la web de modelos. -->
+<link rel="stylesheet" href="css/tema_dorado.css">
 </head>
 
 <body>
@@ -237,7 +239,7 @@ th.hoy, td.hoy { background: rgba(6, 182, 212, .08); }
                 '<option' + (p === m.persona ? ' selected' : '') + '>' + esc(p) + '</option>').join('') + '</select>' : '') +
             '<button class="boton-principal" id="btn-programar">＋ Programar actividad</button></div>' +
             '<div class="leyenda">' + m.tipos.map((t) => '<span style="--c:' + t.color + '">' + esc(t.icono + ' ' + t.texto) + '</span>').join('') +
-            '<span style="--c:rgba(6,182,212,.35)">Tu turno</span></div>' +
+            '<span style="--c:rgba(217, 180, 74,.35)">Tu turno</span></div>' +
             htmlMalla(m) +
             '<p class="nota">Toca un hueco para programar ahí o una actividad para verla. ' +
             (m.es_jefe ? 'Como CEO o Gerencia puedes programar a cualquier hora. ' :
