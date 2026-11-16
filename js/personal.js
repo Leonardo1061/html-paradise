@@ -1881,6 +1881,10 @@ async function abrirMisDatos(alGuardar) {
     capa.innerHTML = '<div class="velo"></div><div class="hoja">' +
         '<div class="hoja-cabecera"><h3>📝 Actualiza tus datos</h3><button class="cerrar" title="Cerrar">✕</button></div>' +
         '<div class="hoja-cuerpo">' +
+        '<div class="foto-perfil"><div class="bm-avatar d-avatar"></div><div class="texto-foto">' +
+            '<b>Foto de perfil</b><small>Es la misma de la Admin de escritorio.</small>' +
+            '<button class="boton-secundario d-cambiar-foto">📷 Cambiar foto</button></div>' +
+            '<input type="file" class="oculto d-archivo" accept="image/*"></div>' +
         '<div class="campo"><label>Nombres</label><input class="d-nombres" maxlength="40" autocomplete="given-name"></div>' +
         '<div class="campo"><label>Apellidos</label><input class="d-apellidos" maxlength="40" autocomplete="family-name"></div>' +
         '<div class="campo"><label>Teléfono</label><input class="d-telefono" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="3001234567"></div>' +
@@ -1889,6 +1893,34 @@ async function abrirMisDatos(alGuardar) {
     document.getElementById('capas-personal').appendChild(capa);
     const campo = (nombre) => capa.querySelector('.d-' + nombre);
     ['nombres', 'apellidos', 'telefono', 'correo'].forEach((n) => { campo(n).value = datos[n] || ''; });
+    const yo = ficha();
+    const pintarFotoHoja = (foto) => {
+        const caja = capa.querySelector('.d-avatar');
+        if (foto) { caja.innerHTML = '<img alt="">'; caja.querySelector('img').src = 'data:image/png;base64,' + foto; }
+        else caja.textContent = iniciales(yo.monitor);
+    };
+    pintarFotoHoja(datos.foto === undefined ? yo.foto : datos.foto);
+    capa.querySelector('.d-cambiar-foto').onclick = () => capa.querySelector('.d-archivo').click();
+    capa.querySelector('.d-archivo').onchange = async (e) => {
+        const archivo = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (!archivo) return;
+        const boton = capa.querySelector('.d-cambiar-foto');
+        boton.disabled = true;
+        boton.textContent = 'Subiendo…';
+        try {
+            const formulario = new FormData();
+            formulario.append('archivo', archivo, archivo.name || 'foto.jpg');
+            const r = await pedirFormulario('/api/personal/mis-datos/foto', formulario);
+            const nueva = Object.assign(ficha(), { foto: r.foto });
+            try { guardarFicha(nueva); } catch (error) { /* sin espacio: se ve hasta recargar */ }
+            pintarFotoHoja(r.foto);
+            pintarAvatar(nueva);
+            avisar(r.mensaje || 'Foto de perfil guardada.', 'bueno');
+        } catch (error) { avisar(error.message, 'malo'); }
+        boton.disabled = false;
+        boton.textContent = '📷 Cambiar foto';
+    };
     const cerrar = () => capa.remove();
     capa.querySelector('.velo').onclick = cerrar;
     capa.querySelector('.cerrar').onclick = cerrar;
@@ -2042,6 +2074,21 @@ function pintarVolver(actual) {
     if (principal) principal.parentNode.insertBefore(fila, principal);
 }
 
+/* La foto de perfil (la de la Admin o la de «Mis datos»); sin foto, las iniciales. */
+function pintarAvatar(yo) {
+    const avatar = document.getElementById('btn-avatar');
+    if (!avatar) return;
+    if (yo.foto) {
+        const src = 'data:image/png;base64,' + yo.foto;
+        const img = avatar.querySelector('img');
+        if (img && img.getAttribute('src') === src) return;
+        avatar.innerHTML = '<img alt="Tu foto">';
+        avatar.querySelector('img').src = src;
+    } else {
+        avatar.textContent = iniciales(yo.monitor);
+    }
+}
+
 function pintarBarras(actual, yo) {
     // ---- la cabecera fija: ☰, iniciales, logo con nombre y rol, campana y tuerca
     let barra = document.getElementById('barra-personal');
@@ -2070,7 +2117,7 @@ function pintarBarras(actual, yo) {
         document.getElementById('btn-tuerca').onclick = abrirAjustes;
     }
     // Se pinta dos veces (con la ficha guardada y con la de la API): solo cambia el texto.
-    document.getElementById('btn-avatar').textContent = iniciales(yo.monitor);
+    pintarAvatar(yo);
     barra.querySelector('.bm-quien b').textContent = yo.monitor || '—';
     barra.querySelector('.bm-quien span').textContent = (yo.texto_roles || '') +
         (yo.jornada && yo.jornada !== 'Todas' ? ' · ' + yo.jornada : '');

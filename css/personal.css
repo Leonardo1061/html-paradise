@@ -398,6 +398,7 @@ body.bm-con-arriba { padding-top: var(--bm-arriba); }
     background: var(--panel-alto); color: var(--oro-claro); font-size: 17px; font-weight: 500; line-height: 1;
     display: grid; place-items: center; overflow: hidden;
 }
+.bm-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .bm-quien {
     flex: 1; min-width: 0; background: none; border: 0; padding: 0; text-align: left;
     color: var(--texto); line-height: 1.1;
@@ -458,6 +459,13 @@ body.bm-con-arriba { padding-top: var(--bm-arriba); }
 .bm-subtitulo { display: flex; align-items: center; gap: 4px; padding: 14px 18px 8px; max-width: 980px; margin: 0 auto; }
 .bm-subtitulo h1 { margin: 0; font-size: 17px; font-weight: 700; }
 h1.titulo-pagina { font-size: 19px; font-weight: 700; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+/* La foto de perfil en «📝 Actualiza tus datos». */
+.foto-perfil { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.foto-perfil .bm-avatar { width: 72px; height: 72px; font-size: 24px; }
+.foto-perfil .texto-foto { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.foto-perfil small { color: var(--tenue); font-size: 12px; }
+.foto-perfil .boton-secundario { margin-top: 6px; }
 
 /* Las hojas que suben desde abajo, con el filo dorado de la web de modelos. */
 .hoja { background: #0e0e10; border-top-color: var(--oro-hondo); }
