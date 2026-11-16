@@ -754,6 +754,7 @@ function abrirConversacion(t, alSalir) {
             if (info.tarea.descripcion) cabeza.querySelector('.desc').textContent = info.tarea.descripcion;
             lista.appendChild(cabeza);
         }
+        if (info.producto && info.producto.id) lista.appendChild(cajaProductoTicket(info.producto));
         if (!estado.mensajes.length) {
             const vacio = document.createElement('div');
             vacio.className = 'vacio';
@@ -770,6 +771,50 @@ function abrirConversacion(t, alSalir) {
             lista.appendChild(fin);
         }
         if (alFinal) lista.scrollTop = lista.scrollHeight;
+    }
+
+    /* El ticket de un producto por aprobar (productos_aprobacion.py, 2026-11-16):
+     * el CEO APRUEBA o RECHAZA aquí mismo; la API cierra el ticket con la decisión. */
+    function cajaProductoTicket(p) {
+        const pesos = (n) => '$ ' + Number(n || 0).toLocaleString('es-CO');
+        const pildora = { pendiente: ['Por aprobar', 'urgente'], aprobada: ['Aprobado', 'bien'],
+                          rechazada: ['Rechazado', 'urgente'] }[p.estado] || [p.estado, ''];
+        const caja = document.createElement('div');
+        caja.className = 'tarjeta tarjeta-falta producto-ticket';
+        caja.innerHTML =
+            '<div class="cabeza-falta"><b>🛍 ' + escapar(p.producto) + '</b><span class="pildora ' + pildora[1] + '">' +
+                escapar(pildora[0]) + '</span></div>' +
+            '<div class="detalle-falta">Para <b>' + escapar(p.modelo) + '</b> · ' + p.cantidad + ' × ' +
+                pesos(p.precio_unitario) + ' = <b>' + pesos(p.total) + '</b></div>' +
+            '<div class="nota-falta">' + (p.cuotas ? p.cuotas + ' cuotas de ' + pesos(Math.ceil(p.total / p.cuotas))
+                                                  : 'Sin cuotas: la nómina descuenta todo') +
+                (p.descontar && p.sede ? ' · Baja el stock de ' + escapar(p.sede) : '') + '</div>' +
+            (p.puede_decidir
+                ? '<div class="botones-falta"><button class="boton-principal aprobar">APROBAR</button>' +
+                  '<button class="boton-secundario rechazar">RECHAZAR</button></div>'
+                : '<div class="nota-falta">' + (p.estado === 'pendiente' ? 'Lo aprueba o lo rechaza el CEO.'
+                    : (p.estado === 'aprobada' ? 'Aprobado' : 'Rechazado') +
+                      (p.decidida_por ? ' por ' + escapar(p.decidida_por) : '') +
+                      (p.motivo ? ': ' + escapar(p.motivo) : '') + '.') + '</div>');
+        if (!p.puede_decidir) return caja;
+        const decidir = async (accion, cuerpoPedido) => {
+            caja.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+            try {
+                const r = await pedir('/api/personal/productos/' + encodeURIComponent(p.id) + '/' + accion, 'POST', cuerpoPedido);
+                avisar(r.mensaje, 'bueno');
+                if (typeof campana !== 'undefined' && campana.productos) { campana.productos -= 1; pintarGlobo(); }
+            } catch (error) { avisar(error.message, 'malo'); }
+            cargar(true).catch(() => {});
+        };
+        caja.querySelector('.aprobar').onclick = () => {
+            if (confirm('¿APROBAR «' + p.producto + '» para ' + p.modelo + '? Queda en su deuda' +
+                        (p.descontar && p.sede ? ' y baja el stock.' : '.'))) decidir('aprobar', {});
+        };
+        caja.querySelector('.rechazar').onclick = () => {
+            const motivo = prompt('¿Por qué se rechaza? (opcional; le llega a ' + p.por + ')', '');
+            if (motivo !== null) decidir('rechazar', { motivo: motivo });
+        };
+        return caja;
     }
 
     function pintarPie() {
