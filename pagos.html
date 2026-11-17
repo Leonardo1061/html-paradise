@@ -221,6 +221,35 @@ table.pagos tr:last-child td { border-bottom: 0; }
     <div class="pd-pestanas">
         <button class="activo" id="tab-recibos">💳 Recibos</button>
         <button id="tab-producido">💵 Mi producido</button>
+        <button id="tab-prestamos">🏦 Préstamos</button>
+    </div>
+
+    <!-- 🏦 Pedir un préstamo al CEO y ver sus solicitudes (api/prestamos_solicitudes.py, 2026-11-17) -->
+    <div class="tarjeta oculto" id="vista-prestamos">
+        <h2 style="margin:0 0 4px;font-size:16px;font-weight:500">🏦 Préstamos</h2>
+        <div id="pr-deuda" style="font-size:13px;color:var(--tenue);margin-bottom:12px"></div>
+        <div id="pr-formulario">
+            <div class="controles" style="justify-content:flex-start">
+                <label>Valor <input id="pr-valor" inputmode="numeric" autocomplete="off" placeholder="$ 300.000"></label>
+                <label>Cuotas <select id="pr-cuotas"></select></label>
+            </div>
+            <div class="controles">
+                <label style="flex:1;min-width:220px">Motivo
+                    <input id="pr-motivo" maxlength="300" style="width:100%" placeholder="¿Para qué lo necesitas?"></label>
+            </div>
+            <div id="pr-cuota" class="sub" style="margin-bottom:10px"></div>
+            <button class="boton principal" id="pr-enviar">Solicitar préstamo</button>
+        </div>
+        <div id="pr-espera" class="sub oculto" style="font-size:13px;color:var(--ambar)">
+            Tienes una solicitud esperando al CEO. Cuando la responda te llega un aviso.</div>
+        <h3 style="font-size:14px;font-weight:500;margin:18px 0 6px">Mis solicitudes</h3>
+        <div class="envoltura">
+            <table class="pagos">
+                <thead><tr><th class="sin-orden">Fecha</th><th class="sin-orden">Valor</th>
+                    <th class="sin-orden">Estado</th></tr></thead>
+                <tbody id="pr-filas"><tr><td colspan="3" class="vacio">Cargando…</td></tr></tbody>
+            </table>
+        </div>
     </div>
 
     <!-- 💵 Su producido en dólares, página por página (js/producido.js, /api/nomina/mio) -->
@@ -534,20 +563,86 @@ table.pagos tr:last-child td { border-bottom: 0; }
     // Las dos pestañas: 💳 Recibos (lo de siempre) y 💵 Mi producido, que
     // antes estaba en el INICIO. El producido se pide la primera vez que se abre.
     let producidoPedido = false;
+    let prestamosPedido = false;
     function verPestana(cual) {
-        const producido = cual === 'producido';
-        $('tab-recibos').classList.toggle('activo', !producido);
-        $('tab-producido').classList.toggle('activo', producido);
-        $('vista-recibos').classList.toggle('oculto', producido);
-        $('vista-producido').classList.toggle('oculto', !producido);
-        if (producido && !producidoPedido) {
+        ['recibos', 'producido', 'prestamos'].forEach((p) => {
+            $('tab-' + p).classList.toggle('activo', p === cual);
+            $('vista-' + p).classList.toggle('oculto', p !== cual);
+        });
+        if (cual === 'producido' && !producidoPedido) {
             producidoPedido = true;
             ProducidoParadise.cargar($('vista-producido'), $('lista-producido'));
+        }
+        if (cual === 'prestamos' && !prestamosPedido) {
+            prestamosPedido = true;
+            cargarPrestamos();
         }
     }
     $('tab-recibos').onclick = () => verPestana('recibos');
     $('tab-producido').onclick = () => verPestana('producido');
+    $('tab-prestamos').onclick = () => verPestana('prestamos');
     if (window.location.hash === '#producido') verPestana('producido');
+    if (window.location.hash === '#prestamos') verPestana('prestamos');
+
+    // ------------------------------------------------------------- préstamos
+    // Como en NEUM (2026-11-17): la modelo pide valor, cuotas y motivo; le
+    // llega al CEO como ticket suyo y la respuesta la ve también en TICKET CEO.
+    const ESTADO_PR = { pendiente: ['Esperando al CEO', 'pendiente'], aprobada: ['Aprobado', 'pagado'],
+                        rechazada: ['Rechazado', 'pendiente'] };
+    const soloNumero = (t) => Number(String(t || '').replace(/\D/g, '')) || 0;
+    function pintarCuota() {
+        const valor = soloNumero($('pr-valor').value), cuotas = Number($('pr-cuotas').value || 1);
+        $('pr-cuota').textContent = valor ? cuotas + ' cuota(s) de ' + pesos(Math.ceil(valor / cuotas)) +
+            ', descontadas de tu nómina' : '';
+    }
+    async function cargarPrestamos() {
+        let d;
+        try { d = await pedir('/api/prestamos'); } catch (error) {
+            $('pr-filas').innerHTML = '<tr><td colspan="3" class="vacio">' + escapar(error.message) + '</td></tr>';
+            return;
+        }
+        if (!$('pr-cuotas').options.length) {
+            for (let i = 1; i <= (d.max_cuotas || 12); i++) $('pr-cuotas').add(new Option(String(i), String(i)));
+        }
+        $('pr-deuda').textContent = d.deuda ? 'Hoy debes ' + pesos(d.deuda) + ' en préstamos; tu cuota es de ' +
+            pesos(d.cuota) + ' por pago.' : 'No debes préstamos.';
+        $('pr-formulario').classList.toggle('oculto', !d.puede_pedir);
+        $('pr-espera').classList.toggle('oculto', !!d.puede_pedir);
+        const lista = d.solicitudes || [];
+        $('pr-filas').innerHTML = lista.length ? lista.map((s) => {
+            const e = ESTADO_PR[s.estado] || [s.estado, ''];
+            return '<tr><td><div class="fecha">' + escapar(fechaCorta(String(s.cuando).slice(0, 10))) + '</div>' +
+                '<div class="sub">' + escapar(s.motivo) + '</div></td>' +
+                '<td>' + pesos(s.valor) + '<div class="sub">' + s.cuotas + ' cuota(s)</div></td>' +
+                '<td><span class="estado ' + e[1] + '">' + escapar(e[0]) + '</span>' +
+                (s.motivo_rechazo ? '<div class="sub">' + escapar(s.motivo_rechazo) + '</div>' : '') + '</td></tr>';
+        }).join('') : '<tr><td colspan="3" class="vacio">Todavía no has pedido préstamos.</td></tr>';
+        pintarCuota();
+    }
+    $('pr-valor').oninput = pintarCuota;
+    $('pr-cuotas').onchange = pintarCuota;
+    $('pr-enviar').onclick = async () => {
+        const valor = soloNumero($('pr-valor').value), cuotas = Number($('pr-cuotas').value || 1);
+        const motivo = $('pr-motivo').value.trim();
+        if (!valor) { avisar('Escribe cuánto necesitas.', 'malo'); return; }
+        if (motivo.length < 3) { avisar('Cuéntale al CEO para qué es el préstamo.', 'malo'); return; }
+        if (!confirm('¿Pedir ' + pesos(valor) + ' en ' + cuotas + ' cuota(s)?')) return;
+        $('pr-enviar').disabled = true;
+        try {
+            const r = await fetch(PARADISE.API_URL + '/api/prestamos', {
+                method: 'POST', cache: 'no-store',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token_sesion'),
+                           'Content-Type': 'application/json' },
+                body: JSON.stringify({ valor: String(valor), cuotas: cuotas, motivo: motivo }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.detail || 'No se pudo enviar. Intenta otra vez.');
+            avisar(d.mensaje, 'bueno');
+            $('pr-valor').value = ''; $('pr-motivo').value = '';
+            cargarPrestamos();
+        } catch (error) { avisar(error.message, 'malo'); }
+        $('pr-enviar').disabled = false;
+    };
     cargar();
 })();
 </script>

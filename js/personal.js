@@ -755,6 +755,7 @@ function abrirConversacion(t, alSalir) {
             lista.appendChild(cabeza);
         }
         if (info.producto && info.producto.id) lista.appendChild(cajaProductoTicket(info.producto));
+        if (info.prestamo && info.prestamo.id) lista.appendChild(cajaPrestamoTicket(info.prestamo));
         if (!estado.mensajes.length) {
             const vacio = document.createElement('div');
             vacio.className = 'vacio';
@@ -812,6 +813,60 @@ function abrirConversacion(t, alSalir) {
         };
         caja.querySelector('.rechazar').onclick = () => {
             const motivo = prompt('¿Por qué se rechaza? (opcional; le llega a ' + p.por + ')', '');
+            if (motivo !== null) decidir('rechazar', { motivo: motivo });
+        };
+        return caja;
+    }
+
+    /* La solicitud de préstamo de una modelo (prestamos_solicitudes.py, 2026-11-17):
+     * el CEO la APRUEBA (puede cambiar valor y cuotas) o la RECHAZA aquí mismo. */
+    function cajaPrestamoTicket(p) {
+        const pesos = (n) => '$ ' + Number(n || 0).toLocaleString('es-CO');
+        const pildora = { pendiente: ['Por aprobar', 'urgente'], aprobada: ['Aprobado', 'bien'],
+                          rechazada: ['Rechazado', 'urgente'] }[p.estado] || [p.estado, ''];
+        const caja = document.createElement('div');
+        caja.className = 'tarjeta tarjeta-falta producto-ticket';
+        caja.innerHTML =
+            '<div class="cabeza-falta"><b>💵 Préstamo de ' + pesos(p.valor) + '</b><span class="pildora ' + pildora[1] + '">' +
+                escapar(pildora[0]) + '</span></div>' +
+            '<div class="detalle-falta">Lo pide <b>' + escapar(p.modelo) + '</b> · ' + p.cuotas + ' cuota(s) de ' +
+                pesos(Math.ceil(p.valor / Math.max(1, p.cuotas))) + '</div>' +
+            '<div class="nota-falta">Motivo: ' + escapar(p.motivo) + '</div>' +
+            (p.puede_decidir
+                ? '<div class="nota-falta" style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center">' +
+                  '<label>Valor</label><input class="pr-valor" inputmode="numeric" value="' + Number(p.valor || 0) + '">' +
+                  '<label>Cuotas</label><input class="pr-cuotas" type="number" min="1" max="' + (p.max_cuotas || 104) + '" value="' + Number(p.cuotas || 1) + '">' +
+                  '<label>Responsable</label><input class="pr-resp" value="' + escapar(p.responsable || '') + '" placeholder="Caja menor o quien entrega">' +
+                  '<span></span><label><input type="checkbox" class="pr-nocobrar"> No cobrar en el próximo pago</label></div>' +
+                  '<div class="botones-falta"><button class="boton-principal aprobar">APROBAR</button>' +
+                  '<button class="boton-secundario rechazar">RECHAZAR</button></div>'
+                : '<div class="nota-falta">' + (p.estado === 'pendiente' ? 'Lo aprueba o lo rechaza el CEO.'
+                    : (p.estado === 'aprobada' ? 'Aprobado' : 'Rechazado') +
+                      (p.decidida_por ? ' por ' + escapar(p.decidida_por) : '') +
+                      (p.motivo_rechazo ? ': ' + escapar(p.motivo_rechazo) : '') + '.') + '</div>');
+        if (!p.puede_decidir) return caja;
+        const decidir = async (accion, cuerpoPedido) => {
+            caja.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+            try {
+                const r = await pedir('/api/personal/prestamos/' + encodeURIComponent(p.id) + '/' + accion, 'POST', cuerpoPedido);
+                avisar(r.mensaje, 'bueno');
+            } catch (error) {
+                avisar(error.message, 'malo');
+                caja.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+                return;
+            }
+            cargar(true).catch(() => {});
+        };
+        caja.querySelector('.aprobar').onclick = () => {
+            const cuerpoPedido = {
+                valor: caja.querySelector('.pr-valor').value, cuotas: Number(caja.querySelector('.pr-cuotas').value || 1),
+                responsable: caja.querySelector('.pr-resp').value, no_cobrar_proximo: caja.querySelector('.pr-nocobrar').checked,
+            };
+            if (confirm('¿APROBAR el préstamo de ' + pesos(String(cuerpoPedido.valor).replace(/\D/g, '')) + ' a ' + p.modelo +
+                        ' en ' + cuerpoPedido.cuotas + ' cuota(s)? La nómina descuenta la cuota sola.')) decidir('aprobar', cuerpoPedido);
+        };
+        caja.querySelector('.rechazar').onclick = () => {
+            const motivo = prompt('¿Por qué se rechaza? (opcional; le llega a ' + p.modelo + ')', '');
             if (motivo !== null) decidir('rechazar', { motivo: motivo });
         };
         return caja;
