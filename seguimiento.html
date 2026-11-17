@@ -13,8 +13,10 @@
   gráfica de minutos programados por día. Es lo que antes era el INICIO; lo
   pinta js/seguimiento.js con `/api/acceso/panel`.
 
-  La BITÁCORA (notas del monitor sobre su semana) aún no existe en la API:
-  queda el aviso de «Próximamente».
+  La BITÁCORA (2026-11-16): lo que el personal escribe de ella en la Admin
+  (Modelos › ··· › 📝 Bitácora) y marca «Compartir con la modelo». La pinta
+  js/seguimiento.js con `/api/bitacora`; la evidencia se abre con
+  `/api/bitacora/{id}/adjunto/{n}`.
 -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -111,6 +113,21 @@ button { font-family: inherit; cursor: pointer; }
 .siguiente .ir {
     margin-left: auto; background: var(--degradado); border: 0; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1a1404; }
 
+/* ------------------------------------------------------------- bitácora */
+.bitacora { margin-top: 22px; }
+.bitacora h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.bitacora .sub { margin: 3px 0 12px; font-size: 13px; color: var(--tenue); }
+.registro { margin-top: 10px; display: grid; gap: 8px; }
+.registro .fecha { font-size: 12px; color: var(--tenue); }
+.registro h3 { margin: 0; font-size: 15.5px; font-weight: 600; }
+.registro .texto { font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.registro .adjuntos { display: flex; flex-wrap: wrap; gap: 8px; }
+.registro .adjuntos button {
+    background: transparent; border: 1px solid var(--borde); color: inherit; border-radius: 10px;
+    padding: 7px 10px; font-size: 13px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.registro .adjuntos button:disabled { opacity: .5; }
+.vacio-bitacora { color: var(--tenue); font-size: 13.5px; padding: 14px 0; }
+
 .cargando { text-align: center; color: var(--apagado); padding: 50px 0; font-size: 14px; }
 .girando { display: inline-block; animation: giro 1s linear infinite; }
 @keyframes giro { to { transform: rotate(360deg); } }
@@ -133,11 +150,11 @@ button { font-family: inherit; cursor: pointer; }
     <div id="cargando" class="cargando"><span class="girando">◌</span> Cargando tu semana…</div>
     <div id="tablero" class="oculto"></div>
 
-    <div class="pd-pronto" style="margin-top:16px">
-        <h2 style="margin-top:0">Bitácora</h2>
-        <p>Aquí vas a ver lo que tu monitor anota sobre tu semana.</p>
-        <span class="pd-sello">Próximamente</span>
-    </div>
+    <section class="bitacora" aria-labelledby="titulo-bitacora">
+        <h2 id="titulo-bitacora">Bitácora</h2>
+        <p class="sub">Lo que el estudio anota sobre tu trabajo y comparte contigo.</p>
+        <div id="bitacora"><div class="cargando" style="padding:20px 0">Cargando tu bitácora…</div></div>
+    </section>
 </main>
 
 <!-- La barra vieja: escondida, js/barra_modelo.js pone la nueva. -->

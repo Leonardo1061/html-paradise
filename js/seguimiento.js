@@ -9,8 +9,9 @@
  * del planificador— para que esta pantalla y el plan no puedan decir cosas
  * distintas.
  *
- * La BITÁCORA (lo que el monitor anota de su semana) todavía no existe en la
- * API: la página deja el aviso de «Próximamente».
+ * La BITÁCORA (2026-11-16): los registros que el personal escribió en la
+ * Admin y marcó «Compartir con la modelo» (`/api/bitacora`). La evidencia la
+ * sirve la API desde Drive (`/api/bitacora/{id}/adjunto/{n}`).
  */
 
 (function () {
@@ -79,6 +80,63 @@ async function cargar() {
         $('cargando').innerHTML = 'No se pudo cargar tu seguimiento.<br><small>' +
             escapar(error.message) + '</small>';
     }
+    cargarBitacora();
+}
+
+// =======================================================================
+// BITÁCORA
+// =======================================================================
+const ICONO_ADJUNTO = { imagen: '🖼️', video: '🎬', pdf: '📄', archivo: '📎' };
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+function fechaLegible(iso) {
+    const partes = String(iso || '').split('-');
+    if (partes.length !== 3) return iso || '';
+    return Number(partes[2]) + ' ' + MESES[Number(partes[1]) - 1] + ' ' + partes[0];
+}
+
+async function cargarBitacora() {
+    const caja = $('bitacora');
+    try {
+        const datos = await pedir('/api/bitacora');
+        const registros = datos.registros || [];
+        if (!registros.length) {
+            caja.innerHTML = '<div class="vacio-bitacora">Todavía no hay notas compartidas contigo. ' +
+                'Cuando tu monitor te comparta una, aparece aquí.</div>';
+            return;
+        }
+        caja.innerHTML = registros.map((r) =>
+            '<article class="tarjeta registro">' +
+                '<div class="fecha">' + escapar(fechaLegible(r.fecha)) + (r.por ? ' · ' + escapar(r.por) : '') + '</div>' +
+                '<h3>' + escapar(r.titulo) + '</h3>' +
+                (r.texto ? '<div class="texto">' + escapar(r.texto) + '</div>' : '') +
+                (r.adjuntos.length ? '<div class="adjuntos">' + r.adjuntos.map((a) =>
+                    '<button type="button" data-id="' + escapar(r.id) + '" data-n="' + a.n + '">' +
+                    (ICONO_ADJUNTO[a.tipo] || '📎') + ' ' + escapar(a.nombre) + '</button>').join('') + '</div>' : '') +
+            '</article>').join('');
+        caja.querySelectorAll('.adjuntos button').forEach((b) => {
+            b.onclick = () => abrirEvidencia(b.dataset.id, b.dataset.n, b);
+        });
+    } catch (error) {
+        caja.innerHTML = '<div class="vacio-bitacora">No se pudo cargar tu bitácora: ' + escapar(error.message) + '</div>';
+    }
+}
+
+/* La ventana se abre YA, en el toque, o el navegador la bloquea. */
+async function abrirEvidencia(id, n, boton) {
+    const ventana = window.open('', '_blank');
+    boton.disabled = true;
+    try {
+        const respuesta = await fetch(API + '/api/bitacora/' + encodeURIComponent(id) + '/adjunto/' + n,
+                                      { headers: { 'Authorization': 'Bearer ' + estado.token } });
+        if (!respuesta.ok) throw new Error('No se pudo abrir el archivo.');
+        const url = URL.createObjectURL(await respuesta.blob());
+        if (ventana) ventana.location.href = url; else window.location.href = url;
+    } catch (error) {
+        if (ventana) ventana.close();
+        avisar(error.message, 'malo');
+    }
+    boton.disabled = false;
 }
 
 // =======================================================================
