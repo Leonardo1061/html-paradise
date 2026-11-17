@@ -151,6 +151,7 @@ table.pagos tr:last-child td { border-bottom: 0; }
 .totales .fuerte td { font-size: 16px; font-weight: 700; }
 .totales .sangria td:first-child { padding-left: 18px; color: #555; }
 .banco { color: #555; margin-top: 8px; }
+.notas-titulo { margin: 12px 0 4px; font-weight: 700; }
 @media (max-width: 700px) {
     .recibo { grid-template-columns: 1fr; }
     .hoja { padding: 14px 12px; }
@@ -507,6 +508,12 @@ table.pagos tr:last-child td { border-bottom: 0; }
             total('Total a pagar', pesos(r.neto), 'fuerte') + '</table>';
         if (r.banco && r.banco.termina_en) {
             der += '<p class="banco">Se consigna en tu cuenta terminada en ' + e(r.banco.termina_en) + '</p>';
+        }
+        // «Notas:» las adiciones con el comentario que le dejaron (igual que el recibo de la Admin).
+        if (r.notas && r.notas.length) {
+            der += '<h4 class="notas-titulo">Notas:</h4><table class="totales">';
+            r.notas.forEach((n) => { der += total(e(n.texto), pesos(n.valor)); });
+            der += '</table>';
         }
         return '<div class="recibo"><div>' + izq + '</div><div>' + der + '</div></div>';
     }
