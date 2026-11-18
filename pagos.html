@@ -512,7 +512,7 @@ table.pagos tr:last-child td { border-bottom: 0; }
         // «Notas:» las adiciones con el comentario que le dejaron (igual que el recibo de la Admin).
         if (r.notas && r.notas.length) {
             der += '<h4 class="notas-titulo">Notas:</h4><table class="totales">';
-            r.notas.forEach((n) => { der += total(e(n.texto), pesos(n.valor)); });
+            r.notas.forEach((n) => { der += total(e(n.texto), n.valor_texto ? e(n.valor_texto) : pesos(n.valor)); });
             der += '</table>';
         }
         return '<div class="recibo"><div>' + izq + '</div><div>' + der + '</div></div>';
