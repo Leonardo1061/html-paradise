@@ -774,45 +774,67 @@ function abrirConversacion(t, alSalir) {
         if (alFinal) lista.scrollTop = lista.scrollHeight;
     }
 
-    /* El ticket de un producto por aprobar (productos_aprobacion.py, 2026-11-16):
-     * el CEO APRUEBA o RECHAZA aquí mismo; la API cierra el ticket con la decisión. */
+    /* El ticket de un producto por aprobar (productos_aprobacion.py): como un préstamo
+     * (Leonardo, 2026-11-20). El CEO deja el valor y las cuotas y APRUEBA o RECHAZA aquí
+     * mismo; la deuda va a la nómina de la modelo y la API cierra el ticket. */
     function cajaProductoTicket(p) {
         const pesos = (n) => '$ ' + Number(n || 0).toLocaleString('es-CO');
         const pildora = { pendiente: ['Por aprobar', 'urgente'], aprobada: ['Aprobado', 'bien'],
                           rechazada: ['Rechazado', 'urgente'] }[p.estado] || [p.estado, ''];
+        const cuotas = Number(p.cuotas || 1);
         const caja = document.createElement('div');
         caja.className = 'tarjeta tarjeta-falta producto-ticket';
         caja.innerHTML =
-            '<div class="cabeza-falta"><b>🛍 ' + escapar(p.producto) + '</b><span class="pildora ' + pildora[1] + '">' +
-                escapar(pildora[0]) + '</span></div>' +
-            '<div class="detalle-falta">Para <b>' + escapar(p.modelo) + '</b> · ' + p.cantidad + ' × ' +
-                pesos(p.precio_unitario) + ' = <b>' + pesos(p.total) + '</b></div>' +
-            '<div class="nota-falta">' + (p.cuotas ? p.cuotas + ' cuotas de ' + pesos(Math.ceil(p.total / p.cuotas))
-                                                  : 'Sin cuotas: la nómina descuenta todo') +
-                (p.descontar && p.sede ? ' · Baja el stock de ' + escapar(p.sede) : '') + '</div>' +
+            '<div class="cabeza-falta"><b>🛍 ' + escapar(p.producto) + ' · ' + pesos(p.total) + '</b><span class="pildora ' +
+                pildora[1] + '">' + escapar(pildora[0]) + '</span></div>' +
+            '<div class="detalle-falta">' + (p.de_modelo ? 'Lo pide <b>' : 'Para <b>') + escapar(p.modelo) + '</b> · ' +
+                (p.cuotas ? cuotas + ' cuota(s) de ' + pesos(Math.ceil(p.total / cuotas)) : 'sin cuotas') + '</div>' +
+            '<div class="nota-falta">' + p.cantidad + ' × ' + pesos(p.precio_unitario) +
+                (p.descontar && p.sede ? ' · Al aprobar baja el stock de ' + escapar(p.sede) : '') +
+                (p.de_modelo ? '' : ' · Lo asignó ' + escapar(p.por)) + '</div>' +
             (p.puede_decidir
-                ? '<div class="botones-falta"><button class="boton-principal aprobar">APROBAR</button>' +
+                ? '<div class="nota-falta" style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center">' +
+                  '<label>Valor</label><input class="pd-valor" inputmode="numeric" value="' + Number(p.total || 0) + '">' +
+                  '<label>Cuotas</label><input class="pd-cuotas" type="number" min="1" max="' + (p.max_cuotas || 104) + '" value="' + cuotas + '">' +
+                  '<span></span><span class="pd-cuota"></span></div>' +
+                  '<div class="botones-falta"><button class="boton-principal aprobar">APROBAR</button>' +
                   '<button class="boton-secundario rechazar">RECHAZAR</button></div>'
                 : '<div class="nota-falta">' + (p.estado === 'pendiente' ? 'Lo aprueba o lo rechaza el CEO.'
                     : (p.estado === 'aprobada' ? 'Aprobado' : 'Rechazado') +
                       (p.decidida_por ? ' por ' + escapar(p.decidida_por) : '') +
                       (p.motivo ? ': ' + escapar(p.motivo) : '') + '.') + '</div>');
         if (!p.puede_decidir) return caja;
+        const valor = () => Number(String(caja.querySelector('.pd-valor').value).replace(/\D/g, '') || 0);
+        const nCuotas = () => Math.max(1, Number(caja.querySelector('.pd-cuotas').value || 1));
+        const pintarCuota = () => {
+            caja.querySelector('.pd-cuota').textContent = valor()
+                ? nCuotas() + ' cuota(s) de ' + pesos(Math.ceil(valor() / nCuotas())) + ' en la nómina' : 'Escribe el valor';
+        };
+        caja.querySelector('.pd-valor').oninput = pintarCuota;
+        caja.querySelector('.pd-cuotas').oninput = pintarCuota;
+        pintarCuota();
         const decidir = async (accion, cuerpoPedido) => {
             caja.querySelectorAll('button').forEach((b) => { b.disabled = true; });
             try {
                 const r = await pedir('/api/personal/productos/' + encodeURIComponent(p.id) + '/' + accion, 'POST', cuerpoPedido);
                 avisar(r.mensaje, 'bueno');
                 if (typeof campana !== 'undefined' && campana.productos) { campana.productos -= 1; pintarGlobo(); }
-            } catch (error) { avisar(error.message, 'malo'); }
+            } catch (error) {
+                avisar(error.message, 'malo');
+                caja.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+                return;
+            }
             cargar(true).catch(() => {});
         };
         caja.querySelector('.aprobar').onclick = () => {
-            if (confirm('¿APROBAR «' + p.producto + '» para ' + p.modelo + '? Queda en su deuda' +
-                        (p.descontar && p.sede ? ' y baja el stock.' : '.'))) decidir('aprobar', {});
+            const cuerpoPedido = { valor: String(valor()), cuotas: nCuotas() };
+            if (!valor()) { avisar('Escribe el valor del producto.', 'malo'); return; }
+            if (confirm('¿APROBAR «' + p.producto + '» para ' + p.modelo + ' por ' + pesos(valor()) + ' en ' +
+                        cuerpoPedido.cuotas + ' cuota(s)? Queda en su nómina' +
+                        (p.descontar && p.sede ? ' y baja el stock.' : '.'))) decidir('aprobar', cuerpoPedido);
         };
         caja.querySelector('.rechazar').onclick = () => {
-            const motivo = prompt('¿Por qué se rechaza? (opcional; le llega a ' + p.por + ')', '');
+            const motivo = prompt('¿Por qué se rechaza? (opcional; le llega a ' + (p.de_modelo ? p.modelo : p.por) + ')', '');
             if (motivo !== null) decidir('rechazar', { motivo: motivo });
         };
         return caja;
