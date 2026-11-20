@@ -326,7 +326,48 @@ const campana = {
     conocidas: null,                 // ids ya vistos (para pitar solo por las nuevas)
     reloj: null,
     abierta: null,                   // la hoja, si está abierta
+    // ⚡ Error Conexión (Leonardo, 2026-11-20): las alertas automáticas de las
+    // modelos ya no van al chat. Solo suenan y, mientras haya alguna sin ver,
+    // la campana cuenta UNA notificación (no una por alerta).
+    alertas: [],
+    alertasCursor: '',
+    alertasLeidas: false,
 };
+
+const CLAVE_ALERTAS_VISTAS = 'paradise_personal_alertas_vistas';
+
+function alertasVistasHasta() {
+    try { return localStorage.getItem(CLAVE_ALERTAS_VISTAS) || ''; } catch (e) { return ''; }
+}
+
+function hayAlertasSinVer() {
+    const hasta = alertasVistasHasta();
+    return campana.alertas.some((a) => (a.ts || '') > hasta);
+}
+
+function marcarAlertasVistas() {
+    const ultima = campana.alertas.reduce((m, a) => ((a.ts || '') > m ? a.ts : m), '');
+    if (ultima && ultima > alertasVistasHasta()) {
+        try { localStorage.setItem(CLAVE_ALERTAS_VISTAS, ultima); } catch (e) { /* sin almacenamiento */ }
+    }
+}
+
+/* Lo nuevo de las alertas (GET /api/personal/alertas): solo suena, sin aviso. */
+async function revisarAlertas() {
+    try {
+        const ruta = '/api/personal/alertas' +
+            (campana.alertasCursor ? '?desde=' + encodeURIComponent(campana.alertasCursor) : '');
+        const datos = await pedir(ruta);
+        const conocidas = new Set(campana.alertas.map((a) => a.id));
+        const nuevas = (datos.alertas || []).filter((a) => !conocidas.has(a.id));
+        campana.alertas = nuevas.concat(campana.alertas)
+            .sort((x, y) => ((y.ts || '') > (x.ts || '') ? 1 : -1)).slice(0, 300);
+        campana.alertasCursor = datos.cursor || campana.alertasCursor;
+        if (nuevas.length && campana.alertasLeidas) pitar();
+        campana.alertasLeidas = true;
+        if (campana.abierta && campana.abierta.pestana === 'alertas' && nuevas.length) campana.abierta.pintar();
+    } catch (e) { /* sin red: la siguiente vuelta */ }
+}
 
 /* Lo mismo que personal.cuenta_en_campana de la API. */
 function cuentaEnCampana(t) {
@@ -343,7 +384,8 @@ function pintarGlobo() {
         campana.misTickets.filter((t) => t.nuevo).length +
         (campana.descanso && campana.descanso.pendiente ? 1 : 0) +
         (campana.misDatos ? 1 : 0) + (campana.faltas || 0) + (campana.productos || 0) +
-        campana.actividades.filter(actividadSuena).length;
+        campana.actividades.filter(actividadSuena).length +
+        (hayAlertasSinVer() ? 1 : 0);
     globo.textContent = n > 99 ? '99+' : String(n);
     globo.classList.toggle('oculto', !n);
     document.dispatchEvent(new CustomEvent('personal:tareas', { detail: campana.tareas }));
@@ -375,6 +417,7 @@ async function revisarMisTickets() {
 async function revisarTareas(forzar) {
     if (forzar !== true && document.visibilityState !== 'visible') return;
     await revisarMisTickets();
+    await revisarAlertas();
     try {
         const datos = await pedir('/api/personal/tareas');
         campana.tareas = datos.tareas || [];
@@ -1230,6 +1273,7 @@ function abrirCampana(pestanaInicial) {
         (esCeo() ? '' : '<button class="pestana" data-p="tickets">🎫 Mis tickets</button>' +
                         '<button class="pestana" data-p="faltas">⚠️ Faltas</button>') +
         (yo.ve_vistas_ceo ? '<button class="pestana" data-p="productos">🛍 Productos</button>' : '') +
+        '<button class="pestana" data-p="alertas">⚡ Error Conexión</button>' +
         '    </div><div class="cuerpo-pestana"></div>' +
         '  </div></div>';
     const cuerpo = capas.querySelector('.cuerpo-pestana');
@@ -1256,6 +1300,7 @@ function abrirCampana(pestanaInicial) {
             else if (hoja.pestana === 'semana') pintarSemana();
             else if (hoja.pestana === 'faltas') pintarFaltas();
             else if (hoja.pestana === 'productos') pintarProductos();
+            else if (hoja.pestana === 'alertas') pintarAlertas();
             else pintarNueva();
         },
     };
@@ -1298,6 +1343,26 @@ function abrirCampana(pestanaInicial) {
         fila.appendChild(selector);
         // El editor de los tipos vive en el módulo MIS TICKETS (Leonardo, 2026-10-12).
         cuerpo.appendChild(fila);
+    }
+
+    /* «⚡ Error Conexión»: las alertas automáticas de las modelos (OBS, Drive,
+     * conexión…). Mirarlas las da por vistas: la campana deja de contarlas. */
+    function pintarAlertas() {
+        marcarAlertasVistas();
+        pintarGlobo();
+        cuerpo.innerHTML = campana.alertas.length ? '' : '<div class="vacio">No han llegado alertas de conexión. 🎉</div>';
+        campana.alertas.slice(0, 150).forEach((a) => {
+            const caja = document.createElement('div');
+            caja.className = 'tarjeta tarjeta-falta';
+            caja.innerHTML =
+                '<div class="cabeza-falta"><b>' + escapar(a.nombre || a.cedula) + '</b>' +
+                '<span class="pildora urgente">⚡ Error</span></div>' +
+                '<div class="detalle-falta">' + escapar(a.texto) + '</div>' +
+                '<div class="nota-falta">' + escapar((a.fecha || '') + ' ' + (a.hora || '')) + '</div>' +
+                '<div class="botones"><a class="boton-secundario" href="personal_chat.html?cedula=' +
+                encodeURIComponent(a.cedula) + '">💬 Abrir su chat</a></div>';
+            cuerpo.appendChild(caja);
+        });
     }
 
     /* «🛍 Productos»: lo que el personal le asignó a una modelo y espera al CEO
