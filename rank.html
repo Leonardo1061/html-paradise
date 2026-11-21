@@ -7,12 +7,13 @@
 <title>Rank · PARADISE</title>
 
 <!--
-  RANK (2026-11-15)
-  =================
-  Pantalla nueva del rediseño. Falta definir con qué se ordena (dólares,
-  horas o cumplimiento de meta) y la API que lo calcule: por ahora solo avisa
-  que viene pronto. El mosaico del INICIO tiene listo el hueco del número
-  (#rank-num) dentro del laurel.
+  RANK SEMANAL (2026-11-21)
+  =========================
+  Todas las modelos de mayor a menor por lo producido la semana pasada
+  (domingo a sábado), con el total de la nómina. Solo puesto y primer nombre
+  + primer apellido: NUNCA dólares (Leonardo). La api es /api/rank
+  (rank_semanal.py); el mosaico del INICIO pone el mismo puesto en el laurel
+  (js/panel.js).
 -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -56,6 +57,26 @@ button { font-family: inherit; cursor: pointer; }
 .barra .marca { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; }
 .barra .marca img { width: 30px; height: 30px; object-fit: contain; }
 .contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+
+.mia { text-align: center; padding: 16px 14px 14px; border: 1px solid #8f6f22; border-radius: 16px;
+       background: linear-gradient(180deg, rgba(217,180,74,.16), rgba(20,20,22,.93)); margin-bottom: 14px; }
+.mia .laurel { position: relative; width: 118px; height: 96px; margin: 0 auto; display: grid; place-items: center; }
+.mia .laurel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.mia .laurel b { position: relative; font-size: 44px; font-weight: 500; color: #f3d98b; padding-bottom: 6px; }
+.mia h2 { margin: 8px 0 2px; font-size: 17px; font-weight: 500; }
+.mia p { margin: 0; font-size: 12.5px; color: #d8d4c6; }
+.lista { background: rgba(20,20,22,.93); border: 1px solid #34322b; border-radius: 16px; overflow: hidden; }
+.fila { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid #24231f; font-size: 14.5px; }
+.fila:first-child { border-top: 0; }
+.pos { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700;
+       color: var(--tenue); border: 1px solid var(--borde); flex: none; }
+.p1 .pos { background: linear-gradient(135deg,#f6e3a1,#d9b44a 45%,#b58a28); color: #1a1404; border: 0; }
+.p2 .pos { background: linear-gradient(135deg,#f1f1f1,#b9b9b9); color: #1a1a1a; border: 0; }
+.p3 .pos { background: linear-gradient(135deg,#e7b48a,#a8673a); color: #1f1004; border: 0; }
+.yo { background: rgba(217,180,74,.13); }
+.tu { margin-left: 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; padding: 2px 7px; border-radius: 5px;
+      background: var(--degradado); color: #1a1404; }
+.nota { font-size: 11.5px; color: var(--tenue); text-align: center; margin: 12px 6px 0; line-height: 1.5; }
 </style>
 <link rel="stylesheet" href="css/tema_dorado.css">
 </head>
@@ -66,16 +87,17 @@ button { font-family: inherit; cursor: pointer; }
     <div class="marca"><img src="img/rank.png" alt=""></div>
     <div>
         <div style="font-size:15px;font-weight:600">Rank</div>
-        <div style="font-size:11px;color:var(--tenue)">Tu posición en la semana pasada</div>
+        <div style="font-size:11px;color:var(--tenue)" id="rank-semana">Tu posición en la semana pasada</div>
     </div>
 </div>
 
 <main class="contenido">
-    <div class="pd-pronto">
-        <img src="img/rank.png" alt="">
-        <h2>Rank semanal</h2>
-        <p>Muy pronto vas a ver aquí en qué puesto quedaste la semana pasada.</p>
-        <span class="pd-sello">Próximamente</span>
+    <div id="rank">
+        <div class="pd-pronto">
+            <img src="img/rank.png" alt="">
+            <h2>Rank semanal</h2>
+            <p>Cargando…</p>
+        </div>
     </div>
 </main>
 
@@ -88,7 +110,74 @@ button { font-family: inherit; cursor: pointer; }
 <script src="js/adjuntos.js"></script>
 <script src="js/barra_modelo.js"></script>
 <script>
-if (!localStorage.getItem('token_sesion')) window.location.href = PARADISE.URL_LOGIN;
+(function () {
+'use strict';
+const token = localStorage.getItem('token_sesion');
+if (!token) { window.location.href = PARADISE.URL_LOGIN; return; }
+const caja = document.getElementById('rank');
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
+               'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function escapar(texto) {
+    return String(texto == null ? '' : texto)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// «Semana del domingo 8 al sábado 14 de noviembre»
+function semanaTexto(sem) {
+    const a = new Date(sem.inicio + 'T12:00:00'), b = new Date(sem.fin + 'T12:00:00');
+    const mesA = a.getMonth() !== b.getMonth() ? ' de ' + MESES[a.getMonth()] : '';
+    return 'Semana del domingo ' + a.getDate() + mesA + ' al sábado ' + b.getDate() + ' de ' + MESES[b.getMonth()];
+}
+
+function aviso(texto) {
+    caja.innerHTML = '<div class="pd-pronto"><img src="img/rank.png" alt=""><h2>Rank semanal</h2><p>' +
+        escapar(texto) + '</p></div>';
+}
+
+function pintar(rank) {
+    document.getElementById('rank-semana').textContent = semanaTexto(rank.semana);
+    if (!rank.lista.length) { aviso('Todavía no hay producción registrada de la semana pasada.'); return; }
+    let arriba;
+    if (rank.mi_puesto) {
+        const frase = rank.mi_puesto === 1 ? '¡Fuiste la número 1! Sigue así.'
+            : rank.mi_puesto <= 3 ? '¡Estás en el podio!' : '¡A por el podio esta semana!';
+        arriba = '<div class="laurel"><img src="img/rank.png" alt=""><b>' + rank.mi_puesto + '</b></div>' +
+            '<h2>Quedaste en el puesto ' + rank.mi_puesto + '</h2>' +
+            '<p>de ' + rank.total + ' modelos. ' + frase + '</p>';
+    } else {
+        arriba = '<div class="laurel"><img src="img/rank.png" alt=""></div>' +
+            '<h2>La semana pasada no tuviste producción registrada</h2>' +
+            '<p>Esta semana puedes entrar al Rank.</p>';
+    }
+    const filas = rank.lista.map((m) =>
+        '<div class="fila' + (m.puesto <= 3 ? ' p' + m.puesto : '') + (m.yo ? ' yo' : '') + '">' +
+        '<span class="pos">' + m.puesto + '</span><span class="nom">' + escapar(m.nombre) +
+        (m.yo ? '<span class="tu">TÚ</span>' : '') + '</span></div>').join('');
+    caja.innerHTML = '<div class="mia">' + arriba + '</div><div class="lista">' + filas + '</div>' +
+        '<p class="nota">Se ordena por lo producido en todas tus páginas. Solo se ven nombres y puestos.</p>';
+}
+
+let intentos = 0;
+async function cargar() {
+    try {
+        const r = await fetch(PARADISE.API_URL + '/api/rank', {
+            headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store' });
+        if (r.status === 401) { PARADISE.olvidar('token_sesion'); window.location.href = PARADISE.URL_LOGIN; return; }
+        if (!r.ok) throw new Error('api');
+        const rank = await r.json();
+        if (!rank.listo) {
+            aviso('Calculando el Rank de la semana pasada… esto tarda un momento.');
+            if (++intentos < 20) setTimeout(cargar, 15000);
+            return;
+        }
+        pintar(rank);
+    } catch (error) {
+        aviso('No se pudo cargar el Rank. Revisa tu conexión e inténtalo de nuevo.');
+    }
+}
+cargar();
+})();
 </script>
 </body>
 </html>

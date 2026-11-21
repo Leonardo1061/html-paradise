@@ -89,6 +89,16 @@ async function cargar() {
         else if (estado.datos.password_por_defecto === false) localStorage.removeItem('password_por_defecto');
         pintarClave();
     } catch (error) { /* el inicio no depende de esto: los mosaicos ya están */ }
+    pintarRank();
+}
+
+// El puesto de la semana pasada dentro del laurel (api: /api/rank, rank_semanal.py).
+// Si aún se calcula o no tuvo producción, el laurel queda vacío.
+async function pintarRank() {
+    try {
+        const rank = await pedir('/api/rank');
+        if (rank.listo && rank.mi_puesto) $('rank-num').textContent = rank.mi_puesto;
+    } catch (error) { /* el laurel vacío no estorba */ }
 }
 
 // Las capacitaciones y reuniones del cronograma, con la hora y quién la da.
