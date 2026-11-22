@@ -493,3 +493,90 @@ h1.titulo-pagina { font-size: 19px; font-weight: 700; display: flex; align-items
 .rejilla.mosaicos .dato .pie { font-size: 11.5px; color: #d8d4c6; margin-top: 4px; }
 .rejilla.mosaicos .dato.con-faltas { background: rgba(239, 68, 68, .12); border-color: var(--rojo); }
 .rejilla.mosaicos .dato.con-faltas .cifra { color: #fca5a5; }
+
+/* ---------------------------------------------- 📝 BITÁCORA (personal_bitacora.html) */
+.bit-buscar {
+    display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--oro-hondo);
+    border-radius: 14px; padding: 0 12px; height: 46px; margin-bottom: 10px;
+}
+.bit-buscar input { flex: 1; min-width: 0; background: none; border: 0; color: var(--texto); font-size: 15px; outline: none; }
+.bit-contador { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--apagado); margin: 2px 2px 8px; }
+.bit-fila, .bit-modelo {
+    width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 8px; text-align: left;
+    background: rgba(20, 20, 22, .93); border: 1px solid var(--borde); border-radius: var(--radio); color: var(--texto);
+}
+.bit-fila:hover { border-color: var(--oro-hondo); }
+.bit-avatar {
+    flex: none; width: 46px; height: 46px; border-radius: 12px; background: #2a2416; color: var(--oro-claro);
+    display: grid; place-items: center; font-weight: 700;
+}
+.bit-avatar.grande { width: 52px; height: 52px; font-size: 17px; }
+.bit-datos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.bit-datos b { font-size: 15px; }
+.bit-modelo .bit-datos b { font-size: 17px; }
+.bit-datos span { font-size: 12px; color: var(--tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bit-cuenta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.bit-cuenta b { font-size: 14px; color: var(--oro-claro); }
+.bit-cuenta span { font-size: 11px; color: var(--apagado); }
+.bit-cuenta.cero b { color: var(--apagado); }
+.bit-atras { background: none; border: 0; color: var(--oro-claro); font-size: 13.5px; padding: 4px 0 10px; }
+.bit-filtros { display: flex; gap: 8px; margin-bottom: 10px; }
+.bit-filtros input, .bit-filtros select {
+    height: 40px; border-radius: 12px; border: 1px solid var(--borde); background: var(--panel); color: var(--texto);
+    padding: 0 10px; font-size: 13.5px;
+}
+.bit-filtros input { flex: 1; min-width: 0; }
+.bit-registro {
+    background: rgba(20, 20, 22, .93); border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px;
+    margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.bit-registro h3 { margin: 0; font-size: 15px; }
+.bit-registro p { margin: 0; font-size: 13.5px; line-height: 1.45; color: #dcd8cc; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bit-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; }
+.bit-espacio { flex: 1; }
+.bit-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #232326; color: #b9b5a6; }
+.bit-chip.si { background: #10301f; color: #5ee0a8; }
+.bit-icono {
+    width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--borde); background: none; color: var(--texto);
+    font-size: 14px;
+}
+.bit-evidencias { display: flex; flex-wrap: wrap; gap: 6px; }
+.bit-evidencias:empty { display: none; }
+.bit-evidencia { font-size: 12.5px; padding: 6px 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bit-autor { font-size: 11.5px; color: var(--apagado); }
+.bit-pie { font-size: 12px; color: var(--apagado); margin: 4px 2px 0; }
+.bit-nota { font-size: 13px; color: var(--tenue); line-height: 1.45; margin: 0 0 12px; }
+.bit-fila-pie { display: flex; align-items: center; gap: 10px; }
+.bit-fila-pie .bit-pie { flex: 1; margin: 0; }
+.bit-anadir {
+    position: fixed; right: 16px; bottom: calc(100px + env(safe-area-inset-bottom)); z-index: 30;
+    height: 50px; padding: 0 18px; border-radius: 999px; border: 0; background: var(--degradado); color: var(--sobre-oro);
+    font-size: 14px; font-weight: 700; box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
+@media (min-width: 760px) { .bit-anadir { right: calc(50% - 470px); } }
+#vista-modelo { padding-bottom: 70px; }
+.bit-formulario .hoja-cuerpo { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+.bit-dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.bit-adjuntar {
+    width: 100%; height: 42px; border-radius: 12px; border: 1px dashed var(--oro-hondo); background: var(--panel-alto);
+    color: var(--oro-claro); font-size: 14px;
+}
+.bit-archivos { display: flex; flex-direction: column; gap: 6px; margin: -4px 0 12px; }
+.bit-archivos:empty { display: none; }
+.bit-archivo {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px;
+    background: var(--panel-alto); border: 1px solid var(--borde); font-size: 13px;
+}
+.bit-archivo span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bit-archivo small { color: var(--apagado); }
+.bit-archivo button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--borde); background: none; color: var(--texto); }
+.bit-compartir {
+    display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 12px; margin-bottom: 14px;
+    background: var(--panel-alto); border: 1px solid var(--borde); cursor: pointer;
+}
+.bit-compartir input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--oro); flex: none; }
+.bit-compartir > span { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.bit-compartir > span span { font-size: 11.5px; color: var(--tenue); }
+.bit-botones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.bit-peligro { background: var(--rojo); color: #fff; }
+.bit-fila-pie .boton-principal { width: auto; padding: 12px 24px; }

@@ -131,6 +131,8 @@ const MODULOS = [
     { id: 'fotografia', texto: 'Fotografía', icono: 'fotografia', pagina: 'personal_fotografia.html' },
     { id: 'status', texto: 'Room', titulo: 'Status Room', icono: 'room', pagina: 'personal_status.html' },
     { id: 'cronograma', texto: 'Cronograma', icono: 'svg:cronograma', pagina: 'personal_cronograma.html' },
+    // 📝 La Bitácora de cada modelo, la misma de la Admin (personal_bitacora.html). Todo el personal.
+    { id: 'bitacora', texto: 'Bitácora', icono: 'bitacora', pagina: 'personal_bitacora.html' },
     // Solo el CEO: la API se lo añade a sus módulos (personal.es_ceo).
     { id: 'tickets', texto: 'Tickets', titulo: 'Mis tickets', icono: 'ticket-ceo', pagina: 'personal_tickets.html' },
 ];

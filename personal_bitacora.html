@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>Bitácora · PARADISE</title>
+
+<!--
+  📝 BITÁCORA (todo el personal, Leonardo 2026-11-22)
+  ===================================================
+  La misma Bitácora de la Admin de escritorio (Modelos › ··· › 📝 Bitácora):
+  se busca la modelo y se leen o se añaden sus observaciones, con evidencia y
+  «Compartir con la modelo». Pestañas Bitácora y Hoja de vida. Los datos los
+  da /api/personal/bitacora (api/bitacora_personal.py). Lógica en
+  js/bitacora_personal.js; estilos `bit-` al final de css/personal.css.
+-->
+
+<link rel="manifest" href="manifest_personal.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE Staff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/personal.css">
+<!-- El fondo con el arco dorado y lo dorado del chat: el mismo tema de la web de modelos. -->
+<link rel="stylesheet" href="css/tema_dorado.css">
+</head>
+
+<body>
+
+<main class="contenido">
+    <!-- 1) LA LISTA DE MODELOS -->
+    <section id="vista-lista">
+        <div class="titulo-pagina">
+            <h1>Bitácora</h1>
+            <p>Elige la modelo para leer o añadir observaciones.</p>
+        </div>
+        <label class="bit-buscar">
+            <span aria-hidden="true">🔎</span>
+            <input id="buscar-modelo" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off">
+        </label>
+        <div class="pestanas" id="jornadas"></div>
+        <div id="lista-modelos"><div class="cargando"><span class="girando">◌</span> Cargando…</div></div>
+    </section>
+
+    <!-- 2) LA BITÁCORA DE UNA MODELO -->
+    <section id="vista-modelo" class="oculto">
+        <button class="bit-atras" id="atras">‹ Todas las modelos</button>
+        <div class="bit-modelo tarjeta" id="cabecera-modelo"></div>
+        <div class="pestanas" id="pestanas">
+            <button class="pestana activa" data-p="bitacora">Bitácora</button>
+            <button class="pestana" data-p="hoja">Hoja de vida</button>
+        </div>
+
+        <div id="panel-bitacora">
+            <div class="bit-filtros">
+                <input id="buscar-registro" type="search" placeholder="Buscar en la bitácora" autocomplete="off">
+                <select id="filtro-registros" aria-label="Filtro">
+                    <option value="">Todas</option>
+                    <option value="si">Compartidas con la modelo</option>
+                    <option value="no">Solo del estudio</option>
+                </select>
+            </div>
+            <div id="registros"></div>
+            <p class="bit-pie" id="pie-registros"></p>
+        </div>
+
+        <div id="panel-hoja" class="oculto">
+            <p class="bit-nota">Lo que el estudio sabe de ella para acompañarla. Solo lo ve el personal: no se comparte con la modelo.</p>
+            <div class="campo"><label for="hoja-perfil">Perfil de la modelo</label><textarea id="hoja-perfil" maxlength="4000"></textarea></div>
+            <div class="campo"><label for="hoja-fortalezas">Fortalezas</label><textarea id="hoja-fortalezas" maxlength="4000"></textarea></div>
+            <div class="campo"><label for="hoja-debilidades">Debilidades</label><textarea id="hoja-debilidades" maxlength="4000"></textarea></div>
+            <div class="campo"><label for="hoja-intereses">Intereses de sus clientes</label><textarea id="hoja-intereses" maxlength="4000"></textarea></div>
+            <div class="bit-fila-pie">
+                <span class="bit-pie" id="pie-hoja"></span>
+                <button class="boton-principal" id="guardar-hoja">Guardar</button>
+            </div>
+        </div>
+
+        <button class="bit-anadir" id="anadir">＋ Añadir observación</button>
+    </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/personal.js"></script>
+<script src="js/bitacora_personal.js"></script>
+</body>
+</html>
