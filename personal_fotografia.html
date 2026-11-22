@@ -14,6 +14,9 @@
 
     - en un bloque libre se agenda a CUALQUIER modelo (con un asunto o con
       un estilo del portafolio, y fotos de referencia si hacen falta);
+    - «Resumen»: de una semana o un rango, cuántas sesiones se programaron,
+      cuántas asistieron y no asistieron, y quién agendó a cada modelo (el
+      personal o ella misma desde su web);
     - en uno reservado se ve quién es, su celular y las fotos, se marca
       Asistió / No Asistió y se puede cancelar;
     - «Agendar» de un estilo del portafolio lleva a la malla para elegir el
@@ -216,6 +219,36 @@
 }
 .botones-estado button.elegido { background: var(--degradado); border-color: transparent; color: var(--sobre-oro); }
 .modelo-elegida { font-size: 13px; color: #f3d98b; margin-top: 6px; min-height: 18px; }
+
+/* ---------------------------------------------------------------- resumen */
+.rango-res { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; color: var(--tenue); }
+.rango-res input {
+    flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--borde); border-radius: 11px;
+    padding: 9px 10px; color: var(--texto); font-family: inherit; font-size: 14px; color-scheme: dark;
+}
+.rango-res button {
+    background: var(--panel-alto); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 11px; padding: 9px 14px; font-weight: 600; font-size: 13px;
+}
+.cifras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cifra { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 12px 10px; text-align: center; }
+.cifra .n { font-size: 26px; font-weight: 700; line-height: 1.1; }
+.cifra .t { font-size: 11px; color: var(--tenue); margin-top: 4px; text-transform: uppercase; letter-spacing: .6px; }
+.cifra.oro .n { color: #f3d98b; }
+.cifra.verde .n { color: #6ee7b7; }
+.cifra.rojo .n { color: #fca5a5; }
+.cifras-nota { font-size: 12px; color: var(--apagado); margin-top: 8px; text-align: center; }
+.quien { margin-bottom: 8px; }
+.quien .cab { display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
+.quien .cab b { color: #fff; }
+.quien .cab .chapa { margin-left: auto; }
+.quien .lista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.quien .lista .chapa { margin-left: 0; }
+.fila-sesion { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borde); font-size: 13px; }
+.fila-sesion:last-child { border-bottom: 0; }
+.fila-sesion .cuando { min-width: 92px; color: var(--tenue); font-size: 12px; line-height: 1.35; }
+.fila-sesion .quien-s { font-size: 11px; color: var(--apagado); margin-top: 2px; }
+.fila-sesion .chapa { margin-left: auto; }
 </style>
 <!-- El fondo con el arco dorado y lo dorado del chat: el mismo tema de la web de modelos. -->
 <link rel="stylesheet" href="css/tema_dorado.css">
@@ -227,6 +260,7 @@
     <div class="pestanas-foto">
         <button class="activo" id="tab-agenda">Agenda</button>
         <button id="tab-portafolio">Portafolio</button>
+        <button id="tab-resumen">Resumen</button>
     </div>
 
     <section id="vista-agenda">
@@ -240,6 +274,21 @@
         <div class="dias" id="dias"></div>
         <div id="bloques" class="bloques"><div class="cargando"><span class="girando">◌</span> Cargando la malla…</div></div>
         <div class="al-dia" id="al-dia"></div>
+    </section>
+
+    <section id="vista-resumen" class="oculto">
+        <div class="semana">
+            <button id="res-anterior" title="Semana anterior">◀</button>
+            <div class="rotulo" id="res-rotulo">—<small>Lunes a sábado</small></div>
+            <button id="res-siguiente" title="Semana siguiente">▶</button>
+        </div>
+        <div class="rango-res">
+            <input type="date" id="res-desde" aria-label="Desde">
+            <span>al</span>
+            <input type="date" id="res-hasta" aria-label="Hasta">
+            <button id="res-ver">Ver</button>
+        </div>
+        <div id="resumen"><div class="cargando"><span class="girando">◌</span> Cargando el resumen…</div></div>
     </section>
 
     <section id="vista-portafolio" class="oculto">

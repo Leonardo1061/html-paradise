@@ -13,6 +13,9 @@
  *   PORTAFOLIO        «Agendar» lleva a la malla con el estilo elegido.
  *                     Con su descripción y su duración: un show de 1 hora
  *                     ocupa dos bloques, se marca y se cancela entero.
+ *   RESUMEN           de una semana (◀ ▶) o de un rango: programadas,
+ *                     asistieron, no asistieron y quién agendó a cada
+ *                     modelo (`/resumen?desde=&hasta=`).
  *
  * Fotografía, CEO y Gerencia ven y agendan a TODAS las modelos, de Paradise
  * y de Tropic (lo decide la API, `ve_modelo_fotografia`).
@@ -42,6 +45,8 @@ const estado = {
     pendiente: null,               // {id, nombre, duracion, bloques}: estilo del portafolio
     actualizada: 0,
     cargandoMalla: false,
+    resumen: null,                 // lo último que dio /resumen
+    resDesde: '', resHasta: '',    // '' = la semana de la malla
 };
 
 const pedir = (ruta, metodo, cuerpo) => P.pedir('/api/personal/fotografia' + ruta, metodo, cuerpo);
@@ -466,17 +471,115 @@ function abrirEstilo(estilo) {
 }
 
 // =======================================================================
+// RESUMEN
+// =======================================================================
+function fechaIso(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function moverIso(iso, dias) {
+    const [a, m, d] = iso.split('-').map(Number);
+    return fechaIso(new Date(a, m - 1, d + dias));
+}
+
+async function cargarResumen() {
+    const caja = $('resumen');
+    if (!estado.resumen) caja.innerHTML = '<div class="cargando"><span class="girando">◌</span> Cargando el resumen…</div>';
+    try {
+        const consulta = estado.resDesde ? '?desde=' + estado.resDesde + '&hasta=' + estado.resHasta : '';
+        estado.resumen = await pedir('/resumen' + consulta);
+        estado.resDesde = estado.resumen.desde;
+        estado.resHasta = estado.resumen.hasta;
+        pintarResumen();
+    } catch (error) {
+        caja.innerHTML = '<div class="cargando">No se pudo cargar el resumen.<br><small>' +
+            escapar(error.message) + '</small></div>';
+    }
+}
+
+function chapaModelo(m) {
+    return '<span class="chapa ' + claseEstadoSesion(m.estado) + '" title="' + escapar(m.estado) + '">' +
+        escapar(m.modelo) + ' · ' + escapar(m.dia) + '</span>';
+}
+
+function tarjetaQuien(titulo, total, modelos) {
+    return '<div class="tarjeta quien"><div class="cab"><span>' + titulo + '</span>' +
+        '<span class="chapa">' + total + '</span></div>' +
+        '<div class="lista">' + modelos.map(chapaModelo).join('') + '</div></div>';
+}
+
+function pintarResumen() {
+    const r = estado.resumen;
+    $('res-rotulo').innerHTML = escapar(r.etiqueta) + '<small>' +
+        (r.programadas === 1 ? '1 sesión' : r.programadas + ' sesiones') + '</small>';
+    $('res-desde').value = r.desde;
+    $('res-hasta').value = r.hasta;
+
+    const extra = [];
+    if (r.por_venir) extra.push(r.por_venir + ' por venir');
+    if (r.sin_marcar) extra.push(r.sin_marcar + ' ya pasaron sin marcar asistencia');
+    if (r.ocultas) extra.push(r.ocultas + ' de modelos que no ves no se cuentan');
+
+    let html = '<div class="cifras">' +
+        '<div class="cifra oro"><div class="n">' + r.programadas + '</div><div class="t">Programadas</div></div>' +
+        '<div class="cifra verde"><div class="n">' + r.asistieron + '</div><div class="t">Asistieron</div></div>' +
+        '<div class="cifra rojo"><div class="n">' + r.no_asistieron + '</div><div class="t">No asistieron</div></div>' +
+        '</div>' + (extra.length ? '<div class="cifras-nota">' + escapar(extra.join(' · ')) + '</div>' : '');
+
+    html += '<div class="titulo-seccion">Quién programó <span class="linea"></span></div>';
+    if (!r.programadas) html += '<div class="vacio">No hay sesiones en estas fechas.</div>';
+    r.personal.forEach((p) => {
+        html += tarjetaQuien('<b>' + escapar(p.nombre) + '</b> programó a', p.total, p.modelos);
+    });
+    if (r.auto.total) {
+        html += tarjetaQuien('<b>Auto-programadas</b> · la modelo desde su web', r.auto.total, r.auto.modelos);
+    }
+    if (r.sin_dato.total) {
+        html += tarjetaQuien('<b>Sin dato</b> de quién la agendó', r.sin_dato.total, r.sin_dato.modelos);
+    }
+
+    if (r.sesiones.length) {
+        html += '<div class="titulo-seccion">Sesiones <span class="linea"></span></div><div class="tarjeta">' +
+            r.sesiones.map((s) => {
+                const quien = s.agendo_tipo === 'modelo' ? 'Se agendó ella misma'
+                    : s.agendo ? 'Agendó ' + s.agendo : 'Sin dato de quién agendó';
+                const marco = s.asistencia_por && s.estado !== 'Programada' ? ' · marcó ' + s.asistencia_por : '';
+                return '<div class="fila-sesion"><div class="cuando">' + escapar(s.dia) + '<br>' +
+                    escapar(s.rango.split(' – ')[0]) + ' · ' + escapar(sedeCorta(s.sede)) + '</div>' +
+                    '<div><div>' + escapar(s.modelo) + '</div><div class="quien-s">' + escapar(quien + marco) + '</div></div>' +
+                    '<span class="chapa ' + claseEstadoSesion(s.estado) + '">' + escapar(s.estado) + '</span></div>';
+            }).join('') + '</div>';
+    }
+    $('resumen').innerHTML = html;
+}
+
+function moverResumen(semanas) {
+    if (!estado.resDesde) return;
+    // Siempre de lunes a sábado, desde la semana del «desde».
+    const [a, m, d] = estado.resDesde.split('-').map(Number);
+    const dia = new Date(a, m - 1, d);
+    const lunes = moverIso(estado.resDesde, -((dia.getDay() + 6) % 7) + 7 * semanas);
+    estado.resDesde = lunes;
+    estado.resHasta = moverIso(lunes, 5);
+    cargarResumen();
+}
+
+// =======================================================================
 // PESTAÑAS Y ARRANQUE
 // =======================================================================
 function cambiarVista(vista) {
     estado.vista = vista;
     $('tab-agenda').classList.toggle('activo', vista === 'agenda');
     $('tab-portafolio').classList.toggle('activo', vista === 'portafolio');
+    $('tab-resumen').classList.toggle('activo', vista === 'resumen');
     $('vista-agenda').classList.toggle('oculto', vista !== 'agenda');
     $('vista-portafolio').classList.toggle('oculto', vista !== 'portafolio');
+    $('vista-resumen').classList.toggle('oculto', vista !== 'resumen');
     if (vista === 'agenda') {
         if (estado.semana) pintarAgenda();
         cargarAgenda(!!estado.semana);
+    } else if (vista === 'resumen') {
+        cargarResumen();
     } else if (estado.estilos === null) {
         cargarPortafolio();
     }
@@ -485,6 +588,16 @@ function cambiarVista(vista) {
 P.iniciar('fotografia').then(() => {
     $('tab-agenda').onclick = () => cambiarVista('agenda');
     $('tab-portafolio').onclick = () => cambiarVista('portafolio');
+    $('tab-resumen').onclick = () => cambiarVista('resumen');
+    $('res-anterior').onclick = () => moverResumen(-1);
+    $('res-siguiente').onclick = () => moverResumen(1);
+    $('res-ver').onclick = () => {
+        const desde = $('res-desde').value, hasta = $('res-hasta').value;
+        if (!desde && !hasta) { avisar('Elige las fechas.'); return; }
+        estado.resDesde = desde || hasta;
+        estado.resHasta = hasta || desde;
+        cargarResumen();
+    };
     $('buscador').oninput = pintarPortafolio;
     $('sem-anterior').onclick = () => { estado.indice--; estado.diaElegido = null; cargarAgenda(); };
     $('sem-siguiente').onclick = () => { estado.indice++; estado.diaElegido = null; cargarAgenda(); };
