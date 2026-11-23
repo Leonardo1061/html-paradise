@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>Bitácora · PARADISE</title>
+
+<!--
+  BITÁCORA DE LA MODELO (Leonardo, 2026-11-22; antes «Seguimiento»)
+  ================================================================
+  Solo las observaciones que el personal escribe de ella (en la Admin o en
+  la web del personal, misma colección Bitacora_Modelos) y marca «Compartir
+  con la modelo». Es de lectura. La pinta js/bitacora.js con `/api/bitacora`;
+  la evidencia se abre con `/api/bitacora/{id}/adjunto/{n}`.
+  Las estadísticas y los minutos programados ya no salen aquí.
+-->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PARADISE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --fondo:      #0a0a0b;
+    --panel:      #141416;
+    --panel-alto: #1a1a1d;
+    --borde:      #34322b;
+    --texto:      #f4f1e8;
+    --tenue:      #a9a595;
+    --apagado:    #6f6c62;
+    --mid:        #d9b44a;
+    --soft:       #f6ecc8;
+    --high:       #c0661a;
+    --verde:      #f3d98b;
+    --rojo:       #ef4444;
+    --degradado: linear-gradient(135deg, #f6e3a1 0%, #d9b44a 45%, #b58a28 100%);
+    --radio: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 110px;
+}
+button { font-family: inherit; cursor: pointer; }
+.oculto { display: none !important; }
+.barra { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; max-width: 760px; margin: 0 auto; }
+.barra .marca { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; }
+.barra .marca img { width: 30px; height: 30px; object-fit: contain; }
+.contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+.saludo h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+.saludo p { margin: 3px 0 0; font-size: 13px; color: var(--tenue); }
+
+/* ------------------------------------------------------------- tarjetas */
+.tarjeta {
+    background: var(--panel); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 16px;
+}
+
+/* ------------------------------------------------------------- bitácora */
+.bitacora { margin-top: 6px; }
+.bitacora h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.bitacora .sub { margin: 3px 0 12px; font-size: 13px; color: var(--tenue); }
+.registro { margin-top: 10px; display: grid; gap: 8px; }
+.registro .fecha { font-size: 12px; color: var(--tenue); }
+.registro h3 { margin: 0; font-size: 15.5px; font-weight: 600; }
+.registro .texto { font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.registro .adjuntos { display: flex; flex-wrap: wrap; gap: 8px; }
+.registro .adjuntos button {
+    background: transparent; border: 1px solid var(--borde); color: inherit; border-radius: 10px;
+    padding: 7px 10px; font-size: 13px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.registro .adjuntos button:disabled { opacity: .5; }
+.vacio-bitacora { color: var(--tenue); font-size: 13.5px; padding: 14px 0; }
+
+.cargando { text-align: center; color: var(--apagado); padding: 50px 0; font-size: 14px; }
+.girando { display: inline-block; animation: giro 1s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+
+</style>
+<link rel="stylesheet" href="css/tema_dorado.css">
+</head>
+
+<body>
+
+<div class="barra">
+    <div class="marca"><img src="img/bloc-de-notas.png" alt=""></div>
+    <div>
+        <div style="font-size:15px;font-weight:600">Bitácora</div>
+        <div style="font-size:11px;color:var(--tenue)">Revisa las observaciones de tu manager</div>
+    </div>
+</div>
+
+<main class="contenido">
+    <section class="bitacora" aria-label="Bitácora">
+        <div id="bitacora"><div class="cargando" style="padding:20px 0">Cargando tu bitácora…</div></div>
+    </section>
+</main>
+
+<!-- La barra vieja: escondida, js/barra_modelo.js pone la nueva. -->
+<nav class="navegacion"></nav>
+<div id="capas"></div>
+
+<script src="js/config.js"></script>
+<script src="js/push.js"></script>
+<script src="js/adjuntos.js"></script>
+<script src="js/barra_modelo.js"></script>
+<script src="js/bitacora.js"></script>
+</body>
+</html>

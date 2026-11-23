@@ -31,7 +31,8 @@
  *
  * LA BURBUJA 💬 (js/barra_modelo.js): en las demás páginas cuenta lo que le
  * escribieron después de `chat_visto_hasta`. Con el chat completo abierto
- * (sin `canalFijo`) ese cursor se guarda en cada vuelta: lo que ve ya no cuenta.
+ * (sin `canalFijo`, o con `marcaVisto` como chat.html, fijo en Soporte) ese
+ * cursor se guarda en cada vuelta: lo que ve ya no cuenta.
  *
  * REACCIONES Y ENLACES (2026-10-17, js/reacciones.js): mantener el dedo sobre
  * un mensaje saca la barra de emojis; la reacción es la misma que ve el
@@ -238,7 +239,7 @@ function montar(raiz, opciones) {
     }
 
     function marcarVisto() {
-        if (fijo || !estado.activo || !estado.cursor) return;
+        if ((fijo && !opciones.marcaVisto) || !estado.activo || !estado.cursor) return;
         try { localStorage.setItem('chat_visto_hasta', estado.cursor); } catch (e) { /* da igual */ }
     }
 

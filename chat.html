@@ -7,8 +7,9 @@
 <title>Chat · PARADISE</title>
 
 <!--
-  CHAT · Soporte y mensajes privados a los roles del estudio
-  ==========================================================
+  CHAT · Soporte del estudio
+  ==========================
+  Desde 2026-11-22 solo el canal Soporte: la modelo ya no escribe a otros roles.
   Todo cae en la MISMA conversación que el monitor ya atiende en el escritorio
   (1.PARADISE_ADMIN, 💬 Chat). Cada mensaje lleva su canal: Soporte o el rol
   al que va. Notas de voz, videos y PDF van a la carpeta de Drive de la modelo;
@@ -106,10 +107,10 @@ button { font-family: inherit; cursor: pointer; }
 <body>
 
 <div class="barra">
-    <div class="marca">💬</div>
+    <div class="marca"><img src="img/chat.png" alt="" style="width:26px;height:26px;object-fit:contain"></div>
     <div>
         <div style="font-size:15px;font-weight:600">Chat</div>
-        <div style="font-size:11px;color:var(--tenue)">Soporte y mensajes privados</div>
+        <div style="font-size:11px;color:var(--tenue)">Soporte del estudio</div>
     </div>
 </div>
 
@@ -145,7 +146,9 @@ button { font-family: inherit; cursor: pointer; }
         setTimeout(() => { if (caja === avisoActual) { caja.remove(); avisoActual = null; } },
                   tipo === 'malo' ? 6000 : 3200);
     }
-    ChatParadise.montar($('chat'), { avisar: avisar }).activar();
+    // Solo Soporte (Leonardo, 2026-11-22): sin chips para escribir a otros roles.
+    ChatParadise.montar($('chat'), { avisar: avisar, canalFijo: 'soporte', nombreFijo: 'Soporte',
+                                     marcaVisto: true }).activar();
 
     $('nav-programador').onclick = () => { window.location.href = 'plan.html'; };
     $('nav-fotografia').onclick = () => { window.location.href = 'fotografia.html'; };

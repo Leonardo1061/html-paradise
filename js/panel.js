@@ -2,16 +2,15 @@
  * PARADISE · Inicio de la modelo (panel.html) · rediseño 2026-11-15
  * ===========================================================================
  *
- * El inicio son los seis mosaicos, las capacitaciones y reuniones que vienen
- * y el chat con el estudio. Aquí solo queda lo poco que tiene de vivo:
+ * El inicio son los seis mosaicos y las capacitaciones y reuniones que
+ * vienen (el chat es el botón flotante CHAT de js/barra_modelo.js). Aquí
+ * solo queda lo poco que tiene de vivo:
  *
  *   · pedir `/api/acceso/panel` para saber si sigue con la contraseña de la
  *     cédula (y aconsejarle cambiarla) y refrescar su nombre en la cabecera;
- *   · pintar las actividades que manda js/barra_modelo.js;
- *   · montar el chat (js/chat.js) sin que la página salte hasta abajo.
+ *   · pintar las actividades que manda js/barra_modelo.js.
  *
- * Los números y la gráfica de la semana están en js/seguimiento.js y el
- * producido en js/producido.js (pestaña de Pagos).
+ * El producido está en js/producido.js (pestaña de Pagos).
  */
 
 (function () {
@@ -128,12 +127,6 @@ cargar();
 // dónde se quedó la vez anterior).
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 window.scrollTo(0, 0);
-
-// El chat del inicio: Soporte y los privados, en un cuadro de una pantalla
-// (`enCaja`): lo que baja al último mensaje es el cuadro, no la página.
-if (estado.token && window.ChatParadise) {
-    ChatParadise.montar($('chat'), { avisar: avisar, enCaja: true }).activar();
-}
 
 // Enlaces viejos a panel.html#perfil: abren el cambio de contraseña.
 if (window.location.hash === '#perfil') {

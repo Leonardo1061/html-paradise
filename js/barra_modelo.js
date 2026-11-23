@@ -13,9 +13,15 @@
  * iconos de img/). La barra de abajo es nueva y la pone este archivo
  * (`montarNav`): Fotografía · Room · Contenido · CEO · Pagos; la `.navegacion`
  * vieja de cada página se queda escondida. El ☰ abre el menú lateral
- * (`abrirMenu`). En el INICIO no sale la burbuja del chat porque el chat ya
- * está en la página. Lo que sigue describe lo de antes, que sigue valiendo
+ * (`abrirMenu`). Lo que sigue describe lo de antes, que sigue valiendo
  * salvo donde este párrafo dice otra cosa.
+ *
+ * BOTÓN CHAT (Leonardo, 2026-11-22): la burbuja es ahora el botón CHAT con
+ * img/chat.png, sale también en el INICIO (ya no hay chat en la página) y se
+ * arrastra por toda la pantalla como la del personal: al soltarlo se pega al
+ * borde más cercano y recuerda su sitio en este teléfono. Un toque sin
+ * arrastrar abre chat.html, que ahora es solo Soporte; por eso el globo
+ * cuenta solo lo que llegó a Soporte. Ya no sale el aviso de Kwiky.
  *
  * CABECERA FIJA (2026-10-08): una franja arriba que no se va con el scroll,
  * igual en las cinco páginas. A la izquierda ▦ INICIO (panel.html); a la
@@ -112,7 +118,6 @@ const estado = {
     globo: null,                     // el globo de la campana inyectada (si la hay)
     burbuja: null,                   // la 💬 flotante (no en chat.html)
     chatSinLeer: 0,
-    chatCanal: '',                   // canal del último que le escribieron
 };
 
 function escapar(texto) {
@@ -415,13 +420,17 @@ body.guardando .bm-nav { display: none; }
 .bm-cajon button img, .bm-cajon button span.e { width: 26px; height: 26px; object-fit: contain; text-align: center; flex: none; font-size: 19px; line-height: 26px; }
 .bm-cajon hr { border: 0; border-top: 1px solid #34322b; margin: 8px 0; width: 100%; }
 .bm-burbuja {
-    position: fixed; z-index: 34; right: max(16px, env(safe-area-inset-right));
-    bottom: calc(92px + env(safe-area-inset-bottom));
-    width: 54px; height: 54px; border-radius: 50%; border: 0; display: grid; place-items: center;
-    background: linear-gradient(135deg, #f3d98b 0%, #c9982e 100%); font-size: 24px;
-    box-shadow: 0 12px 28px rgba(217, 180, 74,.5); cursor: pointer; padding: 0; color: #1a1404; }
+    position: fixed; z-index: 34; left: 0; top: 0;
+    width: 58px; height: 58px; border-radius: 50%; border: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1px;
+    background: linear-gradient(135deg, #f3d98b 0%, #c9982e 100%);
+    box-shadow: 0 12px 28px rgba(217, 180, 74,.5); cursor: grab; padding: 0; color: #1a1404;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+    transition: left .18s ease, top .18s ease, transform .12s; }
+.bm-burbuja img { width: 26px; height: 26px; object-fit: contain; pointer-events: none; }
+.bm-burbuja b { font: 700 9px 'Ubuntu', sans-serif; letter-spacing: .6px; pointer-events: none; }
+.bm-burbuja.arrastrando { cursor: grabbing; transition: none; transform: scale(1.06); }
 .bm-burbuja .bm-globo { top: -3px; right: -3px; }
-@media (min-width: 760px) { .bm-burbuja { right: calc(50% - 250px); } }
 /* Donde ya hay una caja de chat abajo o manda la barra de guardar, estorba. */
 body.guardando .bm-burbuja, body:has(#vista-chat:not(.oculto)) .bm-burbuja { display: none; }
 .bm-velo { position: fixed; inset: 0; background: rgba(0,0,0,.66); backdrop-filter: blur(3px); z-index: 2000; }
@@ -1767,9 +1776,8 @@ async function revisarChat() {
             try { localStorage.setItem('chat_visto_hasta', datos.cursor); } catch (e) { /* da igual */ }
             return;
         }
-        const suyos = (datos.mensajes || []).filter((m) => !m.de_modelo);
+        const suyos = (datos.mensajes || []).filter((m) => !m.de_modelo && (m.canal_id || 'soporte') === 'soporte');
         estado.chatSinLeer = suyos.length;
-        estado.chatCanal = suyos.length ? (suyos[suyos.length - 1].canal_id || '') : '';
         pintarBurbuja();
     } catch (error) { /* sin red un momento: en la siguiente vuelta */ }
 }
@@ -1784,17 +1792,68 @@ function pintarBurbuja() {
     b.title = n ? 'Chat: ' + n + (n === 1 ? ' mensaje nuevo' : ' mensajes nuevos') : 'Chat';
 }
 
+const LADO_BURBUJA = 58;
+const MARGEN_BURBUJA = 12;
+const CLAVE_BURBUJA = 'pdz_burbuja_chat';
+
+/* Se arrastra con el dedo o el mouse por toda la pantalla (sin taparse con la
+   cabecera ni con la barra de abajo); al soltarlo se pega al borde más
+   cercano y guarda el sitio. Un toque sin arrastrar abre el chat. */
+function arrastrable(b, abrir) {
+    let sitio = { lado: 'der', altura: 0.7 };
+    try { sitio = Object.assign(sitio, JSON.parse(localStorage.getItem(CLAVE_BURBUJA) || '{}')); } catch (e) { /* el de siempre */ }
+    const topeArriba = () => (document.querySelector('.bm-arriba') ? document.querySelector('.bm-arriba').offsetHeight : 0) + 10;
+    const topeAbajo = () => Math.max(topeArriba(), window.innerHeight - LADO_BURBUJA - 96);
+    const limitar = (y) => Math.min(topeAbajo(), Math.max(topeArriba(), y));
+    const xDe = (lado) => (lado === 'izq' ? MARGEN_BURBUJA : window.innerWidth - LADO_BURBUJA - MARGEN_BURBUJA);
+    function colocar() {
+        b.style.left = xDe(sitio.lado) + 'px';
+        b.style.top = limitar(sitio.altura * window.innerHeight) + 'px';
+    }
+    colocar();
+    window.addEventListener('resize', colocar);
+
+    let toque = null;
+    b.addEventListener('pointerdown', (e) => {
+        b.setPointerCapture(e.pointerId);
+        const caja = b.getBoundingClientRect();
+        toque = { x: e.clientX, y: e.clientY, dx: e.clientX - caja.left, dy: e.clientY - caja.top, movio: false };
+        b.classList.add('arrastrando');
+    });
+    b.addEventListener('pointermove', (e) => {
+        if (!toque) return;
+        if (Math.abs(e.clientX - toque.x) + Math.abs(e.clientY - toque.y) > 6) toque.movio = true;
+        if (!toque.movio) return;
+        b.style.left = Math.max(0, Math.min(window.innerWidth - LADO_BURBUJA, e.clientX - toque.dx)) + 'px';
+        b.style.top = limitar(e.clientY - toque.dy) + 'px';
+    });
+    b.addEventListener('pointerup', () => {
+        if (!toque) return;
+        const movio = toque.movio;
+        toque = null;
+        b.classList.remove('arrastrando');
+        if (!movio) { abrir(); return; }
+        const caja = b.getBoundingClientRect();
+        sitio = { lado: caja.left + LADO_BURBUJA / 2 < window.innerWidth / 2 ? 'izq' : 'der',
+                  altura: caja.top / window.innerHeight };
+        try { localStorage.setItem(CLAVE_BURBUJA, JSON.stringify(sitio)); } catch (e) { /* solo es comodidad */ }
+        colocar();
+    });
+    b.addEventListener('pointercancel', () => { toque = null; b.classList.remove('arrastrando'); colocar(); });
+    // Con teclado también abre (el clic del mouse ya lo resolvió `pointerup`).
+    b.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); }
+    });
+}
+
 function montarBurbuja() {
     if (ES_CHAT) return;
     const b = document.createElement('button');
     b.className = 'bm-burbuja';
-    b.setAttribute('aria-label', 'Abrir el chat');
-    b.innerHTML = '💬<span class="bm-globo bm-oculto"></span>';
-    b.onclick = () => {
-        const canal = estado.chatSinLeer && estado.chatCanal;
-        window.location.href = 'chat.html' + (canal ? '?canal=' + encodeURIComponent(canal) : '');
-    };
+    b.setAttribute('aria-label', 'Abrir el chat con Soporte');
+    b.innerHTML = '<img src="img/chat.png" alt=""><b>CHAT</b><span class="bm-globo bm-oculto"></span>';
     document.body.appendChild(b);
+    arrastrable(b, () => { window.location.href = 'chat.html'; });
     document.body.classList.add('bm-con-burbuja');
     estado.burbuja = b;
     pintarBurbuja();
@@ -1865,7 +1924,7 @@ function abrirMenu() {
     const opciones = [
         ['panel', '▦', 'Inicio'], ['plan', 'plan-de-trabajo', 'Plan de Trabajo'], ['convenios', 'convenios', 'Convenios'],
         ['sexshop', 'sexshop', 'SexShop'], ['capacitaciones', 'capacitaciones', 'Capacitaciones'],
-        ['seguimiento', 'seguimiento', 'Seguimiento'], ['rank', 'rank', 'Rank'], ['chat', 'chat', 'Chat'],
+        ['bitacora', 'bloc-de-notas', 'Bitácora'], ['rank', 'rank', 'Rank'], ['chat', 'chat', 'Chat'],
         ['datos', '📝', 'Mis datos'],
     ];
     capa.innerHTML = '<div class="bm-velo"></div><div class="bm-cajon"><img src="img/logo.png" alt="The Paradise">' +
@@ -1993,38 +2052,11 @@ function boton_redondo(nombre, titulo) {
     return b;
 }
 
-// =======================================================================
-// ⚡ «TU CUENTA NO SE ESTÁ REVISANDO» (Leonardo, 2026-10-23)
-// =======================================================================
-// Seis días después de que la Admin exporte las cuentas de Streamate, a la
-// modelo cuya cuenta nunca desbloqueó el Kwiky la API le dice que muestre
-// este aviso (kwiky_revision.py). Sale al entrar, una vez al día en cada
-// equipo, hasta que la cuenta se desbloquee.
-async function avisoKwiky() {
-    const hoy = new Date().toISOString().slice(0, 10);
-    let visto = '';
-    try { visto = localStorage.getItem('pdz_aviso_kwiky') || ''; } catch (e) { visto = ''; }
-    if (visto === hoy) return;
-    let datos = null;
-    try { datos = await pedir('/api/streamate/aviso-kwiky'); } catch (e) { return; }
-    if (!datos || !datos.mostrar || estado.hoja) return;
-    try { localStorage.setItem('pdz_aviso_kwiky', hoy); } catch (e) { /* sin almacenamiento */ }
-    const hoja = abrirHoja('aviso-kwiky', '⚠️ Kwiky');
-    hoja.cuerpo.innerHTML =
-        '<div class="bm-kwiky-info s-texto" style="font-size:15px"></div>' +
-        '<button class="bm-principal s-chat">💬 Escribir al monitor</button>' +
-        '<button class="bm-secundario s-ok" style="width:100%;margin-top:8px">Entendido</button>';
-    hoja.cuerpo.querySelector('.s-texto').textContent = datos.texto;
-    hoja.cuerpo.querySelector('.s-chat').onclick = () => { window.location.href = 'chat.html'; };
-    hoja.cuerpo.querySelector('.s-ok').onclick = hoja.cerrar;
-}
-
 function montar() {
     estilos();
     montarCabecera();
     montarNav();
-    if (!EN_INICIO) montarBurbuja();
-    setTimeout(avisoKwiky, 1500);
+    montarBurbuja();
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarHoja(); });
 
     revisar(true).then(() => {
