@@ -17,8 +17,8 @@
  * salvo donde este párrafo dice otra cosa.
  *
  * BOTÓN CHAT (Leonardo, 2026-11-22): la burbuja es ahora el botón CHAT con
- * img/chat-whatsapp.png (2026-11-23: burbuja verde con teléfono, fondo
- * transparente, sin texto; antes el círculo dorado «CHAT»), sale también en el INICIO (ya no hay chat en la página) y se
+ * img/chat-soporte.png (2026-11-23: auriculares con globo de chat rosa-azul,
+ * fondo transparente, sin texto; antes el círculo dorado «CHAT»), sale también en el INICIO (ya no hay chat en la página) y se
  * arrastra por toda la pantalla como la del personal: al soltarlo se pega al
  * borde más cercano y recuerda su sitio en este teléfono. Un toque sin
  * arrastrar abre chat.html, que ahora es solo Soporte; por eso el globo
@@ -424,7 +424,7 @@ body.guardando .bm-nav { display: none; }
     position: fixed; z-index: 34; left: 0; top: 0;
     width: 58px; height: 58px; border-radius: 50%; border: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 1px;
-    background: url('img/chat-whatsapp.png') center / contain no-repeat transparent;
+    background: url('img/chat-soporte.png') center / contain no-repeat transparent;
     filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); cursor: grab; padding: 0;
     touch-action: none; -webkit-user-select: none; user-select: none;
     transition: left .18s ease, top .18s ease, transform .12s; }
