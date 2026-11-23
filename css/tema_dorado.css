@@ -48,26 +48,26 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 /* ------------------------------------------------------------ mosaicos */
-.pd-mosaicos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pd-mosaicos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pd-mosaico {
     background: rgba(28, 28, 31, .9); border: 1px solid #2b2a27; border-radius: 6px;
-    color: #f4f1e8; text-decoration: none; cursor: pointer; padding: 12px 6px 10px;
-    display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center;
+    color: #f4f1e8; text-decoration: none; cursor: pointer; padding: 10px 5px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
     transition: border-color .15s;
 }
 .pd-mosaico:hover, .pd-mosaico:active { border-color: var(--oro); }
-.pd-mosaico .ic { height: 82px; display: grid; place-items: center; position: relative; }
-.pd-mosaico .ic img { max-height: 82px; max-width: 108px; display: block; }
-.pd-mosaico h3 { margin: 4px 0 0; font-weight: 400; font-size: 19px; }
-.pd-mosaico p { margin: 0; font-size: 11.5px; color: #d8d4c6; }
+.pd-mosaico .ic { height: 66px; display: grid; place-items: center; position: relative; }
+.pd-mosaico .ic img { max-height: 66px; max-width: 86px; display: block; }
+.pd-mosaico h3 { margin: 3px 0 0; font-weight: 400; font-size: 15px; }
+.pd-mosaico p { margin: 0; font-size: 10px; color: #d8d4c6; }
 .pd-mosaico .rank-num {
     position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 6px;
-    font-size: 36px; color: var(--oro-claro);
+    font-size: 29px; color: var(--oro-claro);
 }
 @media (max-width: 360px) {
-    .pd-mosaico .ic { height: 68px; }
-    .pd-mosaico .ic img { max-height: 68px; }
-    .pd-mosaico h3 { font-size: 16.5px; }
+    .pd-mosaico .ic { height: 54px; }
+    .pd-mosaico .ic img { max-height: 54px; }
+    .pd-mosaico h3 { font-size: 13.5px; }
 }
 
 /* ------------------------------------------------- pantallas nuevas */
