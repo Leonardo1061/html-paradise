@@ -204,3 +204,50 @@
 @media (hover: none) {
     .chat-burbuja { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 }
+
+/* ----------------------------------------------------------------------
+   Barra de escribir estilo WhatsApp (solo el chat de las modelos, js/chat.js):
+   píldora oscura con 😊 · Mensaje · 📎 · 📷 y fuera el botón dorado 🎤/➤.
+   ---------------------------------------------------------------------- */
+.chat-barra.estilo-wa {
+    background: none; border: 0; box-shadow: none; padding: 0; gap: 6px; align-items: flex-end;
+}
+.chat-pildora {
+    flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 0;
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 26px;
+    padding: 2px 4px; min-height: 50px; box-shadow: 0 12px 30px rgba(0, 0, 0, .55);
+}
+.chat-barra.estilo-wa .chat-pildora button {
+    width: 42px; height: 44px; border-radius: 50%; background: none; color: var(--tenue);
+}
+.chat-barra.estilo-wa .chat-pildora button:hover { color: var(--soft); }
+.chat-barra.estilo-wa .chat-pildora .chat-foto-boton { margin-right: 2px; }
+.chat-barra.estilo-wa .chat-texto { padding: 13px 2px 12px; font-size: 15.5px; }
+.chat-barra.estilo-wa .chat-texto::placeholder { color: var(--apagado); }
+.chat-barra.estilo-wa .chat-mic, .chat-barra.estilo-wa .chat-enviar {
+    width: 50px; height: 50px; background: var(--degradado); color: #1a1404;
+    box-shadow: 0 10px 24px rgba(217, 180, 74, .35);
+}
+.chat-barra.estilo-wa svg { display: block; }
+
+/* El selector de emojis encima de la barra. */
+.chat-emojis {
+    background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 18px;
+    margin-bottom: 8px; box-shadow: 0 14px 34px rgba(0, 0, 0, .6); overflow: hidden;
+}
+.chat-emojis-grupos { display: flex; border-bottom: 1px solid var(--borde); padding: 4px 6px; gap: 2px; }
+.chat-emojis-grupos button {
+    flex: 1; background: none; border: 0; font-size: 20px; padding: 6px 0; border-radius: 10px;
+    border-bottom: 2px solid transparent; filter: grayscale(.6); opacity: .7;
+}
+.chat-emojis-grupos button.activo { filter: none; opacity: 1; border-bottom-color: var(--violeta); border-radius: 10px 10px 0 0; }
+.chat-emojis-rejilla {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 2px;
+    padding: 6px; height: 220px; overflow-y: auto; overscroll-behavior: contain;
+}
+.chat-emojis-rejilla button {
+    background: none; border: 0; font-size: 25px; line-height: 1; padding: 6px 0; border-radius: 10px;
+}
+.chat-emojis-rejilla button:hover, .chat-emojis-rejilla button:active { background: rgba(255, 255, 255, .08); }
+/* El 📎 ya no está a la izquierda: su menú sale encima, del lado derecho. */
+.chat-pie:has(.estilo-wa) .chat-menu { left: auto; right: 56px; }

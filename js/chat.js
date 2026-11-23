@@ -41,6 +41,8 @@
  *
  * LO QUE SE ADJUNTA (js/adjuntos.js, el mismo menú del chat del personal)
  * ------------------------------------------------------------------------
+ * La barra va al estilo WhatsApp: 😊 emojis, «Mensaje», 📎 y 📷 dentro de la
+ * píldora; fuera, el botón dorado 🎤 que pasa a ➤ cuando hay texto.
  * 📎 Galería (fotos y videos), Cámara (una foto) y Documento (PDF), y 🎤 la
  * nota de voz en WAV. La foto va comprimida DENTRO del mensaje, como las del
  * escritorio. La nota de voz, el video y el PDF van a su carpeta de Drive a
@@ -130,6 +132,119 @@ function etiquetaDia(fecha) {
 }
 
 // =======================================================================
+// LA BARRA DE ESCRIBIR (estilo WhatsApp, 2026-11-23)
+// =======================================================================
+/* Píldora con 😊 · «Mensaje» · 📎 · 📷 y, fuera, el botón redondo dorado:
+   🎤 sin texto, ➤ con texto. Iconos de línea en SVG (heredan el color). */
+const svg = (d) => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+const ICONO = {
+    emoji: svg('<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/>' +
+               '<circle cx="9" cy="10" r=".6" fill="currentColor"/><circle cx="15" cy="10" r=".6" fill="currentColor"/>'),
+    teclado: svg('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>'),
+    clip: svg('<path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/>'),
+    camara: svg('<path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>' +
+                '<circle cx="12" cy="13" r="3.6"/>'),
+    mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
+    enviar: '<svg viewBox="0 0 24 24" width="21" height="21" fill="currentColor" aria-hidden="true">' +
+            '<path d="M3.4 20.4l17.4-7.5a1 1 0 0 0 0-1.8L3.4 3.6a.9.9 0 0 0-1.3 1L4 11l9 1-9 1-1.9 6.4a.9.9 0 0 0 1.3 1z"/></svg>',
+};
+
+const esTactil = () => ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+/* 📷 dentro de la píldora: en el teléfono abre la cámara del sistema (que
+   también deja elegir de la galería); en el ordenador, la del navegador. */
+function conectarCamara(boton, alElegir) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.setAttribute('capture', 'environment');
+    input.className = 'oculto';
+    input.onchange = () => {
+        const archivo = input.files && input.files[0];
+        input.value = '';
+        if (archivo) alElegir(archivo, 'camara');
+    };
+    boton.parentNode.appendChild(input);
+    boton.onclick = async () => {
+        if (!esTactil() && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const foto = await A.camara();
+            if (foto) alElegir(foto, 'camara');
+            return;
+        }
+        input.click();
+    };
+}
+
+const GRUPOS_EMOJI = [
+    ['😊', 'Caras', '😀 😃 😄 😁 😆 😅 😂 🤣 🥲 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 🤨 🧐 🤓 😎 🥸 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🤭 🤫 🤥 😶 😐 😑 😬 🙄 😯 😦 😧 😮 😲 🥱 😴 🤤 😪 😵 🤐 🥴 🤢 🤮 🤧 😷 🤒 🤕 🤑 🤠 😈 👿 💩 👻 💀 🤡'],
+    ['👍', 'Gestos', '👍 👎 👌 🤌 🤏 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 👏 🙌 👐 🤲 🤝 🙏 ✍️ 💅 🤳 💪 👀 👁️ 👅 👄 💋 🙋‍♀️ 🙆‍♀️ 🙅‍♀️ 🤷‍♀️ 🤦‍♀️ 💁‍♀️ 🙇‍♀️ 💃 🧘‍♀️'],
+    ['❤️', 'Corazones', '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ♥️ 💯 💢 💥 💫 💦 💨 🔥 ✨ ⭐ 🌟 💤 ✅ ❌ ❗ ❓ ⚠️ 🔞'],
+    ['🎉', 'Cosas', '🎉 🎊 🎁 🎈 🎂 🍾 🥂 🍷 🍸 ☕ 🍓 🍒 🍑 🍆 🌹 🌸 🌺 💐 🌙 ☀️ 🌈 💄 👠 👙 👗 💍 💎 👑 💰 💵 💸 📸 📷 🎥 💻 📱 🎧 🎤 🎶 🕯️ ⏰ 📅 📌 🔒 🔑 🏠 🚗 ✈️'],
+];
+
+/* 😊 dentro de la píldora: un panel encima de la barra; cada emoji se mete
+   donde está el cursor. Abierto, el icono pasa a teclado (como WhatsApp). */
+function conectarEmojis(boton, caja, alCambiar) {
+    const pie = boton.closest('.chat-pie');
+    const panel = document.createElement('div');
+    panel.className = 'chat-emojis oculto';
+    panel.innerHTML =
+        '<div class="chat-emojis-grupos">' + GRUPOS_EMOJI.map((g, i) =>
+            '<button data-g="' + i + '" title="' + g[1] + '">' + g[0] + '</button>').join('') +
+        '</div><div class="chat-emojis-rejilla"></div>';
+    pie.insertBefore(panel, pie.firstChild);
+    const rejilla = panel.querySelector('.chat-emojis-rejilla');
+
+    function pintarGrupo(i) {
+        rejilla.innerHTML = GRUPOS_EMOJI[i][2].split(' ').map((e) => '<button>' + e + '</button>').join('');
+        rejilla.scrollTop = 0;
+        panel.querySelectorAll('.chat-emojis-grupos button').forEach((b) =>
+            b.classList.toggle('activo', Number(b.dataset.g) === i));
+    }
+    panel.querySelectorAll('.chat-emojis-grupos button').forEach((b) => {
+        b.onclick = () => pintarGrupo(Number(b.dataset.g));
+    });
+    rejilla.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        const emoji = b.textContent;
+        if (caja.maxLength > 0 && caja.value.length + emoji.length > caja.maxLength) return;
+        const inicio = caja.selectionStart != null ? caja.selectionStart : caja.value.length;
+        const fin = caja.selectionEnd != null ? caja.selectionEnd : inicio;
+        caja.value = caja.value.slice(0, inicio) + emoji + caja.value.slice(fin);
+        const cursor = inicio + emoji.length;
+        caja.setSelectionRange(cursor, cursor);
+        if (!esTactil()) caja.focus();              // en el teléfono no sube el teclado
+        alCambiar();
+    });
+
+    const abierto = () => !panel.classList.contains('oculto');
+    const fuera = (e) => { if (!panel.contains(e.target) && !boton.contains(e.target)) cerrar(); };
+    function cerrar() {
+        panel.classList.add('oculto');
+        boton.innerHTML = ICONO.emoji;
+        boton.title = 'Emojis';
+        document.removeEventListener('click', fuera, true);
+    }
+    function abrir() {
+        if (!rejilla.firstChild) pintarGrupo(0);
+        if (esTactil()) caja.blur();
+        panel.classList.remove('oculto');
+        boton.innerHTML = ICONO.teclado;
+        boton.title = 'Teclado';
+        document.addEventListener('click', fuera, true);
+    }
+    boton.onclick = () => {
+        if (!abierto()) { abrir(); return; }
+        cerrar();
+        caja.focus();
+    };
+    // En el teléfono, tocar el texto saca el teclado y esconde los emojis.
+    caja.addEventListener('focus', () => { if (esTactil() && abierto()) cerrar(); });
+}
+
+// =======================================================================
 // EL COMPONENTE
 // =======================================================================
 function montar(raiz, opciones) {
@@ -160,11 +275,15 @@ function montar(raiz, opciones) {
         '<div class="chat-lista"><div class="chat-vacio">Cargando…</div></div>' +
         '<div class="chat-pie">' +
         '  <div class="chat-previa"></div>' +
-        '  <div class="chat-barra">' +
-        '    <button class="chat-clip" title="Adjuntar">📎</button>' +
-        '    <textarea class="chat-texto" rows="1" maxlength="2000" placeholder="Escribe un mensaje…"></textarea>' +
-        '    <button class="chat-mic" title="Grabar nota de voz">🎤</button>' +
-        '    <button class="chat-enviar oculto" title="Enviar">➤</button>' +
+        '  <div class="chat-barra estilo-wa">' +
+        '    <div class="chat-pildora">' +
+        '      <button class="chat-emoji" title="Emojis">' + ICONO.emoji + '</button>' +
+        '      <textarea class="chat-texto" rows="1" maxlength="2000" placeholder="Mensaje"></textarea>' +
+        '      <button class="chat-clip" title="Adjuntar">' + ICONO.clip + '</button>' +
+        '      <button class="chat-foto-boton" title="Tomar o subir una foto">' + ICONO.camara + '</button>' +
+        '    </div>' +
+        '    <button class="chat-mic" title="Grabar nota de voz">' + ICONO.mic + '</button>' +
+        '    <button class="chat-enviar oculto" title="Enviar">' + ICONO.enviar + '</button>' +
         '  </div>' +
         A.BARRA_GRABANDO +
         '</div>';
@@ -197,7 +316,7 @@ function montar(raiz, opciones) {
         el('.chat-ayuda').textContent = estado.canal === 'soporte'
             ? 'Soporte del estudio: te responde el monitor de turno.'
             : 'Mensaje privado para ' + nombre + ': solo lo lee quien tiene ese rol.';
-        caja.placeholder = 'Escribe a ' + nombre + '…';
+        caja.placeholder = 'Mensaje';
     }
 
     function elegirCanal(id) {
@@ -572,6 +691,8 @@ function montar(raiz, opciones) {
     });
     el('.chat-enviar').onclick = enviarTexto;
     A.menu(el('.chat-clip'), alElegirArchivo);
+    conectarCamara(el('.chat-foto-boton'), alElegirArchivo);
+    conectarEmojis(el('.chat-emoji'), caja, () => { ajustarAltura(); actualizarBotones(); });
     document.addEventListener('visibilitychange', preguntar);
 
     // ------------------------------------------------------------ arranque
