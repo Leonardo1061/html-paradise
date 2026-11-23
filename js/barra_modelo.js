@@ -17,7 +17,7 @@
  * salvo donde este párrafo dice otra cosa.
  *
  * BOTÓN CHAT (Leonardo, 2026-11-22): la burbuja es ahora el botón CHAT con
- * img/chat.png, sale también en el INICIO (ya no hay chat en la página) y se
+ * img/chat-flotante.png (el círculo dorado, «CHAT» dentro del globo), sale también en el INICIO (ya no hay chat en la página) y se
  * arrastra por toda la pantalla como la del personal: al soltarlo se pega al
  * borde más cercano y recuerda su sitio en este teléfono. Un toque sin
  * arrastrar abre chat.html, que ahora es solo Soporte; por eso el globo
@@ -423,12 +423,12 @@ body.guardando .bm-nav { display: none; }
     position: fixed; z-index: 34; left: 0; top: 0;
     width: 58px; height: 58px; border-radius: 50%; border: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 1px;
-    background: linear-gradient(135deg, #f3d98b 0%, #c9982e 100%);
-    box-shadow: 0 12px 28px rgba(217, 180, 74,.5); cursor: grab; padding: 0; color: #1a1404;
+    background: url('img/chat-flotante.png') center / cover no-repeat #fff;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .55); cursor: grab; padding: 0; color: #1a1404;
     touch-action: none; -webkit-user-select: none; user-select: none;
     transition: left .18s ease, top .18s ease, transform .12s; }
-.bm-burbuja img { width: 26px; height: 26px; object-fit: contain; pointer-events: none; }
-.bm-burbuja b { font: 700 9px 'Ubuntu', sans-serif; letter-spacing: .6px; pointer-events: none; }
+.bm-burbuja b { font: 700 10px 'Ubuntu', sans-serif; letter-spacing: .3px; pointer-events: none;
+    margin: -5px 0 0 1px; color: #3a3216; }
 .bm-burbuja.arrastrando { cursor: grabbing; transition: none; transform: scale(1.06); }
 .bm-burbuja .bm-globo { top: -3px; right: -3px; }
 /* Donde ya hay una caja de chat abajo o manda la barra de guardar, estorba. */
@@ -1851,7 +1851,7 @@ function montarBurbuja() {
     const b = document.createElement('button');
     b.className = 'bm-burbuja';
     b.setAttribute('aria-label', 'Abrir el chat con Soporte');
-    b.innerHTML = '<img src="img/chat.png" alt=""><b>CHAT</b><span class="bm-globo bm-oculto"></span>';
+    b.innerHTML = '<b>CHAT</b><span class="bm-globo bm-oculto"></span>';
     document.body.appendChild(b);
     arrastrable(b, () => { window.location.href = 'chat.html'; });
     document.body.classList.add('bm-con-burbuja');
