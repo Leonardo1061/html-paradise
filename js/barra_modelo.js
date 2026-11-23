@@ -422,7 +422,7 @@ body.guardando .bm-nav { display: none; }
 .bm-cajon hr { border: 0; border-top: 1px solid #34322b; margin: 8px 0; width: 100%; }
 .bm-burbuja {
     position: fixed; z-index: 34; left: 0; top: 0;
-    width: 58px; height: 58px; border-radius: 50%; border: 0; display: flex; flex-direction: column;
+    width: 70px; height: 70px; border-radius: 50%; border: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 1px;
     background: url('img/chat-soporte.png') center / contain no-repeat transparent;
     filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); cursor: grab; padding: 0;
@@ -1791,7 +1791,7 @@ function pintarBurbuja() {
     b.title = n ? 'Chat: ' + n + (n === 1 ? ' mensaje nuevo' : ' mensajes nuevos') : 'Chat';
 }
 
-const LADO_BURBUJA = 58;
+const LADO_BURBUJA = 70;
 const MARGEN_BURBUJA = 12;
 const CLAVE_BURBUJA = 'pdz_burbuja_chat';
 
