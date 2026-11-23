@@ -13,6 +13,8 @@
 
     · seis mosaicos: Plan de Trabajo, Convenios, SexShop, Capacitaciones,
       Bitácora y Rank (cada uno abre su página);
+    · las NOTICIAS ancladas que publica el personal (Admin › Monitoría ›
+      Publicaciones), con su pregunta de confirmación (js/publicaciones.js);
     · «Capacitaciones y reuniones» del cronograma (js/barra_modelo.js).
 
   El chat del inicio se quitó (2026-11-22): ahora es el botón flotante CHAT
@@ -90,6 +92,7 @@ button { font-family: inherit; cursor: pointer; }
 @media (min-width: 760px) { .aviso { left: 50%; transform: translateX(-50%); width: 460px; } }
 </style>
 <link rel="stylesheet" href="css/tema_dorado.css">
+<link rel="stylesheet" href="css/publicaciones.css">
 </head>
 
 <body class="pd-inicio">
@@ -118,6 +121,9 @@ button { font-family: inherit; cursor: pointer; }
             <h3>Rank</h3><p>Tu posición en la semana pasada</p></a>
     </section>
 
+    <!-- 📰 Noticias ancladas (Admin › Monitoría › Publicaciones, js/publicaciones.js) -->
+    <section id="noticias-inicio" class="pub-noticias"></section>
+
     <!-- Capacitaciones y reuniones generales del cronograma (js/barra_modelo.js) -->
     <div id="actividades-inicio" class="tarjeta oculto" style="margin:14px 0 0">
         <h2 style="margin:0 0 4px;font-size:16px;font-weight:500">🗓️ Capacitaciones y reuniones</h2>
@@ -138,6 +144,7 @@ button { font-family: inherit; cursor: pointer; }
 <script src="js/push.js"></script>
 <script src="js/adjuntos.js"></script>
 <script src="js/barra_modelo.js"></script>
+<script src="js/publicaciones.js"></script>
 <script src="js/panel.js"></script>
 </body>
 </html>

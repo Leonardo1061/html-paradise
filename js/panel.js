@@ -89,6 +89,8 @@ async function cargar() {
         pintarClave();
     } catch (error) { /* el inicio no depende de esto: los mosaicos ya están */ }
     pintarRank();
+    // 📰 Las noticias ancladas debajo de los mosaicos (js/publicaciones.js).
+    PUBLICACIONES.noticias($('noticias-inicio'));
 }
 
 // El puesto de la semana pasada dentro del laurel (api: /api/rank, rank_semanal.py).

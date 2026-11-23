@@ -11,8 +11,9 @@
   ===========================
   Pantalla nueva del rediseño. Lo que SÍ existe ya se muestra: las
   capacitaciones y reuniones del cronograma que vienen (las mismas de la 🔔
-  campana, js/barra_modelo.js). Los tips y videos aún no tienen API: queda el
-  aviso de «Próximamente».
+  campana, js/barra_modelo.js). Los tips y videos (2026-11-23) son los posts
+  de Admin › Monitoría › Publicaciones (`/api/publicaciones/posts`,
+  js/publicaciones.js), con filtro por categoría.
 -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -58,6 +59,7 @@ button { font-family: inherit; cursor: pointer; }
 .contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
 </style>
 <link rel="stylesheet" href="css/tema_dorado.css">
+<link rel="stylesheet" href="css/publicaciones.css">
 </head>
 
 <body>
@@ -71,12 +73,10 @@ button { font-family: inherit; cursor: pointer; }
 </div>
 
 <main class="contenido">
-    <div class="pd-pronto">
-        <img src="img/capacitaciones.png" alt="">
-        <h2>Tips y videos</h2>
-        <p>Muy pronto vas a encontrar aquí tips y videos de las mejores modelos del estudio.</p>
-        <span class="pd-sello">Próximamente</span>
-    </div>
+    <!-- 📰 Tips y videos: los posts de Admin › Monitoría › Publicaciones (js/publicaciones.js) -->
+    <h2 style="margin:4px 0 10px;font-size:16px;font-weight:500">🎬 Tips y videos</h2>
+    <div id="pub-filtros" class="pub-filtros"></div>
+    <div id="pub-posts"><div class="pub-vacio">Cargando…</div></div>
 
     <div class="pd-tarjeta">
         <h2>🗓️ Capacitaciones y reuniones</h2>
@@ -93,6 +93,7 @@ button { font-family: inherit; cursor: pointer; }
 <script src="js/push.js"></script>
 <script src="js/adjuntos.js"></script>
 <script src="js/barra_modelo.js"></script>
+<script src="js/publicaciones.js"></script>
 <script>
 if (!localStorage.getItem('token_sesion')) window.location.href = PARADISE.URL_LOGIN;
 </script>
@@ -106,6 +107,7 @@ if (!localStorage.getItem('token_sesion')) window.location.href = PARADISE.URL_L
     }
     document.addEventListener('paradise:actividades', (e) => pintar(e.detail));
     pintar(PARADISE_BARRA.actividades());
+    PUBLICACIONES.posts(document.getElementById('pub-filtros'), document.getElementById('pub-posts'));
 })();
 </script>
 </body>

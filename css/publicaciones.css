@@ -1,0 +1,73 @@
+/* ===========================================================================
+ * PARADISE · Publicaciones (2026-11-23): noticias ancladas del inicio y
+ * posts de Capacitaciones. Lo pinta js/publicaciones.js.
+ * =========================================================================== */
+
+.pub-noticias { margin-top: 14px; display: grid; gap: 12px; }
+.pub-noticias:empty { display: none; }
+.pub-noticia {
+    background: rgba(20, 20, 22, .94); border: 1px solid var(--oro-hondo); border-radius: 16px;
+    overflow: hidden;
+}
+.pub-noticia.hecha { border-color: #34322b; }
+.pub-poster { display: block; width: 100%; height: auto; max-height: 420px; object-fit: contain; background: #0d0d0e; }
+.pub-cuerpo { padding: 14px 16px 16px; }
+.pub-sello {
+    display: inline-block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700;
+    padding: 3px 8px; border-radius: 6px; background: var(--degradado); color: var(--sobre-oro); margin-bottom: 8px;
+}
+.pub-noticia.hecha .pub-sello { background: #26241e; color: #a9a595; }
+.pub-cuerpo h3 { margin: 0 0 6px; font-size: 17px; font-weight: 500; color: var(--oro-claro); }
+.pub-meta { font-size: 11.5px; color: #a9a595; margin-bottom: 8px; }
+.pub-texto { font-size: 14px; line-height: 1.55; color: #e9e5d8; overflow-wrap: anywhere; }
+.pub-texto h2, .pub-texto h3, .pub-texto h4 { color: var(--oro-claro); font-weight: 500; margin: 12px 0 6px; font-size: 15.5px; }
+.pub-texto p { margin: 0 0 8px; }
+.pub-texto ul, .pub-texto ol { margin: 0 0 8px; padding-left: 22px; }
+.pub-texto a { color: var(--oro-claro); }
+.pub-texto.corto { max-height: 7.8em; overflow: hidden; position: relative; }
+.pub-mas { background: none; border: 0; color: var(--oro-claro); padding: 2px 0; font-size: 13px; text-decoration: underline; }
+.pub-recurso {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; background: none;
+    border: 1px solid var(--oro-hondo); color: var(--oro-claro); border-radius: 10px; padding: 8px 12px; font-size: 13px;
+}
+.pub-pregunta {
+    margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--oro-velo);
+    border: 1px solid rgba(217, 180, 74, .35); font-size: 14px; line-height: 1.45;
+}
+.pub-pregunta .pd-boton { margin-top: 10px; width: 100%; }
+.pub-confirmada { margin-top: 12px; font-size: 13px; color: #9fdcb9; }
+
+/* ------------------------------------------------------------------ posts */
+.pub-filtros { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+.pub-filtros button {
+    flex: none; background: none; border: 1px solid #34322b; color: #a9a595; border-radius: 999px;
+    padding: 7px 13px; font-size: 13px;
+}
+.pub-filtros button.activo { background: var(--degradado); color: var(--sobre-oro); border-color: transparent; }
+.pub-posts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+@media (max-width: 420px) { .pub-posts { grid-template-columns: 1fr; } }
+.pub-post {
+    text-align: left; background: rgba(20, 20, 22, .94); border: 1px solid #34322b; border-radius: 14px;
+    padding: 0; overflow: hidden; color: inherit; display: flex; flex-direction: column;
+}
+.pub-post:hover, .pub-post:active { border-color: var(--oro); }
+.pub-post img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #141416; display: block; }
+.pub-post .pie { padding: 10px 12px 12px; }
+.pub-post h3 { margin: 0 0 4px; font-size: 14.5px; font-weight: 500; color: var(--oro-claro); }
+.pub-post p { margin: 0; font-size: 12.5px; color: #c9c5b7; line-height: 1.4; }
+.pub-post .cats { font-size: 11px; color: #a9a595; margin-top: 6px; }
+.pub-vacio { text-align: center; color: #a9a595; font-size: 13.5px; padding: 24px 10px; }
+
+/* Detalle del post: capa a pantalla completa */
+.pub-capa { position: fixed; inset: 0; z-index: 200; background: #0a0a0b; overflow-y: auto; }
+.pub-capa .dentro { max-width: 760px; margin: 0 auto; padding: 14px 16px 120px; }
+.pub-cerrar {
+    position: sticky; top: 10px; float: right; z-index: 2; background: rgba(20, 20, 22, .9);
+    border: 1px solid #34322b; color: #f4f1e8; border-radius: 10px; padding: 8px 12px; font-size: 14px;
+}
+.pub-capa h2 { margin: 6px 0 6px; font-size: 20px; font-weight: 500; color: var(--oro-claro); clear: both; }
+.pub-video { position: relative; width: 100%; aspect-ratio: 16 / 9; margin: 12px 0; border-radius: 12px; overflow: hidden; }
+.pub-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.pub-galeria { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 0; }
+.pub-galeria img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: #141416; cursor: zoom-in; }
+.pub-capa .pub-poster { border-radius: 12px; max-height: none; }
