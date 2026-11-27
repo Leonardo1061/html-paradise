@@ -77,6 +77,9 @@
  * Desde 2026-10-16, en las dos pestañas: la pantalla no se apaga mientras
  * sube (Wake Lock), un corte de conexión se reintenta solo al volver y al
  * final sale una alerta grande (y notificación si la página no está a la vista).
+ * Desde 2026-11-27 los archivos van DIRECTO a Drive (subida reanudable, en
+ * trozos, 2 a la vez): ya no pasan por Render y un corte sigue desde el
+ * último trozo que llegó, no desde cero. Ver «SUBIDA DIRECTA A DRIVE».
  *
  * Y 💳 MIS PAGOS (2026-10-26): la barra pone el botón `nav-pagos` a la
  * derecha de TICKET CEO en todas las páginas y lleva a pagos.html (los
@@ -205,10 +208,9 @@ function subir(ruta, formulario, alAvanzar) {
 // segura: el teléfono la duerme (en iPhone casi enseguida). Por eso:
 //   · mientras sube, se pide que la pantalla NO se apague (Wake Lock);
 //   · si la conexión se corta, se espera a que vuelva la página y la red y
-//     se reintenta solo ese archivo, sin que ella toque nada;
+//     ese archivo sigue desde el último trozo que llegó a Drive (subirDirecto);
 //   · al terminar sale una alerta grande, vibra y, si la página no está a la
 //     vista, llega una notificación (si dio permiso de avisos).
-const REINTENTOS = 6;
 let pantalla = null;                 // el Wake Lock activo
 let quiereDespierta = false;
 
@@ -244,22 +246,203 @@ function esperarConexion(pausa) {
     });
 }
 
-/* `subir` con reintentos solos ante cortes de conexión. `yaLlego` (opcional)
-   pregunta a la API si el archivo sí quedó guardado antes del corte, para no
-   mandarlo dos veces. `alReintentar(n)` deja poner el aviso en la hoja. */
-async function subirConReintento(ruta, formulario, alAvanzar, yaLlego, alReintentar) {
-    for (let intento = 1; ; intento++) {
+// -----------------------------------------------------------------------
+// SUBIDA DIRECTA A DRIVE (2026-11-27)
+// -----------------------------------------------------------------------
+// Antes el archivo entero iba al servidor (Render) en UNA petición y de ahí a
+// Drive: con datos móviles se cortaba seguido y cada reintento empezaba de
+// cero. Ahora la API solo abre en Drive una subida reanudable (devuelve su
+// dirección) y el archivo va DIRECTO a Drive en trozos de pocos MB. Si se
+// corta, se le pregunta a Drive hasta qué byte llegó y se sigue desde ahí.
+// La dirección se recuerda unos días en este teléfono: si se recarga la
+// página y vuelve a escoger el mismo archivo, sigue donde iba.
+const TROZO_DRIVE = 8 * 1024 * 1024;     // múltiplo de 256 KB, como pide Drive
+const TROZO_MINIMO = 1024 * 1024;        // con mala señal se manda en trozos más chicos
+const TROZO_QUIETO_MS = 60000;           // un trozo sin avanzar en 1 minuto se corta
+const FALLOS_SEGUIDOS = 10;              // cortes seguidos SIN avanzar ni un byte
+const SUBIDAS_A_LA_VEZ = 2;              // archivos subiendo en paralelo
+const RECUERDO_SUBIDA_MS = 6 * 24 * 3600 * 1000;   // Drive las borra a la semana
+const PREFIJO_SUBIDA = 'paradise_subida|';
+
+function errorDeRed(texto) { const e = new Error(texto); e.red = true; return e; }
+
+function claveSubida(destino, archivo) {
+    return PREFIJO_SUBIDA + destino + '|' + (archivo.name || '') + '|' + archivo.size + '|' + (archivo.lastModified || 0);
+}
+
+function subidaGuardada(clave) {
+    try {
+        const guardada = JSON.parse(localStorage.getItem(clave) || 'null');
+        if (guardada && guardada.url && guardada.hasta > Date.now()) return guardada.url;
+        localStorage.removeItem(clave);
+    } catch (e) { /* sin localStorage: se abre una nueva */ }
+    return '';
+}
+
+function guardarSubida(clave, url) {
+    try { localStorage.setItem(clave, JSON.stringify({ url: url, hasta: Date.now() + RECUERDO_SUBIDA_MS })); } catch (e) { /* nada */ }
+}
+
+function olvidarSubida(clave) { try { localStorage.removeItem(clave); } catch (e) { /* nada */ } }
+
+// Las que ya caducaron (de envíos viejos que no se terminaron).
+try {
+    Object.keys(localStorage).forEach((k) => { if (k.indexOf(PREFIJO_SUBIDA) === 0) subidaGuardada(k); });
+} catch (e) { /* nada */ }
+
+/* POST a la API para abrir una subida. Un corte o el servidor despertando
+   (5xx) se pueden reintentar; un 4xx trae el motivo y no. */
+async function pedirSubida(ruta, cuerpo) {
+    let respuesta;
+    try {
+        respuesta = await fetch(API + ruta, {
+            method: 'POST', cache: 'no-store', body: JSON.stringify(cuerpo),
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+        });
+    } catch (e) { throw errorDeRed('Se cortó la conexión.'); }
+    let datos = {};
+    try { datos = await respuesta.json(); } catch (e) { datos = {}; }
+    if (respuesta.status === 401) { salirPorSesion(); throw new Error('Tu sesión caducó.'); }
+    if (respuesta.status >= 500 || respuesta.status === 429) throw errorDeRed(datos.detail || 'El servidor no respondió.');
+    if (!respuesta.ok) throw new Error(datos.detail || 'No se pudo preparar la subida.');
+    return datos;
+}
+
+/* Un PUT a la dirección de Drive: un trozo (`cuerpo`) o, sin cuerpo, la
+   pregunta «¿hasta dónde llegó?». Resuelve {estado, hasta, datos}. */
+function ponerEnDrive(url, cuerpo, rango, alAvanzar) {
+    return new Promise((resolver, rechazar) => {
+        const xhr = new XMLHttpRequest();
+        let ultimo = Date.now(), volvio = false, listo = false;
+        const revisar = () => {
+            if (listo) return;
+            const quieto = Date.now() - ultimo;
+            if (quieto > TROZO_QUIETO_MS || (volvio && quieto > 15000)) xhr.abort();
+            volvio = false;
+        };
+        const alVolver = () => { if (document.visibilityState === 'visible') { volvio = true; revisar(); } };
+        const reloj = setInterval(revisar, 5000);
+        document.addEventListener('visibilitychange', alVolver);
+        const terminar = () => { listo = true; clearInterval(reloj); document.removeEventListener('visibilitychange', alVolver); };
+        xhr.open('PUT', url);
+        xhr.setRequestHeader('Content-Range', rango);
+        xhr.upload.onprogress = (e) => { ultimo = Date.now(); if (alAvanzar) alAvanzar(e.loaded); };
+        xhr.onload = () => {
+            terminar();
+            // «Range: bytes=0-8388607» = ya tiene hasta el byte 8388607.
+            const r = /bytes=0-(\d+)/.exec(xhr.getResponseHeader('Range') || '');
+            let datos = {};
+            try { datos = JSON.parse(xhr.responseText || '{}'); } catch (e) { datos = {}; }
+            resolver({ estado: xhr.status, hasta: r ? Number(r[1]) + 1 : 0, datos: datos });
+        };
+        xhr.onerror = () => { terminar(); rechazar(errorDeRed('Se cortó la conexión.')); };
+        xhr.onabort = () => { terminar(); rechazar(errorDeRed('La subida se quedó quieta.')); };
+        xhr.send(cuerpo);
+    });
+}
+
+/* Sube UN archivo directo a Drive. `abrir()` pide a la API la dirección (la
+   primera vez o si caducó). `alAvanzar(bytes)` dice cuánto tiene ya Drive,
+   `alReintentar(n, bytes)` avisa de un corte y `cancelada()` corta el envío.
+   Resuelve con lo que contesta Drive ({id, name, size}). */
+async function subirDirecto(archivo, destino, abrir, alAvanzar, alReintentar, cancelada) {
+    const clave = claveSubida(destino, archivo);
+    const total = archivo.size;
+    let url = subidaGuardada(clave);
+    let preguntar = !!url;           // una dirección de antes: ¿hasta dónde llegó?
+    let desde = 0, trozo = TROZO_DRIVE, fallos = 0;
+    for (;;) {
+        if (cancelada && cancelada()) throw new Error('Se canceló.');
         try {
-            return await subir(ruta, formulario, alAvanzar);
-        } catch (error) {
-            if (!error.red || intento >= REINTENTOS) throw error;
-            if (alReintentar) alReintentar(intento);
-            await esperarConexion(Math.min(30000, 2000 * intento * intento));
-            if (yaLlego) {
-                try { if (await yaLlego()) return {}; } catch (e) { /* se reintenta igual */ }
+            if (!url) {
+                url = (await abrir()).url;
+                if (!url) throw new Error('No se pudo preparar la subida.');
+                guardarSubida(clave, url);
+                desde = 0;
+                preguntar = false;
             }
+            let r;
+            if (preguntar) {
+                r = await ponerEnDrive(url, null, 'bytes */' + total);
+            } else {
+                const hasta = Math.min(total, desde + trozo);
+                const base = desde;
+                r = await ponerEnDrive(url, archivo.slice(base, hasta),
+                                       'bytes ' + base + '-' + (hasta - 1) + '/' + total,
+                                       (n) => alAvanzar(Math.min(total, base + n)));
+            }
+            if (r.estado === 200 || r.estado === 201) {
+                olvidarSubida(clave);
+                alAvanzar(total);
+                return r.datos;
+            }
+            if (r.estado === 308) {
+                if (r.hasta > desde) { fallos = 0; trozo = Math.min(TROZO_DRIVE, trozo * 2); }
+                desde = r.hasta;
+                preguntar = false;
+                alAvanzar(desde);
+                continue;
+            }
+            if (r.estado === 404 || r.estado === 410) {
+                // La dirección caducó o Drive la cerró: se abre otra, desde cero.
+                olvidarSubida(clave);
+                url = '';
+                continue;
+            }
+            throw errorDeRed('Drive no respondió (' + (r.estado || 'sin conexión') + ').');
+        } catch (error) {
+            if (!error.red) throw error;
+            fallos++;
+            if (fallos > FALLOS_SEGUIDOS) throw new Error('Se cortó la conexión muchas veces. Toca «Subir» para seguir donde iba.');
+            trozo = Math.max(TROZO_MINIMO, trozo / 2);
+            if (alReintentar) alReintentar(fallos, desde);
+            await esperarConexion(Math.min(20000, 1000 * fallos * fallos));
+            preguntar = !!url;
         }
     }
+}
+
+/* Corre las tareas de `cuantas` en `cuantas`. */
+async function enParalelo(tareas, cuantas) {
+    let siguiente = 0;
+    const obrero = async () => { while (siguiente < tareas.length) await tareas[siguiente++](); };
+    await Promise.all(Array.from({ length: Math.min(cuantas, tareas.length) }, obrero));
+}
+
+/* La barra, el porcentaje y la velocidad de todo el envío. */
+function medidorSubida(barra, estadoTexto, tanda) {
+    const total = tanda.reduce((suma, x) => suma + x.archivo.size, 0) || 1;
+    let muestra = { t: Date.now(), bytes: 0 }, velocidad = 0, pintado = 0;
+    return {
+        pintar(forzar) {
+            const ahora = Date.now();
+            if (!forzar && ahora - pintado < 400) return;
+            pintado = ahora;
+            const bytes = tanda.reduce((suma, x) => suma + (x.enviado || 0), 0);
+            if (ahora - muestra.t >= 2000) {
+                const v = (bytes - muestra.bytes) / ((ahora - muestra.t) / 1000);
+                velocidad = velocidad ? velocidad * 0.6 + Math.max(0, v) * 0.4 : Math.max(0, v);
+                muestra = { t: ahora, bytes: bytes };
+            }
+            const pct = Math.min(100, Math.floor(bytes / total * 100));
+            barra.firstChild.style.width = pct + '%';
+            const activos = tanda.filter((x) => x.estado === 'subiendo');
+            const hechos = tanda.filter((x) => x.estado === 'hecho').length;
+            tanda.forEach((x) => {
+                if (x.celda && x.estado === 'subiendo') {
+                    x.celda.textContent = Math.floor((x.enviado || 0) / x.archivo.size * 100) + '% de ' + pesoTexto(x.archivo.size);
+                }
+            });
+            if (!activos.length || activos.some((x) => x.aviso)) return;
+            let texto = 'Subiendo · ' + pct + '% · ' + hechos + ' de ' + tanda.length + ' listos';
+            if (velocidad > 1024) {
+                const faltan = (total - bytes) / velocidad;
+                texto += ' · ' + pesoTexto(velocidad) + '/s' +
+                    (faltan > 90 ? ' · faltan ~' + Math.ceil(faltan / 60) + ' min' : faltan > 5 ? ' · faltan ~' + Math.ceil(faltan) + ' s' : '');
+            }
+            estadoTexto.textContent = texto;
+        },
+    };
 }
 
 async function notificarFin(titulo, cuerpo) {
@@ -1205,9 +1388,9 @@ function abrirConversacionTicket(t) {
 // =======================================================================
 // Fotos y videos de la galería a su Drive: PERSONAL/{asunto}. El asunto es el
 // nombre de la carpeta, así que solo se deja enviar uno válido (la misma
-// regla de contenido.py). Los archivos van DE UNO EN UNO: un video grande no
-// arrastra a los demás y, si uno falla, los otros ya quedaron guardados y
-// solo se reintenta ese. La carpeta llega a MULTIMEDIA del escritorio.
+// regla de contenido.py). Cada archivo es su propia subida directa a Drive
+// (de a dos a la vez): si uno falla, los otros ya quedaron guardados y solo
+// se reintenta ese, desde donde iba. La carpeta llega a MULTIMEDIA del escritorio.
 const ASUNTO_MIN = 3;
 const ASUNTO_MAX = 60;
 const ASUNTO_PATRON = /^[0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ _-]+$/;
@@ -1334,7 +1517,10 @@ function abrirSubir(modo) {
                 (!subiendo && (x.estado === 'listo' || x.estado === 'error') ? '<button title="Quitar">✕</button>' : '');
             if (x.vista) fila.querySelector('img').src = x.vista;
             fila.querySelector('.nombre').textContent = (x.archivo.name || 'archivo') + (x.error ? ' · ' + x.error : '');
-            fila.querySelector('.peso').textContent = pesoTexto(x.archivo.size);
+            x.celda = fila.querySelector('.peso');
+            x.celda.textContent = x.estado === 'subiendo'
+                ? Math.floor((x.enviado || 0) / x.archivo.size * 100) + '% de ' + pesoTexto(x.archivo.size)
+                : pesoTexto(x.archivo.size);
             const quitar = fila.querySelector('button');
             if (quitar) {
                 quitar.onclick = () => {
@@ -1417,38 +1603,45 @@ function abrirSubir(modo) {
         enviar.disabled = true;
         const barra = $('.bm-progreso');
         barra.classList.remove('bm-oculto');
-        const total = tanda.reduce((suma, x) => suma + x.archivo.size, 0) || 1;
-        let hechos = 0, fallidos = 0, bytesHechos = 0, carpeta = asunto;
-        for (let i = 0; i < tanda.length; i++) {
-            if (!hoja.capa.isConnected) break;
-            const x = tanda[i];
-            const nombre = x.archivo.name || 'archivo';
+        // Directo a Drive, de a SUBIDAS_A_LA_VEZ archivos (ver subirDirecto).
+        let hechos = 0, fallidos = 0, carpeta = asunto;
+        tanda.forEach((x) => { x.estado = 'listo'; x.error = ''; x.enviado = 0; x.aviso = ''; });
+        const medidor = medidorSubida(barra, $('.s-estado'), tanda);
+        enviar.textContent = 'Subiendo ' + tanda.length + (tanda.length === 1 ? ' archivo…' : ' archivos…');
+        $('.s-estado').textContent = 'Preparando la subida…';
+        await enParalelo(tanda.map((x) => async () => {
+            if (!hoja.capa.isConnected) return;
+            const nombre = x.archivo.name || (x.tipo === 'video' ? 'video.mp4' : 'foto.jpg');
             x.estado = 'subiendo';
-            x.error = '';
             pintarLista();
-            enviar.textContent = 'Subiendo ' + (i + 1) + ' de ' + tanda.length + '…';
-            const formulario = new FormData();
-            formulario.append('asunto', asunto);
-            formulario.append('archivo', x.archivo, x.archivo.name || (x.tipo === 'video' ? 'video.mp4' : 'foto.jpg'));
             try {
-                const r = await subirConReintento('/api/contenido', formulario, (p) => {
-                    barra.firstChild.style.width = Math.round((bytesHechos + p * x.archivo.size) / total * 100) + '%';
-                    $('.s-estado').textContent = p >= 1 ? 'Guardando «' + nombre + '» en Drive…'
-                        : 'Subiendo «' + nombre + '» · ' + Math.round(p * 100) + '%';
-                }, null, (n) => {
-                    $('.s-estado').textContent = 'Se cortó la conexión: «' + nombre + '» se reintenta solo (intento ' + (n + 1) + ').';
-                });
+                await subirDirecto(x.archivo, 'personal|' + claveAsunto(asunto), async () => {
+                    const r = await pedirSubida('/api/contenido/sesion', {
+                        asunto: asunto, nombre: nombre, mime: x.archivo.type || '', bytes: x.archivo.size });
+                    carpeta = r.asunto || carpeta;
+                    return r;
+                }, (bytes) => {
+                    if (bytes > (x.enviado || 0)) x.aviso = '';
+                    x.enviado = bytes;
+                    medidor.pintar();
+                }, (n, bytes) => {
+                    x.aviso = 'corte';
+                    $('.s-estado').textContent = 'Se cortó la conexión: «' + nombre + '» sigue desde el ' +
+                        Math.floor(bytes / x.archivo.size * 100) + '% cuando vuelva (intento ' + (n + 1) + ').';
+                }, () => !hoja.capa.isConnected);
                 x.estado = 'hecho';
-                carpeta = r.asunto || carpeta;
                 hechos++;
             } catch (error) {
                 x.estado = 'error';
                 x.error = error.message;
                 fallidos++;
             }
-            bytesHechos += x.archivo.size;
-            barra.firstChild.style.width = Math.round(bytesHechos / total * 100) + '%';
-        }
+            x.aviso = '';
+            pintarLista();
+            medidor.pintar(true);
+        }), SUBIDAS_A_LA_VEZ);
+        // Una vez por envío: la carpeta queda en MULTIMEDIA del monitor.
+        if (hechos) await pedirSubida('/api/contenido/listo', { asunto: asunto }).catch(() => {});
         subiendo = false;
         window.removeEventListener('beforeunload', alSalir);
         modoSubida(hoja, false);
@@ -1599,7 +1792,10 @@ function abrirKwiky() {
                 (icono ? '<span>' + icono + '</span>' : '') +
                 (!subiendo && (x.estado === 'listo' || x.estado === 'error') ? '<button title="Quitar">✕</button>' : '');
             fila.querySelector('.nombre').textContent = (x.archivo.name || 'video') + (x.error ? ' · ' + x.error : '');
-            fila.querySelector('.peso').textContent = pesoTexto(x.archivo.size);
+            x.celda = fila.querySelector('.peso');
+            x.celda.textContent = x.estado === 'subiendo'
+                ? Math.floor((x.enviado || 0) / x.archivo.size * 100) + '% de ' + pesoTexto(x.archivo.size)
+                : pesoTexto(x.archivo.size);
             const quitar = fila.querySelector('button');
             if (quitar) quitar.onclick = () => { lista.splice(i, 1); pintarLista(); };
             caja.appendChild(fila);
@@ -1694,34 +1890,30 @@ function abrirKwiky() {
         }
         const barra = $('.bm-progreso');
         barra.classList.remove('bm-oculto');
-        const total = tanda.reduce((suma, x) => suma + x.archivo.size, 0) || 1;
-        let hechos = 0, fallidos = 0, bytesHechos = 0;
-        for (let i = 0; i < tanda.length; i++) {
-            if (!hoja.capa.isConnected) break;
-            const x = tanda[i];
-            const nombre = x.archivo.name || 'video';
+        // Directo a Drive, de a SUBIDAS_A_LA_VEZ videos (ver subirDirecto).
+        let hechos = 0, fallidos = 0;
+        tanda.forEach((x) => { x.estado = 'listo'; x.error = ''; x.enviado = 0; x.aviso = ''; });
+        const medidor = medidorSubida(barra, $('.s-estado'), tanda);
+        enviar.textContent = 'Subiendo ' + tanda.length + (tanda.length === 1 ? ' video…' : ' videos…');
+        $('.s-estado').textContent = 'Preparando la subida…';
+        const destino = 'kwiky|' + para + '|' + numero;
+        await enParalelo(tanda.map((x) => async () => {
+            if (!hoja.capa.isConnected) return;
+            const nombre = x.archivo.name || 'video.mp4';
             x.estado = 'subiendo';
-            x.error = '';
             pintarLista();
-            enviar.textContent = 'Subiendo ' + (i + 1) + ' de ' + tanda.length + '…';
-            const formulario = new FormData();
-            formulario.append('numero', String(numero));
-            formulario.append('para', para);
-            formulario.append('archivo', x.archivo, x.archivo.name || 'video.mp4');
             try {
-                // Tras un corte se pregunta a la API si el video sí llegó (le
-                // falta uno menos, o la carpeta ya se completó) para no repetirlo.
-                const yaLlego = async () => {
-                    const ahora = await pedir('/api/contenido/kwiky?para=' + encodeURIComponent(para));
-                    return ahora.numero !== numero || ahora.faltan < faltan;
-                };
-                await subirConReintento('/api/contenido/kwiky', formulario, (p) => {
-                    barra.firstChild.style.width = Math.round((bytesHechos + p * x.archivo.size) / total * 100) + '%';
-                    $('.s-estado').textContent = p >= 1 ? 'Guardando «' + nombre + '» en Drive…'
-                        : 'Subiendo «' + nombre + '» · ' + Math.round(p * 100) + '%';
-                }, yaLlego, (n) => {
-                    $('.s-estado').textContent = 'Se cortó la conexión: «' + nombre + '» se reintenta solo (intento ' + (n + 1) + ').';
-                });
+                await subirDirecto(x.archivo, destino, () => pedirSubida('/api/contenido/kwiky/sesion', {
+                    numero: numero, para: para, nombre: nombre, mime: x.archivo.type || '', bytes: x.archivo.size,
+                }), (bytes) => {
+                    if (bytes > (x.enviado || 0)) x.aviso = '';
+                    x.enviado = bytes;
+                    medidor.pintar();
+                }, (n, bytes) => {
+                    x.aviso = 'corte';
+                    $('.s-estado').textContent = 'Se cortó la conexión: «' + nombre + '» sigue desde el ' +
+                        Math.floor(bytes / x.archivo.size * 100) + '% cuando vuelva (intento ' + (n + 1) + ').';
+                }, () => !hoja.capa.isConnected);
                 x.estado = 'hecho';
                 faltan--;
                 hechos++;
@@ -1730,9 +1922,10 @@ function abrirKwiky() {
                 x.error = error.message;
                 fallidos++;
             }
-            bytesHechos += x.archivo.size;
-            barra.firstChild.style.width = Math.round(bytesHechos / total * 100) + '%';
-        }
+            x.aviso = '';
+            pintarLista();
+            medidor.pintar(true);
+        }), SUBIDAS_A_LA_VEZ);
         subiendo = false;
         window.removeEventListener('beforeunload', alSalir);
         modoSubida(hoja, false);
