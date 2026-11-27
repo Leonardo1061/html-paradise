@@ -3,8 +3,10 @@
  * ===========================================================================
  * Los descuentos con empresas aliadas que el CEO carga en la Admin o en la
  * web del personal. /api/convenios entrega los activos, con la foto en
- * miniatura; un toque en la foto la baja entera desde Drive (con el token).
- * En el contacto, los enlaces y los teléfonos se pueden tocar.
+ * miniatura. Se ven como la SexShop: cuadrícula de tarjetas (foto, nombre y
+ * descripción corta) con buscador y el botón dorado «Más info», que abre la
+ * hoja con todo; allí la foto se cambia por la entera desde Drive (con el
+ * token). En el contacto, los enlaces y los teléfonos se pueden tocar.
  */
 (function () {
 'use strict';
@@ -12,6 +14,8 @@
 const API = PARADISE.API_URL;
 const token = () => localStorage.getItem('token_sesion') || '';
 const caja = document.getElementById('convenios');
+const $ = (id) => document.getElementById(id);
+let convenios = [];
 
 function escapar(texto) {
     return String(texto == null ? '' : texto)
@@ -50,41 +54,61 @@ async function pedir(ruta) {
     return datos;
 }
 
-async function verFoto(c, mini) {
-    const visor = document.createElement('div');
-    visor.className = 'conv-visor';
-    visor.innerHTML = '<img alt="" src="' + escapar(mini) + '">';
-    visor.onclick = () => visor.remove();
-    document.body.appendChild(visor);
-    try {
-        const r = await fetch(API + '/api/convenios/' + encodeURIComponent(c.id) + '/foto',
-                              { headers: { 'Authorization': 'Bearer ' + token() } });
-        if (r.ok) visor.querySelector('img').src = URL.createObjectURL(await r.blob());
-    } catch (e) { /* se queda la miniatura */ }
+function simple(texto) {
+    return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
-function pintar(lista) {
-    if (!lista.length) {
-        caja.innerHTML = '<div class="pd-pronto"><img src="img/convenios.png" alt=""><h2>Convenios Paradise</h2>' +
-            '<p>Todavía no hay convenios activos. Muy pronto vas a encontrar aquí los descuentos con negocios aliados del estudio.</p></div>';
-        return;
-    }
-    caja.innerHTML = lista.map((c, i) =>
-        '<article class="conv-tarjeta">' +
-        (c.foto_mini ? '<img class="conv-foto" data-i="' + i + '" alt="' + escapar(c.nombre) + '" src="' + escapar(c.foto_mini) + '">' : '') +
-        '<div class="conv-cuerpo"><h2>' + escapar(c.nombre) + '</h2>' +
+/* «Más info»: la hoja con la foto grande, la descripción, los requisitos y el contacto. */
+function masInfo(c) {
+    const capa = document.createElement('div');
+    capa.className = 'conv-capa';
+    capa.innerHTML = '<div class="conv-velo"></div><div class="conv-hoja" role="dialog" aria-label="' + escapar(c.nombre) + '">' +
+        '<button class="cerrar" aria-label="Cerrar">✕</button>' +
+        (c.foto_mini ? '<img class="foto" alt="" src="' + escapar(c.foto_mini) + '">' : '') +
+        '<div class="cuerpo"><h2>' + escapar(c.nombre) + '</h2>' +
         '<p>' + escapar(c.descripcion) + '</p>' +
         (c.requisitos ? '<div class="conv-bloque"><b>Requisitos</b><p>' + escapar(c.requisitos) + '</p></div>' : '') +
         (c.contacto ? '<div class="conv-bloque"><b>Contacto</b><p>' + enlazar(c.contacto) + '</p></div>' : '') +
-        '</div></article>').join('');
-    caja.querySelectorAll('.conv-foto').forEach((img) => {
-        const c = lista[Number(img.dataset.i)];
-        img.onclick = () => verFoto(c, c.foto_mini);
-    });
+        '</div></div>';
+    document.body.appendChild(capa);
+    const cerrar = () => capa.remove();
+    capa.querySelector('.conv-velo').onclick = cerrar;
+    capa.querySelector('.cerrar').onclick = cerrar;
+    if (c.tiene_foto) {
+        fetch(API + '/api/convenios/' + encodeURIComponent(c.id) + '/foto',
+              { headers: { 'Authorization': 'Bearer ' + token() } })
+            .then((r) => (r.ok ? r.blob() : null))
+            .then((b) => { const img = capa.querySelector('.foto'); if (b && img) img.src = URL.createObjectURL(b); })
+            .catch(() => {});
+    }
+}
+
+function tarjeta(c) {
+    const div = document.createElement('div');
+    div.className = 'prod';
+    div.innerHTML = '<div class="im">' + (c.foto_mini ? '<img alt="" src="' + escapar(c.foto_mini) + '">'
+                                                      : '<span class="sin">🤝</span>') + '</div>' +
+        '<div class="tx"><b>' + escapar(c.nombre) + '</b><span class="desc">' + escapar(c.descripcion) + '</span>' +
+        '<button class="bo">Más info</button></div>';
+    div.querySelector('.bo').onclick = () => masInfo(c);
+    div.querySelector('.im').onclick = () => masInfo(c);
+    return div;
+}
+
+function pintar() {
+    const q = simple($('buscar').value);
+    const lista = q ? convenios.filter((c) => simple(c.nombre + ' ' + c.descripcion).indexOf(q) >= 0) : convenios;
+    caja.innerHTML = '';
+    lista.forEach((c) => caja.appendChild(tarjeta(c)));
+    $('cuenta').textContent = lista.length ? lista.length + (lista.length === 1 ? ' convenio' : ' convenios') : '';
+    $('aviso').classList.toggle('oculto', lista.length > 0);
+    $('aviso').textContent = q ? 'No hay convenios con ese nombre.'
+        : 'Todavía no hay convenios activos. Muy pronto vas a encontrar aquí los descuentos con negocios aliados del estudio.';
 }
 
 if (token()) {
-    pedir('/api/convenios').then((datos) => pintar(datos.convenios || []))
-        .catch((error) => { caja.innerHTML = '<div class="conv-vacio">' + escapar(error.message) + '</div>'; });
+    $('buscar').oninput = pintar;
+    pedir('/api/convenios').then((datos) => { convenios = datos.convenios || []; pintar(); })
+        .catch((error) => { $('aviso').textContent = error.message; });
 }
 })();

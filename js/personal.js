@@ -2190,11 +2190,11 @@ function modulosVisibles(yo) {
 }
 
 /* El menú ☰ (Leonardo, 2026-11-27): ya no repite los módulos de la barra de abajo
- * (Seguimiento…Chat salieron). Queda 🤝 Convenios primero (solo el CEO: la API se
- * lo pone en `modulos`), Inicio y lo de la cuenta. */
+ * (Seguimiento…Chat salieron). Inicio SIEMPRE primero, luego 🤝 Convenios (solo el
+ * CEO: la API se lo pone en `modulos`) y lo de la cuenta. */
 const MENU_LATERAL = [
-    { id: 'convenios', texto: 'Convenios', icono: 'convenios', pagina: 'personal_convenios.html' },
     { id: 'inicio', texto: 'Inicio', icono: 'svg:inicio', pagina: 'personal_panel.html' },
+    { id: 'convenios', texto: 'Convenios', icono: 'convenios', pagina: 'personal_convenios.html' },
 ];
 
 function abrirMenu(actual) {
