@@ -2189,17 +2189,22 @@ function modulosVisibles(yo) {
     return MODULOS.filter((m) => permitidos.indexOf(m.id) >= 0);
 }
 
-/* El menú ☰: los mismos módulos de la barra de abajo, el chat y lo de la cuenta. */
+/* El menú ☰ (Leonardo, 2026-11-27): ya no repite los módulos de la barra de abajo
+ * (Seguimiento…Chat salieron). Queda 🤝 Convenios primero (solo el CEO: la API se
+ * lo pone en `modulos`), Inicio y lo de la cuenta. */
+const MENU_LATERAL = [
+    { id: 'convenios', texto: 'Convenios', icono: 'convenios', pagina: 'personal_convenios.html' },
+    { id: 'inicio', texto: 'Inicio', icono: 'svg:inicio', pagina: 'personal_panel.html' },
+];
+
 function abrirMenu(actual) {
     const yo = ficha();
     const capa = document.createElement('div');
-    const conChat = (yo.modulos || []).indexOf('chat') >= 0;
+    const permitidos = ['inicio'].concat(yo.modulos || []);
     capa.innerHTML = '<div class="bm-velo"></div><div class="bm-cajon"><img src="img/logo.png" alt="The Paradise">' +
-        modulosVisibles(yo).map((m) =>
+        MENU_LATERAL.filter((m) => permitidos.indexOf(m.id) >= 0).map((m) =>
             '<button data-pagina="' + m.pagina + '"' + (m.id === actual ? ' class="activo"' : '') + '>' +
             icono(m.icono) + escapar(m.titulo || m.texto) + '</button>').join('') +
-        (conChat ? '<button data-pagina="personal_chat.html"' + (actual === 'chat' ? ' class="activo"' : '') +
-            '><span class="e">💬</span>Chat</button>' : '') +
         '<hr><button data-op="datos"><span class="e">📝</span>Mis datos</button>' +
         '<button data-op="actualizar">' + icono('actualizar') + 'Buscar actualización</button>' +
         '<button data-op="salir"><span class="e">⏻</span>Cerrar sesión</button></div>';

@@ -580,3 +580,26 @@ h1.titulo-pagina { font-size: 19px; font-weight: 700; display: flex; align-items
 .bit-botones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .bit-peligro { background: var(--rojo); color: #fff; }
 .bit-fila-pie .boton-principal { width: auto; padding: 12px 24px; }
+
+/* ---------------------------------------------- 🤝 CONVENIOS del CEO (personal_convenios.html) */
+.conv-tarjeta {
+    display: flex; gap: 12px; padding: 12px; margin-bottom: 10px; background: rgba(20, 20, 22, .93);
+    border: 1px solid var(--borde); border-radius: 14px;
+}
+.conv-tarjeta.apagado { opacity: .6; }
+.conv-foto {
+    flex: none; width: 96px; height: 96px; border-radius: 12px; object-fit: cover; background: #1f1c14;
+    border: 1px solid var(--borde); overflow: hidden; display: grid; place-items: center;
+}
+.conv-foto img { width: 100%; height: 100%; object-fit: cover; }
+.conv-foto.vacia img { width: 46px; height: 46px; object-fit: contain; opacity: .7; }
+.conv-cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.conv-cuerpo h3 { margin: 0; font-size: 15.5px; }
+.conv-cuerpo p { margin: 0; font-size: 13.5px; line-height: 1.45; color: #dcd8cc; white-space: pre-wrap; overflow-wrap: anywhere; }
+.conv-cuerpo .conv-sec { font-size: 12.5px; color: var(--tenue); }
+.conv-cuerpo .conv-sec b { color: var(--oro-claro); font-weight: 500; }
+.conv-elegir { display: flex; gap: 12px; align-items: center; }
+.conv-elegir .conv-foto { width: 110px; height: 110px; }
+.conv-botones { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.conv-botones .boton-secundario { height: 40px; }
+#lista { padding-bottom: 70px; }

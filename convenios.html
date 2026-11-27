@@ -7,10 +7,12 @@
 <title>Convenios · PARADISE</title>
 
 <!--
-  CONVENIOS (2026-11-15)
-  ======================
-  Pantalla nueva del rediseño. Todavía no hay convenios cargados ni API que
-  los entregue: por ahora solo avisa que viene pronto.
+  CONVENIOS (2026-11-15; con datos desde 2026-11-27)
+  ==================================================
+  Los descuentos con empresas aliadas. Los crea y edita SOLO el CEO (Admin ›
+  Administración › Convenios o la web del personal › ☰ › Convenios); aquí la
+  modelo ve los activos: foto, nombre, descripción, requisitos y contacto.
+  Datos: /api/convenios (api/convenios.py). Lógica en js/convenios.js.
 -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -54,6 +56,20 @@ button { font-family: inherit; cursor: pointer; }
 .barra .marca { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; }
 .barra .marca img { width: 30px; height: 30px; object-fit: contain; }
 .contenido { padding: 6px 18px 0; max-width: 760px; margin: 0 auto; }
+.conv-cargando, .conv-vacio { color: var(--tenue); font-size: 13.5px; text-align: center; padding: 26px 8px; line-height: 1.5; }
+.conv-tarjeta {
+    background: rgba(20, 20, 22, .93); border: 1px solid var(--borde); border-radius: var(--radio);
+    overflow: hidden; margin-bottom: 14px;
+}
+.conv-foto { display: block; width: 100%; max-height: 260px; object-fit: cover; background: #1f1c14; cursor: zoom-in; }
+.conv-cuerpo { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.conv-cuerpo h2 { margin: 0; font-size: 18px; font-weight: 500; color: var(--soft); }
+.conv-cuerpo p { margin: 0; font-size: 14px; line-height: 1.5; color: #dcd8cc; white-space: pre-wrap; overflow-wrap: anywhere; }
+.conv-bloque { border-top: 1px solid var(--borde); padding-top: 8px; }
+.conv-bloque b { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--mid); margin-bottom: 3px; font-weight: 500; }
+.conv-bloque a { color: var(--verde); }
+.conv-visor { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .92); display: grid; place-items: center; padding: 16px; }
+.conv-visor img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 10px; }
 </style>
 <link rel="stylesheet" href="css/tema_dorado.css">
 </head>
@@ -69,12 +85,7 @@ button { font-family: inherit; cursor: pointer; }
 </div>
 
 <main class="contenido">
-    <div class="pd-pronto">
-        <img src="img/convenios.png" alt="">
-        <h2>Convenios Paradise</h2>
-        <p>Muy pronto vas a encontrar aquí los descuentos con negocios aliados del estudio.</p>
-        <span class="pd-sello">Próximamente</span>
-    </div>
+    <div id="convenios"><div class="conv-cargando">Cargando…</div></div>
 </main>
 
 <!-- La barra vieja: escondida, js/barra_modelo.js pone la nueva. -->
@@ -85,6 +96,7 @@ button { font-family: inherit; cursor: pointer; }
 <script src="js/push.js"></script>
 <script src="js/adjuntos.js"></script>
 <script src="js/barra_modelo.js"></script>
+<script src="js/convenios.js"></script>
 <script>
 if (!localStorage.getItem('token_sesion')) window.location.href = PARADISE.URL_LOGIN;
 </script>

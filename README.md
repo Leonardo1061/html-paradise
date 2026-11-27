@@ -24,7 +24,9 @@ Las cuatro piezas hablan con la MISMA base de Firestore.
 | `panel.html` | **Inicio** (rediseño negro y dorado, 2026-11-15): seis mosaicos, capacitaciones y reuniones, y el chat con el estudio |
 | `seguimiento.html` | **Seguimiento**: los números y la gráfica de su semana (lo que antes era el inicio). La bitácora está pendiente |
 | `pagos.html` | **Pagos**: pestañas 💳 Recibos y 💵 Mi producido (`js/producido.js`) |
-| `convenios.html`, `sexshop.html`, `capacitaciones.html`, `rank.html` | Pantallas nuevas del rediseño. Todavía sin API: muestran «Próximamente» (Capacitaciones sí lista las reuniones del cronograma) |
+| `convenios.html` | **Convenios** (`js/convenios.js`, `/api/convenios`): los descuentos con empresas aliadas que carga el CEO. Foto, nombre, descripción, requisitos y contacto (teléfonos, @instagram y enlaces se pueden tocar) |
+| `personal_convenios.html` | Web del personal › ☰ › **Convenios** (solo el CEO, `js/convenios_personal.js`, `/api/personal/convenios`): crear, editar, ocultar y borrar. El menú ☰ ya no repite los módulos de la barra de abajo: Convenios (CEO), Inicio y lo de la cuenta |
+| `sexshop.html`, `capacitaciones.html`, `rank.html` | Pantallas nuevas del rediseño. Todavía sin API: muestran «Próximamente» (Capacitaciones sí lista las reuniones del cronograma) |
 | `css/tema_dorado.css` | El tema negro y dorado común a todas las páginas de la modelo. Va después del `<style>` de cada página |
 | `img/` | Logo, fondo e iconos del rediseño |
 | `turnos.html` | Pre-agendamiento y toma de cupos de la semana |
