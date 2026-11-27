@@ -603,3 +603,14 @@ h1.titulo-pagina { font-size: 19px; font-weight: 700; display: flex; align-items
 .conv-botones { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .conv-botones .boton-secundario { height: 40px; }
 #lista { padding-bottom: 70px; }
+
+.conv-redes { display: flex; flex-wrap: wrap; gap: 8px; }
+.conv-redes img { width: 26px; height: 26px; display: block; }
+.conv-contacto { display: flex; flex-direction: column; gap: 8px; }
+.campo label.conv-red {
+    display: grid; grid-template-columns: 26px 92px minmax(0, 1fr); align-items: center; gap: 10px;
+    margin: 0; color: var(--texto); font-size: 13.5px;
+}
+.conv-red img { width: 26px; height: 26px; }
+.conv-red input { width: 100%; }
+@media (max-width: 420px) { .campo label.conv-red { grid-template-columns: 26px minmax(0, 1fr); } .conv-red span { display: none; } }

@@ -6,7 +6,9 @@
  * miniatura. Se ven como la SexShop: cuadrícula de tarjetas (foto, nombre y
  * descripción corta) con buscador y el botón dorado «Más info», que abre la
  * hoja con todo; allí la foto se cambia por la entera desde Drive (con el
- * token). En el contacto, los enlaces y los teléfonos se pueden tocar.
+ * token). El contacto son la dirección (abre Maps) y las redes, cada una con
+ * su logo (img/redes/): WhatsApp, Instagram, Facebook, TikTok y página web.
+ * En «Otros datos» los enlaces y los teléfonos también se pueden tocar.
  */
 (function () {
 'use strict';
@@ -33,9 +35,7 @@ function enlazar(texto) {
             if (tel) {
                 const cifras = tel.replace(/\D/g, '');
                 if (cifras.length < 7 || cifras.length > 13) return tel;
-                const wa = cifras.length === 10 ? '57' + cifras : cifras;
-                return '<a href="tel:' + cifras + '">' + tel + '</a> · <a href="https://wa.me/' + wa +
-                    '" target="_blank" rel="noopener">WhatsApp</a>';
+                return '<a href="tel:' + cifras + '">' + tel + '</a>';   // WhatsApp tiene su campo
             }
             return antes + '<a href="https://instagram.com/' + insta + '" target="_blank" rel="noopener">@' + insta + '</a>';
         });
@@ -68,7 +68,12 @@ function masInfo(c) {
         '<div class="cuerpo"><h2>' + escapar(c.nombre) + '</h2>' +
         '<p>' + escapar(c.descripcion) + '</p>' +
         (c.requisitos ? '<div class="conv-bloque"><b>Requisitos</b><p>' + escapar(c.requisitos) + '</p></div>' : '') +
-        (c.contacto ? '<div class="conv-bloque"><b>Contacto</b><p>' + enlazar(c.contacto) + '</p></div>' : '') +
+        ((c.enlaces || []).length ? '<div class="conv-bloque"><b>Contacto</b><div class="conv-enlaces">' +
+            c.enlaces.map((e) => '<a href="' + escapar(e.url) + '" target="_blank" rel="noopener">' +
+                '<img src="img/redes/' + escapar(e.tipo) + '.svg" alt=""><span>' + escapar(e.texto) + '</span></a>').join('') +
+            '</div></div>' : '') +
+        (c.contacto ? '<div class="conv-bloque"><b>' + ((c.enlaces || []).length ? 'Otros datos' : 'Contacto') +
+            '</b><p>' + enlazar(c.contacto) + '</p></div>' : '') +
         '</div></div>';
     document.body.appendChild(capa);
     const cerrar = () => capa.remove();
@@ -89,6 +94,8 @@ function tarjeta(c) {
     div.innerHTML = '<div class="im">' + (c.foto_mini ? '<img alt="" src="' + escapar(c.foto_mini) + '">'
                                                       : '<span class="sin">🤝</span>') + '</div>' +
         '<div class="tx"><b>' + escapar(c.nombre) + '</b><span class="desc">' + escapar(c.descripcion) + '</span>' +
+        '<span class="redes">' + (c.enlaces || []).map((e) =>
+            '<img src="img/redes/' + escapar(e.tipo) + '.svg" alt="' + escapar(e.tipo) + '">').join('') + '</span>' +
         '<button class="bo">Más info</button></div>';
     div.querySelector('.bo').onclick = () => masInfo(c);
     div.querySelector('.im').onclick = () => masInfo(c);

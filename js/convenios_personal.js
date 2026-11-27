@@ -3,7 +3,8 @@
  * ===========================================================================
  * La lista de convenios (también los ocultos) con ✏ Editar, Ocultar/Mostrar
  * y 🗑 Eliminar, y la hoja «Nuevo convenio»: nombre, descripción, requisitos,
- * foto y contacto. Todo contra /api/personal/convenios (api/convenios.py),
+ * foto y contacto: dirección y redes (WhatsApp, Instagram, Facebook, TikTok,
+ * página web), cada una con su logo (img/redes/), y «Otros datos». Todo contra /api/personal/convenios (api/convenios.py),
  * que responde 403 a quien no es el CEO. Lo mismo que Admin › Convenios.
  */
 (function () {
@@ -13,6 +14,21 @@ const esc = P.escapar;
 const API = '/api/personal/convenios';
 const $ = (id) => document.getElementById(id);
 const estado = { convenios: [] };
+// Los campos del contacto, con su logo (img/redes/<campo>.svg). La API los valida y limpia.
+const REDES = [
+    { campo: 'direccion', texto: 'Dirección', ejemplo: 'Cra 10 # 20-30, Medellín', tipo: 'text' },
+    { campo: 'whatsapp', texto: 'WhatsApp', ejemplo: '300 123 4567', tipo: 'tel' },
+    { campo: 'instagram', texto: 'Instagram', ejemplo: '@empresa', tipo: 'text' },
+    { campo: 'facebook', texto: 'Facebook', ejemplo: 'Usuario de la página o su enlace', tipo: 'text' },
+    { campo: 'tiktok', texto: 'TikTok', ejemplo: '@empresa', tipo: 'text' },
+    { campo: 'web', texto: 'Página web', ejemplo: 'www.empresa.com', tipo: 'url' },
+];
+
+function logos(c) {
+    return (c.enlaces || []).length ? '<div class="conv-redes">' + c.enlaces.map((e) =>
+        '<a href="' + esc(e.url) + '" target="_blank" rel="noopener" title="' + esc(e.texto) + '">' +
+        '<img src="img/redes/' + esc(e.tipo) + '.svg" alt="' + esc(e.tipo) + '"></a>').join('') + '</div>' : '';
+}
 
 function normalizar(texto) {
     return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -46,7 +62,8 @@ function pintar() {
         (c.activo ? '<span class="bit-chip si">Visible</span>' : '<span class="bit-chip">Oculto</span>') + '</div>' +
         '<p>' + esc(c.descripcion) + '</p>' +
         (c.requisitos ? '<p class="conv-sec"><b>Requisitos:</b> ' + esc(c.requisitos) + '</p>' : '') +
-        (c.contacto ? '<p class="conv-sec"><b>Contacto:</b> ' + esc(c.contacto) + '</p>' : '') +
+        logos(c) +
+        (c.contacto ? '<p class="conv-sec"><b>Otros datos:</b> ' + esc(c.contacto) + '</p>' : '') +
         '<div class="bit-meta"><span class="bit-autor">' + esc([c.editado_por || c.por,
             String(c.editado_cuando || c.cuando || '').slice(0, 10)].filter(Boolean).join(' · ')) + '</span>' +
         '<span class="bit-espacio"></span>' +
@@ -99,8 +116,12 @@ function abrirFormulario(c) {
         'placeholder="Qué ofrece: el descuento, en qué productos o servicios…"></textarea></div>' +
         '<div class="campo"><label for="f-requisitos">Requisitos</label><textarea id="f-requisitos" maxlength="2000" rows="3" ' +
         'placeholder="Ej.: Mostrar el carné del estudio. Válido de lunes a viernes."></textarea></div>' +
-        '<div class="campo"><label for="f-contacto">Contacto de la empresa</label><textarea id="f-contacto" maxlength="400" rows="2" ' +
-        'placeholder="Teléfono o WhatsApp, dirección, Instagram o página web"></textarea></div>' +
+        '<div class="campo"><label>Contacto de la empresa</label><div class="conv-contacto">' +
+        REDES.map((r) => '<label class="conv-red"><img src="img/redes/' + r.campo + '.svg" alt="">' +
+            '<span>' + r.texto + '</span><input id="f-' + r.campo + '" type="' + r.tipo + '" maxlength="300" ' +
+            'placeholder="' + esc(r.ejemplo) + '" autocomplete="off"></label>').join('') + '</div></div>' +
+        '<div class="campo"><label for="f-contacto">Otros datos de contacto</label><textarea id="f-contacto" maxlength="400" rows="2" ' +
+        'placeholder="Teléfono fijo, correo, horario…"></textarea></div>' +
         '<div class="bit-botones"><button class="boton-secundario" data-op="no">Cancelar</button>' +
         '<button class="boton-principal" id="f-guardar">' + (c ? 'Guardar cambios' : 'Crear convenio') + '</button></div>' +
         '</div></div>';
@@ -114,6 +135,7 @@ function abrirFormulario(c) {
     $('f-descripcion').value = c ? c.descripcion : '';
     $('f-requisitos').value = c ? c.requisitos : '';
     $('f-contacto').value = c ? c.contacto : '';
+    REDES.forEach((r) => { $('f-' + r.campo).value = c ? (c[r.campo] || '') : ''; });
 
     const vista = (src) => {
         $('f-vista').classList.toggle('vacia', !src);
@@ -146,6 +168,7 @@ function abrirFormulario(c) {
         formulario.append('descripcion', descripcion);
         formulario.append('requisitos', $('f-requisitos').value.trim());
         formulario.append('contacto', $('f-contacto').value.trim());
+        REDES.forEach((r) => formulario.append(r.campo, $('f-' + r.campo).value.trim()));
         if (foto) formulario.append('foto', foto, foto.name);
         else if (c && quitar) formulario.append('quitar_foto', '1');
         guardar.disabled = true;
